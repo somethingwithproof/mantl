@@ -1,0 +1,14 @@
+consul {
+  address = "{{ nomad_consul_address }}"
+{% if nomad_consul_token %}
+  token = "{{ nomad_consul_token }}"
+{% endif %}
+  auto_advertise = {{ nomad_consul_auto_advertise | lower }}
+  server_service_name = "{{ nomad_consul_server_service_name }}"
+  client_service_name = "{{ nomad_consul_client_service_name }}"
+  server_auto_join = {{ nomad_consul_auto_advertise | lower }}
+  client_auto_join = {{ nomad_consul_auto_advertise | lower }}
+{% if nomad_consul_tags %}
+  tags = [ {% for tag in nomad_consul_tags %}"{{ tag }}"{% if not loop.last %}, {% endif %}{% endfor %} ]
+{% endif %}
+}

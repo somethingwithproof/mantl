@@ -3,6 +3,10 @@
 # log sizes grow quickly even without a real workload.
 kube_log_level: 0
 
+# Kubernetes version
+kubernetes_version: "1.27.3"
+kubernetes_version_minor: "{{ kubernetes_version | regex_replace('^(\\d+\\.\\d+).*$', '\\1') }}"
+
 # The port the API Server will be listening on.
 kube_master_port: 443
 kube_insecure_port: 8085
@@ -20,8 +24,8 @@ kube_manifest_dir: "/etc/kubernetes/manifests"
 # This is where manifests for podmaster will be stored
 kube_podmaster_dir: "/srv/kubernetes/manifests"
 
+# DNS configuration
 dns_domain: "{{ cluster_name }}"
-
 # IP address of the DNS server. Kubernetes will create a pod with several
 # containers, serving as the DNS server and exposing it at this IP address. The
 # IP address must be from the range specified in kube_service_addresses. This
@@ -29,9 +33,270 @@ dns_domain: "{{ cluster_name }}"
 # range and use that.
 dns_server: "{{ kube_service_addresses|ipaddr('net')|ipaddr(253)|ipaddr('address') }}"
 
+# Use CoreDNS instead of kube-dns
+use_coredns: true
+coredns_version: "1.10.1"
+
+# Network configuration
+network_plugin: "calico"
+pod_network_cidr: "10.2.0.0/16"
+service_network_cidr: "10.3.0.0/16"
+
+# Container runtime configuration
+container_runtime: "containerd"
+container_runtime_endpoint: "unix:///var/run/containerd/containerd.sock"
+containerd_version: "1.7.0"
+crictl_version: "1.27.0"
+
+# Kubernetes component configuration
+kube_apiserver_extra_args: {}
+kube_controller_manager_extra_args: {}
+kube_scheduler_extra_args: {}
+kubelet_extra_args: {}
+kube_proxy_extra_args: {}
+
+# Control plane endpoint (for HA setup)
+control_plane_endpoint: ""
+
+# ETCD configuration
+etcd_version: "3.5.7"
+etcd_data_dir: "/var/lib/etcd"
+etcd_listen_client_port: 2379
+etcd_listen_peer_port: 2380
+etcd_compaction_retention: "8"
+etcd_auto_compaction_mode: "periodic"
+etcd_metrics: "basic"
+etcd_quota_backend_bytes: "8589934592"  # 8GB
+
+# High Availability settings
+kube_ha_enabled: "{{ groups['control'] | length > 1 }}"
+kube_apiserver_vip: ""
+kube_apiserver_port: 6443
+kube_apiserver_secure_port: 6443
+
+# Load balancer for HA
+kube_lb_enabled: "{{ kube_ha_enabled }}"
+kube_lb_type: "haproxy"  # Options: haproxy, nginx
+
+# Authentication and Authorization
+kube_basic_auth_enabled: false
+kube_token_auth_enabled: true
+kube_oidc_auth_enabled: false
+kube_oidc_url: ""
+kube_oidc_client_id: ""
+kube_oidc_username_claim: "sub"
+kube_oidc_groups_claim: "groups"
+kube_rbac_enabled: true
+kube_audit_enabled: true
+kube_audit_log_path: "/var/log/kubernetes/audit.log"
+kube_audit_log_maxage: 30
+kube_audit_log_maxbackup: 10
+kube_audit_log_maxsize: 100
+
 # OpenStack cloud provider authentication variables.
 os_auth_url: "{{ lookup('env','OS_AUTH_URL') }}"
 os_username: "{{ lookup('env','OS_USERNAME') }}"
 os_password: "{{ lookup('env','OS_PASSWORD') }}"
 os_region_name: "{{ lookup('env','OS_REGION_NAME') }}"
 os_tenant_id: "{{ lookup('env','OS_TENANT_ID') }}"
+
+# Cloud provider settings
+cloud_provider: "" # Options: aws, gcp, azure, oci, openstack, vsphere
+cloud_provider_config_path: "/etc/kubernetes/cloud-config"
+
+# AWS cloud provider settings
+aws_region: "us-west-2"
+aws_vpc_id: ""
+aws_subnet_id: ""
+aws_route_table_id: ""
+aws_zone: ""
+
+# GCP cloud provider settings
+gcp_project: ""
+gcp_network_name: ""
+gcp_node_tags: ""
+gcp_node_instance_prefix: ""
+gcp_multizone: true
+gcp_regional: true
+gcp_subnet_name: ""
+
+# Azure cloud provider settings
+azure_tenant_id: ""
+azure_subscription_id: ""
+azure_resource_group: ""
+azure_location: ""
+azure_vnet_name: ""
+azure_vnet_resource_group: ""
+azure_subnet_name: ""
+azure_security_group_name: ""
+azure_route_table_name: ""
+
+# Common Criteria compliance
+common_criteria_kubernetes_enabled: "{{ common_criteria_compliance_enabled | default(true) }}"
+kubernetes_psp_enabled: "{{ common_criteria_kubernetes_enabled }}"
+kubernetes_pod_security_standard: "restricted"  # baseline, restricted, privileged
+kubernetes_network_policy_enabled: "{{ common_criteria_kubernetes_enabled }}"
+kubernetes_encryption_provider_config_enabled: "{{ common_criteria_kubernetes_enabled }}"
+kubernetes_audit_enabled: "{{ common_criteria_kubernetes_enabled }}"
+
+# Kubernetes dashboard
+kubernetes_dashboard_enabled: true
+kubernetes_dashboard_version: "2.7.0"
+
+# Metrics server
+kubernetes_metrics_server_enabled: true
+kubernetes_metrics_server_version: "0.6.3"
+
+# Integration with other components
+kubernetes_consul_integration_enabled: true
+kubernetes_vault_integration_enabled: true
+kubernetes_nomad_integration_enabled: "{{ nomad_enabled | default(false) }}"
+
+# Persistent volume configuration
+kubernetes_persistent_volumes_enabled: true
+kubernetes_storage_class_default: "standard"
+kubernetes_local_volume_provisioner_enabled: true
+kubernetes_local_volume_provisioner_directory: "/mnt/disks"
+
+# Ingress controller
+kubernetes_ingress_controller_enabled: true
+kubernetes_ingress_controller_type: "nginx"  # Options: nginx, traefik
+kubernetes_ingress_controller_version: "1.7.0"
+kubernetes_ingress_controller_replicas: 2
+kubernetes_ingress_controller_host_network: false
+
+# Monitoring stack
+kubernetes_monitoring_enabled: true
+kubernetes_prometheus_operator_enabled: "{{ kubernetes_monitoring_enabled }}"
+kubernetes_prometheus_operator_version: "0.65.1"
+kubernetes_prometheus_enabled: "{{ kubernetes_monitoring_enabled }}"
+kubernetes_alertmanager_enabled: "{{ kubernetes_monitoring_enabled }}"
+kubernetes_grafana_enabled: "{{ kubernetes_monitoring_enabled }}"
+kubernetes_grafana_version: "9.5.2"
+
+# Logging stack
+kubernetes_logging_enabled: true
+kubernetes_elasticsearch_enabled: "{{ kubernetes_logging_enabled }}"
+kubernetes_elasticsearch_version: "8.8.1"
+kubernetes_fluentd_enabled: "{{ kubernetes_logging_enabled }}"
+kubernetes_fluentd_version: "v1.16.1"
+kubernetes_kibana_enabled: "{{ kubernetes_logging_enabled }}"
+kubernetes_kibana_version: "8.8.1"
+
+##############################
+# Kubernetes-Nomad Integration
+##############################
+
+# Integration defaults
+kubernetes_nomad_default_namespace: default
+kubernetes_nomad_tls_verify: true
+kubernetes_nomad_tls_server_name: ""
+kubernetes_nomad_kubeconfig_path: ""
+kubernetes_nomad_cleanup_failed: true
+kubernetes_nomad_cleanup_deadline: "5m"
+kubernetes_nomad_image_pull_timeout: "5m"
+kubernetes_nomad_auth_timeout: "30s"
+kubernetes_nomad_memory_limit: 256
+kubernetes_nomad_cpu_limit: 200
+kubernetes_nomad_seccomp_enabled: true
+
+# Cross-platform service discovery
+kubernetes_nomad_service_discovery_enabled: true
+kubernetes_nomad_service_discovery_label_selector: "mantl-service=true"
+kubernetes_nomad_service_discovery_sync_period: "30s"
+kubernetes_nomad_service_discovery_check_interval: "10s"
+kubernetes_nomad_service_discovery_external_default: false
+
+# Shared secrets management with Vault
+kubernetes_nomad_vault_integration_enabled: false
+kubernetes_nomad_vault_role: "nomad-cluster"
+kubernetes_nomad_vault_default_ttl: "1h"
+kubernetes_nomad_vault_max_ttl: "4h"
+kubernetes_nomad_vault_k8s_auth: true
+kubernetes_nomad_vault_k8s_role: "nomad"
+
+# Federated metrics and logging
+kubernetes_nomad_metrics_enabled: false
+kubernetes_nomad_metrics_interval: "10s"
+kubernetes_nomad_prometheus_retention: "24h"
+kubernetes_nomad_statsd_enabled: false
+kubernetes_nomad_statsd_address: "localhost:8125"
+kubernetes_nomad_datadog_enabled: false
+kubernetes_nomad_datadog_address: "localhost:8125"
+kubernetes_nomad_datadog_tags:
+  - "env:prod"
+  - "service:nomad"
+kubernetes_nomad_fluentd_image: "fluent/fluentd:v1.14"
+kubernetes_nomad_elasticsearch_host: "elasticsearch.service.consul"
+kubernetes_nomad_elasticsearch_port: "9200"
+
+# Multi-region/multi-cluster orchestration
+kubernetes_nomad_multi_region_enabled: false
+kubernetes_nomad_regions:
+  - "global"
+kubernetes_nomad_multi_region_strategy: "failover"
+kubernetes_nomad_multi_region_failover_timeout: "60s"
+
+# GPU workload scheduling
+kubernetes_nomad_gpu_enabled: false
+kubernetes_nomad_gpu_vendor: "nvidia"
+kubernetes_nomad_example_gpu_limit: 0
+kubernetes_nomad_example_gpu_memory: 1024
+
+# Autoscaling integration
+kubernetes_nomad_autoscaling_enabled: false
+kubernetes_nomad_autoscaling_min_replicas: 1
+kubernetes_nomad_autoscaling_max_replicas: 10
+kubernetes_nomad_autoscaling_metric: "cpu"
+kubernetes_nomad_autoscaling_target_value: 70
+kubernetes_nomad_autoscaling_evaluation_interval: "30s"
+kubernetes_nomad_autoscaling_cooldown: "2m"
+kubernetes_nomad_autoscaling_scale_down_period: "3m"
+
+# Custom resource definition support
+kubernetes_nomad_crd_enabled: false
+kubernetes_nomad_custom_resources: true
+kubernetes_nomad_custom_resource_groups:
+  - "monitoring.coreos.com"
+  - "cert-manager.io"
+  - "storage.k8s.io"
+
+# Disaster recovery with automatic failover
+kubernetes_nomad_disaster_recovery_enabled: false
+kubernetes_nomad_dr_threshold: "30s"
+kubernetes_nomad_dr_heartbeat: "60s"
+kubernetes_nomad_dr_detection: "health_check"
+kubernetes_nomad_dr_failback_delay: "5m"
+kubernetes_nomad_dr_snapshot_path: "/var/lib/nomad/snapshots"
+kubernetes_nomad_dr_snapshot_interval: "1h"
+kubernetes_nomad_dr_auto_revert: true
+kubernetes_nomad_dr_max_disconnection: "10m"
+
+# Service mesh and zero-downtime migration
+kubernetes_nomad_service_mesh_enabled: false
+kubernetes_nomad_connect_sidecar_image: "consul:latest"
+kubernetes_nomad_service_mesh_protocol: "http"
+kubernetes_nomad_service_mesh_metrics: true
+kubernetes_nomad_service_mesh_metrics_port: 20200
+
+# Unified policy enforcement with OPA
+kubernetes_nomad_opa_enabled: false
+kubernetes_nomad_opa_url: "http://opa.service.consul:8181/v1/data"
+kubernetes_nomad_opa_token: ""
+kubernetes_nomad_opa_allow_override: false
+kubernetes_nomad_opa_default_action: "deny"
+kubernetes_nomad_opa_paths:
+  - "kubernetes/admission"
+  - "nomad/task"
+kubernetes_nomad_opa_image: "openpolicyagent/opa:latest"
+
+# Example job settings
+kubernetes_nomad_example_count: 1
+kubernetes_nomad_example_image: "nginx:stable-alpine"
+kubernetes_nomad_example_cpu_limit: "200m"
+kubernetes_nomad_example_memory_limit: "256Mi"
+kubernetes_nomad_example_cpu_request: "100m"
+kubernetes_nomad_example_memory_request: "128Mi"
+kubernetes_nomad_example_nomad_cpu: 200
+kubernetes_nomad_example_nomad_memory: 256
+kubernetes_nomad_example_user: "nobody"

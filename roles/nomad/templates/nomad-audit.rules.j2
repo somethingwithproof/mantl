@@ -1,0 +1,20 @@
+# Nomad audit rules for Common Criteria compliance
+
+# Monitor Nomad binary access and execution
+-w /usr/local/bin/nomad -p rwxa -k nomad_bin
+
+# Monitor Nomad configuration
+-w {{ nomad_config_dir }} -p rwxa -k nomad_config
+
+# Monitor Nomad data directory
+-w {{ nomad_data_dir }} -p rwxa -k nomad_data
+
+# Monitor Nomad log directory
+-w {{ nomad_log_dir }} -p rwxa -k nomad_logs
+
+# Monitor Nomad service file
+-w /etc/systemd/system/nomad.service -p rwxa -k nomad_service
+
+# Monitor job submissions (common temp file locations)
+-w /tmp -p rwxa -k nomad_tmp_files
+-w /var/tmp -p rwxa -k nomad_var_tmp_files

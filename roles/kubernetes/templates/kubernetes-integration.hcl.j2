@@ -1,0 +1,204 @@
+# Kubernetes integration configuration for Nomad
+# This file is managed by Ansible - manual changes will be overwritten
+
+# Cross-platform service discovery
+{% if kubernetes_nomad_service_discovery_enabled | default(true) %}
+service_discovery "kubernetes" {
+  enabled = true
+  server_address = "{{ lookup('file', '/etc/kubernetes/nomad-integration/k8s-api-server') | default('https://kubernetes.default.svc', true) | trim }}"
+  token = "{{ lookup('file', '/etc/kubernetes/nomad-integration/nomad-token') | default('', true) | trim }}"
+  ca_file = "/etc/kubernetes/nomad-integration/k8s-ca.crt"
+  namespace = "{{ kubernetes_nomad_default_namespace | default('default') }}"
+  label_selector = "{{ kubernetes_nomad_service_discovery_label_selector | default('mantl-service=true') }}"
+  sync_period = "{{ kubernetes_nomad_service_discovery_sync_period | default('30s') }}"
+  service_defaults {
+    external = {{ kubernetes_nomad_service_discovery_external_default | default(false) | lower }}
+    check_interval = "{{ kubernetes_nomad_service_discovery_check_interval | default('10s') }}"
+  }
+}
+{% endif %}
+
+plugin "kubernetes" {
+  config {
+    # Kubernetes API server endpoint
+    host = "{{ lookup('file', '/etc/kubernetes/nomad-integration/k8s-api-server') | default('https://kubernetes.default.svc', true) | trim }}"
+    
+    # Service account token for Nomad to authenticate with Kubernetes
+    service_account_token = "{{ lookup('file', '/etc/kubernetes/nomad-integration/nomad-token') | default('', true) | trim }}"
+    
+    # TLS verification settings
+    ca_file = "/etc/kubernetes/nomad-integration/k8s-ca.crt"
+    
+    # Kubernetes namespace where Nomad will create resources by default
+    namespace = "{{ kubernetes_nomad_default_namespace | default('default') }}"
+    
+    # Security settings
+    kubeconfig = "{{ kubernetes_nomad_kubeconfig_path | default('') }}"
+    tls_verify = {{ kubernetes_nomad_tls_verify | default(true) | lower }}
+    tls_server_name = "{{ kubernetes_nomad_tls_server_name | default('') }}"
+    
+    # Resource management settings
+    cleanup_failed = {{ kubernetes_nomad_cleanup_failed | default(true) | lower }}
+    cleanup_deadline = "{{ kubernetes_nomad_cleanup_deadline | default('5m') }}"
+    
+    # Logs configuration
+    image_pull_timeout = "{{ kubernetes_nomad_image_pull_timeout | default('5m') }}"
+    auth_timeout = "{{ kubernetes_nomad_auth_timeout | default('30s') }}"
+    
+    # Resource limits
+    memory_limit = {{ kubernetes_nomad_memory_limit | default(256) }}
+    cpu_limit = {{ kubernetes_nomad_cpu_limit | default(200) }}
+    
+    # GPU scheduling support
+    {% if kubernetes_nomad_gpu_enabled | default(false) %}
+    gpu_support = true
+    gpu_vendor = "{{ kubernetes_nomad_gpu_vendor | default('nvidia') }}"
+    {% endif %}
+    
+    # Nomad service mesh integration with Kubernetes
+    {% if kubernetes_nomad_service_mesh_enabled | default(false) %}
+    service_mesh {
+      enabled = true
+      connect_sidecar_image = "{{ kubernetes_nomad_connect_sidecar_image | default('consul:latest') }}"
+      default_protocol = "{{ kubernetes_nomad_service_mesh_protocol | default('http') }}"
+      metrics_enabled = {{ kubernetes_nomad_service_mesh_metrics | default(true) | lower }}
+      metrics_port = {{ kubernetes_nomad_service_mesh_metrics_port | default(20200) }}
+    }
+    {% endif %}
+    
+    # CRD support
+    {% if kubernetes_nomad_crd_enabled | default(false) %}
+    custom_resources = {{ kubernetes_nomad_custom_resources | default(true) | lower }}
+    custom_resource_groups = [
+      {% for group in kubernetes_nomad_custom_resource_groups | default(['monitoring.coreos.com', 'cert-manager.io']) %}
+      "{{ group }}",
+      {% endfor %}
+    ]
+    {% endif %}
+    
+    # Autoscaling integration
+    {% if kubernetes_nomad_autoscaling_enabled | default(false) %}
+    autoscaling {
+      enabled = true
+      min_replicas = {{ kubernetes_nomad_autoscaling_min_replicas | default(1) }}
+      max_replicas = {{ kubernetes_nomad_autoscaling_max_replicas | default(10) }}
+      metric = "{{ kubernetes_nomad_autoscaling_metric | default('cpu') }}"
+      target_value = {{ kubernetes_nomad_autoscaling_target_value | default(50) }}
+      scale_down_stabilization = "{{ kubernetes_nomad_autoscaling_scale_down_period | default('3m') }}"
+    }
+    {% endif %}
+  }
+}
+
+# Common Criteria audit settings
+{% if nomad_common_criteria_enabled | default(false) %}
+audit {
+  enabled = true
+  sink "file" {
+    type = "file"
+    format = "json"
+    path = "/var/log/nomad/kubernetes-audit.json"
+    delivery_guarantee = "enforced"
+    rotate_bytes = 10485760  # 10MB
+    rotate_duration = "24h"
+    rotate_max_files = 10
+  }
+  filter "kubernetes" {
+    type = "kubernetes"
+    default = "write"
+  }
+}
+{% endif %}
+
+# Vault integration for secrets management
+{% if kubernetes_nomad_vault_integration_enabled | default(false) %}
+vault {
+  enabled = true
+  address = "{{ vault_addr | default('https://vault.service.consul:8200') }}"
+  token = "{{ lookup('file', '/etc/nomad.d/vault-token') | default('', true) | trim }}"
+  namespace = "{{ vault_namespace | default('') }}"
+  create_from_role = "{{ kubernetes_nomad_vault_role | default('nomad-cluster') }}"
+  default_lease_ttl = "{{ kubernetes_nomad_vault_default_ttl | default('1h') }}"
+  max_lease_ttl = "{{ kubernetes_nomad_vault_max_ttl | default('4h') }}"
+  
+  # Kubernetes auth method for seamless integration
+  kubernetes_auth {
+    enabled = {{ kubernetes_nomad_vault_k8s_auth | default(true) | lower }}
+    role = "{{ kubernetes_nomad_vault_k8s_role | default('nomad') }}"
+    token_path = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  }
+}
+{% endif %}
+
+# Multi-region orchestration
+{% if kubernetes_nomad_multi_region_enabled | default(false) %}
+multi_region {
+  enabled = true
+  regions = [
+    {% for region in kubernetes_nomad_regions | default(['global']) %}
+    {
+      name = "{{ region.name | default(region) }}"
+      {% if region.name is defined %}
+      address = "{{ region.address | default('') }}"
+      {% endif %}
+    },
+    {% endfor %}
+  ]
+  strategy = "{{ kubernetes_nomad_multi_region_strategy | default('failover') }}"
+  failover_timeout = "{{ kubernetes_nomad_multi_region_failover_timeout | default('60s') }}"
+}
+{% endif %}
+
+# Unified policy enforcement with OPA
+{% if kubernetes_nomad_opa_enabled | default(false) %}
+policy {
+  enabled = true
+  opa_url = "{{ kubernetes_nomad_opa_url | default('http://opa.service.consul:8181/v1/data') }}"
+  opa_token = "{{ kubernetes_nomad_opa_token | default('') }}"
+  allow_policy_override = {{ kubernetes_nomad_opa_allow_override | default(false) | lower }}
+  default_action = "{{ kubernetes_nomad_opa_default_action | default('deny') }}"
+  evaluation_paths = [
+    {% for path in kubernetes_nomad_opa_paths | default(['kubernetes/admission']) %}
+    "{{ path }}",
+    {% endfor %}
+  ]
+}
+{% endif %}
+
+# Federated metrics and logging
+{% if kubernetes_nomad_metrics_enabled | default(false) %}
+telemetry {
+  prometheus_metrics = true
+  publish_allocation_metrics = true
+  publish_node_metrics = true
+  disable_hostname = true
+  collection_interval = "{{ kubernetes_nomad_metrics_interval | default('10s') }}"
+  
+  # Federated metrics with Prometheus
+  prometheus_retention_time = "{{ kubernetes_nomad_prometheus_retention | default('24h') }}"
+  
+  # Optional StatsD integration
+  {% if kubernetes_nomad_statsd_enabled | default(false) %}
+  statsd_address = "{{ kubernetes_nomad_statsd_address | default('localhost:8125') }}"
+  {% endif %}
+  
+  # Optional Datadog integration
+  {% if kubernetes_nomad_datadog_enabled | default(false) %}
+  datadog_address = "{{ kubernetes_nomad_datadog_address | default('localhost:8125') }}"
+  datadog_tags = ["{{ kubernetes_nomad_datadog_tags | default(['env:prod', 'service:nomad']) | join('", "') }}"]
+  {% endif %}
+}
+{% endif %}
+
+# Disaster recovery with automatic failover
+{% if kubernetes_nomad_disaster_recovery_enabled | default(false) %}
+disaster_recovery {
+  enabled = true
+  recovery_threshold = "{{ kubernetes_nomad_dr_threshold | default('30s') }}"
+  max_heartbeat_interval = "{{ kubernetes_nomad_dr_heartbeat | default('60s') }}"
+  failure_detection = "{{ kubernetes_nomad_dr_detection | default('health_check') }}"
+  failback_delay = "{{ kubernetes_nomad_dr_failback_delay | default('5m') }}"
+  snapshot_path = "{{ kubernetes_nomad_dr_snapshot_path | default('/var/lib/nomad/snapshots') }}"
+  snapshot_interval = "{{ kubernetes_nomad_dr_snapshot_interval | default('1h') }}"
+}
+{% endif %}

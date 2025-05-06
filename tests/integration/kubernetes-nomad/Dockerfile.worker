@@ -1,0 +1,105 @@
+FROM centos:7
+
+# Install dependencies
+RUN yum -y update && \
+    yum -y install epel-release && \
+    yum -y install \
+    bind-utils \
+    ca-certificates \
+    conntrack-tools \
+    curl \
+    ebtables \
+    git \
+    gnupg \
+    htop \
+    iproute \
+    iptables \
+    jq \
+    libselinux-python \
+    net-tools \
+    nfs-utils \
+    openssh-server \
+    openssh-clients \
+    openssl \
+    python-pip \
+    python-setuptools \
+    socat \
+    sudo \
+    unzip \
+    vim \
+    wget \
+    xfsprogs && \
+    yum clean all
+
+# Install Docker (containerized environment for testing)
+RUN curl -fsSL https://get.docker.com/ | sh && \
+    systemctl enable docker
+
+# Install containerd
+ARG CONTAINERD_VERSION=1.7.0
+RUN curl -L https://github.com/containerd/containerd/releases/download/v${CONTAINERD_VERSION}/containerd-${CONTAINERD_VERSION}-linux-amd64.tar.gz | tar -xz -C /usr/local && \
+    mkdir -p /etc/containerd && \
+    containerd config default > /etc/containerd/config.toml
+
+# Install CNI plugins
+ARG CNI_VERSION=v1.3.0
+RUN mkdir -p /opt/cni/bin && \
+    curl -L https://github.com/containernetworking/plugins/releases/download/${CNI_VERSION}/cni-plugins-linux-amd64-${CNI_VERSION}.tgz | tar -xz -C /opt/cni/bin
+
+# Install crictl
+ARG CRICTL_VERSION=v1.27.0
+RUN curl -L https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz | tar -xz -C /usr/local/bin
+
+# Install Kubernetes components
+ARG KUBERNETES_VERSION=v1.27.3
+RUN curl -L https://storage.googleapis.com/kubernetes-release/release/${KUBERNETES_VERSION}/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl && \
+    curl -L https://storage.googleapis.com/kubernetes-release/release/${KUBERNETES_VERSION}/bin/linux/amd64/kubelet -o /usr/local/bin/kubelet && \
+    curl -L https://storage.googleapis.com/kubernetes-release/release/${KUBERNETES_VERSION}/bin/linux/amd64/kubeadm -o /usr/local/bin/kubeadm && \
+    chmod +x /usr/local/bin/kubectl /usr/local/bin/kubelet /usr/local/bin/kubeadm
+
+# Install Consul agent
+ARG CONSUL_VERSION=1.15.3
+RUN curl -L https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip -o consul.zip && \
+    unzip consul.zip -d /usr/local/bin && \
+    rm consul.zip && \
+    chmod +x /usr/local/bin/consul
+
+# Install Nomad
+ARG NOMAD_VERSION=1.6.3
+RUN curl -L https://releases.hashicorp.com/nomad/${NOMAD_VERSION}/nomad_${NOMAD_VERSION}_linux_amd64.zip -o nomad.zip && \
+    unzip nomad.zip -d /usr/local/bin && \
+    rm nomad.zip && \
+    chmod +x /usr/local/bin/nomad
+
+# Install NVIDIA GPU drivers and toolkit (mock version for testing)
+RUN mkdir -p /usr/local/nvidia && \
+    touch /usr/local/nvidia/nvidia-smi && \
+    chmod +x /usr/local/nvidia/nvidia-smi && \
+    ln -s /usr/local/nvidia/nvidia-smi /usr/bin/nvidia-smi && \
+    echo '#!/bin/bash\necho "GPU 0: NVIDIA GeForce RTX 3080 (UUID: GPU-deadbeef-dead-beef-dead-beefdeadbeef)"' > /usr/bin/nvidia-smi
+
+# Directories
+RUN mkdir -p /etc/kubernetes && \
+    mkdir -p /etc/kubernetes/nomad-integration && \
+    mkdir -p /var/lib/kubernetes && \
+    mkdir -p /var/lib/kubernetes/nomad-integration && \
+    mkdir -p /etc/cni/net.d && \
+    mkdir -p /var/log/kubernetes && \
+    mkdir -p /var/log/nomad && \
+    mkdir -p /etc/nomad.d && \
+    mkdir -p /etc/nomad.d/client && \
+    mkdir -p /etc/consul.d && \
+    mkdir -p /var/lib/nomad/snapshots
+
+# Copy entrypoint script
+COPY scripts/worker-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Expose ports
+EXPOSE 10250 10255
+
+# Set entrypoint
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# Default command
+CMD ["/bin/bash"]

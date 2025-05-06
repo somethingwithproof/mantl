@@ -1,0 +1,13 @@
+server {
+  enabled = true
+  bootstrap_expect = {{ nomad_server_bootstrap_expect }}
+  encrypt = "{{ nomad_server_encrypt }}"
+  raft_protocol = {{ nomad_raft_protocol }}
+{% if nomad_server_retry_join %}
+  server_join {
+    retry_join = [ {% for server in nomad_server_retry_join.split() %}"{{ server }}"{% if not loop.last %}, {% endif %}{% endfor %} ]
+    retry_max = 5
+    retry_interval = "15s"
+  }
+{% endif %}
+}

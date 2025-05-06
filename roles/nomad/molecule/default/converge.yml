@@ -1,0 +1,58 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  
+  pre_tasks:
+    - name: Create directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: 0755
+      with_items:
+        - /data
+        - /etc/nomad.d
+        - /var/log/nomad
+        
+    - name: Install dependencies
+      package:
+        name:
+          - curl
+          - unzip
+          - net-tools
+          - jq
+          - audit
+        state: present
+        
+    - name: Start auditd
+      service:
+        name: auditd
+        state: started
+        enabled: true
+      ignore_errors: true
+        
+  roles:
+    - role: nomad
+      
+  post_tasks:
+    - name: Check Nomad is running (server)
+      uri:
+        url: "http://localhost:4646/v1/status/leader"
+        method: GET
+        status_code: 200
+      register: nomad_leader_check
+      until: nomad_leader_check.status == 200
+      retries: 5
+      delay: 5
+      when: "'control' in group_names"
+      
+    - name: Check Nomad is running (client)
+      uri:
+        url: "http://localhost:4646/v1/agent/self"
+        method: GET
+        status_code: 200
+      register: nomad_client_check
+      until: nomad_client_check.status == 200
+      retries: 5
+      delay: 5
+      when: "'worker' in group_names"

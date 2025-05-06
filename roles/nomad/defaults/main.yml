@@ -1,0 +1,104 @@
+---
+# Nomad role configuration defaults
+
+# Version and installation options
+nomad_version: "1.6.3"
+nomad_architecture: "amd64"
+nomad_install_dir: "/usr/local/bin"
+nomad_user: "nomad"
+nomad_group: "nomad"
+
+# Enable Nomad server/client modes
+nomad_server: "{{ 'control' in group_names }}"
+nomad_client: "{{ 'worker' in group_names or 'kubeworker' in group_names }}"
+
+# Datacenter configuration
+nomad_region: "global"
+nomad_datacenter: "{{ dc | default('dc1') }}"
+nomad_leave_on_terminate: true
+nomad_leave_on_interrupt: false
+
+# Raft protocol version
+nomad_raft_protocol: 3
+
+# Server configuration
+nomad_server_bootstrap_expect: "{{ groups['control'] | length | default(3) }}"
+nomad_server_encrypt: "8mDXpFqmRUaCJxiLmCbNLw=="
+nomad_server_retry_join: "{% for host in groups['control'] %}{{ hostvars[host]['ansible_default_ipv4']['address'] }}{% if not loop.last %} {% endif %}{% endfor %}"
+nomad_server_enabled: "{{ nomad_server }}"
+
+# Client configuration
+nomad_client_enabled: "{{ nomad_client }}"
+nomad_client_node_class: "{{ role | default('') }}"
+nomad_client_meta:
+  role: "{{ role | default('') }}"
+  dc: "{{ dc | default('dc1') }}"
+  provider: "{{ provider | default('unknown') }}"
+
+# Resource configuration
+nomad_client_reserved_cpu: 500
+nomad_client_reserved_memory: 512
+nomad_client_reserved_disk: 1024
+nomad_client_cpu_total_compute: null
+
+# Network configuration
+nomad_bind_addr: "0.0.0.0"
+nomad_advertise_addr: "{{ ansible_default_ipv4.address }}"
+nomad_ports:
+  http: 4646
+  rpc: 4647
+  serf: 4648
+
+# Consul integration
+nomad_consul_enabled: true
+nomad_consul_address: "127.0.0.1:8500"
+nomad_consul_token: ""
+nomad_consul_auto_advertise: true
+nomad_consul_server_service_name: "nomad"
+nomad_consul_client_service_name: "nomad-client"
+nomad_consul_tags:
+  - mantl
+
+# Vault integration
+nomad_vault_enabled: true
+nomad_vault_address: "http://127.0.0.1:8200"
+nomad_vault_create_from_role: ""
+nomad_vault_allow_unauthenticated: false
+
+# Docker configuration
+nomad_docker_enable: true
+nomad_docker_volumes_enabled: true
+nomad_docker_privileged_containers_enabled: true
+
+# Telemetry configuration
+nomad_telemetry_enabled: true
+nomad_telemetry_publish_allocation_metrics: true
+nomad_telemetry_publish_node_metrics: true
+nomad_telemetry_prometheus_metrics: true
+nomad_telemetry_disable_hostname: false
+
+# Directory configuration
+nomad_data_dir: "/data/nomad"
+nomad_config_dir: "/etc/nomad.d"
+nomad_log_dir: "/var/log/nomad"
+
+# ACL configuration
+nomad_acl_enabled: true
+nomad_acl_replication_token: ""
+
+# TLS configuration
+nomad_tls_enabled: false
+nomad_tls_verify_server_hostname: true
+nomad_tls_verify_https_client: true
+nomad_tls_certificate_file: "{{ nomad_config_dir }}/tls/server.crt"
+nomad_tls_key_file: "{{ nomad_config_dir }}/tls/server.key"
+nomad_tls_ca_file: "{{ nomad_config_dir }}/tls/ca.crt"
+
+# Common Criteria compliance
+common_criteria_nomad_enabled: "{{ common_criteria_compliance_enabled | default(true) }}"
+nomad_audit_enabled: "{{ common_criteria_nomad_enabled }}"
+nomad_audit_log_path: "/var/log/nomad/audit.log"
+
+# Kubernetes integration
+nomad_kubernetes_integration_enabled: false
+nomad_kubernetes_config: {}

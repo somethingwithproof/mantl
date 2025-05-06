@@ -1,0 +1,81 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: nomad-server
+    image: geerlingguy/docker-centos7-ansible:latest
+    pre_build_image: true
+    command: "/usr/sbin/init"
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    groups:
+      - control
+    env:
+      ANSIBLE_USER: ansible
+      ANSIBLE_PRIVATE_KEY_FILE: ~/.ssh/id_rsa
+    exposed_ports:
+      - 4646
+      - 4647
+      - 4648
+    published_ports:
+      - 0.0.0.0:4646:4646/tcp
+    tmpfs:
+      - /run
+      - /tmp
+  - name: nomad-client
+    image: geerlingguy/docker-centos7-ansible:latest
+    pre_build_image: true
+    command: "/usr/sbin/init"
+    privileged: true
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    groups:
+      - worker
+    env:
+      ANSIBLE_USER: ansible
+      ANSIBLE_PRIVATE_KEY_FILE: ~/.ssh/id_rsa
+    exposed_ports:
+      - 4646
+    tmpfs:
+      - /run
+      - /tmp
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        nomad_version: "1.6.3"
+        nomad_datacenter: "dc1"
+        nomad_server_retry_join: "nomad-server"
+        nomad_consul_enabled: false
+        nomad_vault_enabled: false
+        common_criteria_compliance_enabled: true
+  lint:
+    name: ansible-lint
+    enabled: true
+  options:
+    v: true
+verifier:
+  name: testinfra
+  directory: ../../../tests/unit/molecule/nomad
+  lint:
+    name: flake8
+scenario:
+  name: default
+  test_sequence:
+    - lint
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - side_effect
+    - verify
+    - cleanup
+    - destroy
