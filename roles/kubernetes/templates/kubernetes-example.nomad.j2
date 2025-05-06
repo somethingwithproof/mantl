@@ -1,0 +1,600 @@
+# Example Nomad job that utilizes the Kubernetes integration
+# This file is managed by Ansible - manual changes will be overwritten
+
+job "mantl-kubernetes-example" {
+  datacenters = ["{{ nomad_datacenter | default('dc1') }}"]
+  
+  # Multi-region orchestration
+  {% if kubernetes_nomad_multi_region_enabled | default(false) %}
+  multiregion {
+    strategy {
+      max_parallel = 1
+      on_failure   = "fail_all"
+    }
+    {% for region in kubernetes_nomad_regions | default(['global']) %}
+    region "{{ region.name | default(region) }}" {
+      count = 1
+      datacenters = ["{{ nomad_datacenter | default('dc1') }}"]
+    }
+    {% endfor %}
+  }
+  {% elif nomad_enterprise_enabled | default(false) %}
+  # Use Nomad Enterprise features if available
+  multiregion {
+    strategy {
+      max_parallel = 1
+      on_failure   = "fail_all"
+    }
+    region "global" {
+      count = 1
+      datacenters = ["{{ nomad_datacenter | default('dc1') }}"]
+    }
+  }
+  {% endif %}
+
+  # Disaster recovery configuration
+  {% if kubernetes_nomad_disaster_recovery_enabled | default(false) %}
+  disaster_recovery {
+    targeted_evaluation = true
+    auto_revert = {{ kubernetes_nomad_dr_auto_revert | default(true) | lower }}
+    max_disconnection = "{{ kubernetes_nomad_dr_max_disconnection | default('10m') }}"
+  }
+  {% endif %}
+
+  # Ensure this job exists in one instance
+  type = "service"
+
+  # Define constraints for where this job can run
+  constraint {
+    attribute = "${meta.kubernetes_enabled}"
+    operator  = "="
+    value     = "true"
+  }
+
+  # Enterprise namespace feature
+  {% if nomad_enterprise_enabled | default(false) %}
+  namespace = "{{ nomad_kubernetes_namespace | default('default') }}"
+  {% endif %}
+
+  # Example meta tags to add to the job
+  meta {
+    managed_by          = "mantl"
+    kubernetes_enabled  = "true"
+    version             = "{{ mantl_version | default('latest') }}"
+    service_type        = "web"
+    tier                = "frontend"
+  }
+
+  # OPA policy enforcement
+  {% if kubernetes_nomad_opa_enabled | default(false) %}
+  policy {
+    enforce = true
+    policy_scope = "job"
+    rules = [
+      "kubernetes/job-compliance"
+    ]
+  }
+  {% endif %}
+
+  # Autoscaling configuration
+  {% if kubernetes_nomad_autoscaling_enabled | default(false) %}
+  scaling {
+    enabled = true
+    min     = {{ kubernetes_nomad_autoscaling_min_replicas | default(1) }}
+    max     = {{ kubernetes_nomad_autoscaling_max_replicas | default(10) }}
+    policy {
+      evaluation_interval = "{{ kubernetes_nomad_autoscaling_evaluation_interval | default('30s') }}"
+      cooldown            = "{{ kubernetes_nomad_autoscaling_cooldown | default('2m') }}"
+      
+      check "cpu" {
+        source = "prometheus"
+        query  = "avg(nomad_client_allocs_cpu_total{task_group='kubernetes-nginx'})"
+        strategy "target-value" {
+          target = {{ kubernetes_nomad_autoscaling_target_value | default(70) }}
+        }
+      }
+    }
+  }
+  {% endif %}
+
+  group "kubernetes-nginx" {
+    count = {{ kubernetes_nomad_example_count | default(1) }}
+
+    # Example network configuration with service registration
+    network {
+      port "http" {
+        to = 80
+      }
+      
+      {% if kubernetes_nomad_service_mesh_enabled | default(false) %}
+      port "metrics" {
+        to = 9090
+      }
+      {% endif %}
+    }
+
+    # Cross-platform service discovery
+    {% if kubernetes_nomad_service_discovery_enabled | default(true) %}
+    service {
+      name = "mantl-example-service"
+      port = "http"
+      tags = ["mantl", "example", "nginx", "mantl-service=true"]
+      
+      check {
+        type     = "http"
+        path     = "/"
+        interval = "10s"
+        timeout  = "2s"
+      }
+      
+      # Add metadata for enhanced service discovery
+      meta {
+        version = "{{ mantl_version | default('latest') }}"
+        environment = "{{ mantl_environment | default('production') }}"
+        service_type = "web"
+      }
+
+      {% if nomad_consul_connect_enabled | default(false) %}
+      connect {
+        sidecar_service {
+          proxy {
+            upstreams {
+              destination_name = "backend-service"
+              local_bind_port = 8080
+            }
+            {% if kubernetes_nomad_service_mesh_metrics | default(true) %}
+            config {
+              envoy_prometheus_bind_addr = "0.0.0.0:9090"
+            }
+            {% endif %}
+          }
+        }
+      }
+      {% endif %}
+    }
+    {% else %}
+    service {
+      name = "mantl-example-service"
+      port = "http"
+      tags = ["mantl", "example", "nginx"]
+      
+      check {
+        type     = "http"
+        path     = "/"
+        interval = "10s"
+        timeout  = "2s"
+      }
+
+      {% if nomad_consul_connect_enabled | default(false) %}
+      connect {
+        sidecar_service {}
+      }
+      {% endif %}
+    }
+    {% endif %}
+
+    # Example of a federated metrics service
+    {% if kubernetes_nomad_metrics_enabled | default(false) %}
+    service {
+      name = "mantl-example-metrics"
+      port = "metrics"
+      tags = ["mantl", "metrics", "prometheus"]
+      
+      check {
+        type     = "http"
+        path     = "/metrics"
+        interval = "30s"
+        timeout  = "5s"
+      }
+    }
+    {% endif %}
+
+    task "nginx" {
+      driver = "kubernetes"
+
+      # Vault integration for secure secrets
+      {% if kubernetes_nomad_vault_integration_enabled | default(false) %}
+      vault {
+        policies = ["mantl-kubernetes-example"]
+        change_mode = "signal"
+        change_signal = "SIGUSR1"
+        
+        # Kubernetes auth method
+        kubernetes_auth = {
+          role = "{{ kubernetes_nomad_vault_k8s_role | default('nomad') }}"
+        }
+      }
+      {% elif nomad_common_criteria_enabled | default(false) %}
+      # Common Criteria security settings
+      user = "{{ kubernetes_nomad_example_user | default('nobody') }}"
+      
+      vault {
+        policies = ["mantl-kubernetes-example"]
+        change_mode = "signal"
+        change_signal = "SIGUSR1"
+      }
+      {% endif %}
+
+      # Kubernetes driver configuration
+      config {
+        image = "{{ kubernetes_nomad_example_image | default('nginx:stable-alpine') }}"
+        
+        # Pod configuration
+        pod_spec = <<EOT
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: mantl-example
+    managed-by: nomad
+    mantl-service: "true"
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+spec:
+  containers:
+  - name: nginx
+    resources:
+      limits:
+        cpu: "{{ kubernetes_nomad_example_cpu_limit | default('200m') }}"
+        memory: "{{ kubernetes_nomad_example_memory_limit | default('256Mi') }}"
+        {% if kubernetes_nomad_gpu_enabled | default(false) %}
+        {{ kubernetes_nomad_gpu_vendor | default('nvidia.com/gpu') }}: "{{ kubernetes_nomad_example_gpu_limit | default('0') }}"
+        {% endif %}
+      requests:
+        cpu: "{{ kubernetes_nomad_example_cpu_request | default('100m') }}"
+        memory: "{{ kubernetes_nomad_example_memory_request | default('128Mi') }}"
+    securityContext:
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      {% if kubernetes_nomad_seccomp_enabled | default(true) %}
+      seccompProfile:
+        type: RuntimeDefault
+      {% endif %}
+    ports:
+    - containerPort: 80
+      name: http
+    {% if kubernetes_nomad_metrics_enabled | default(false) %}
+    - containerPort: 9090
+      name: metrics
+    {% endif %}
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 5
+    {% if kubernetes_nomad_vault_integration_enabled | default(false) %}
+    env:
+    - name: VAULT_ADDR
+      value: "{{ vault_addr | default('https://vault.service.consul:8200') }}"
+    - name: SERVICE_ACCOUNT_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: vault-token
+          key: token
+    volumeMounts:
+    - name: vault-token
+      mountPath: "/var/run/secrets/vault"
+      readOnly: true
+    {% endif %}
+  {% if kubernetes_nomad_vault_integration_enabled | default(false) %}
+  volumes:
+  - name: vault-token
+    projected:
+      sources:
+      - serviceAccountToken:
+          path: token
+          expirationSeconds: 7200
+          audience: vault
+  {% endif %}
+  {% if kubernetes_nomad_crd_enabled | default(false) %}
+  serviceAccountName: nomad-k8s-sa
+  {% endif %}
+EOT
+
+        {% if kubernetes_nomad_crd_enabled | default(false) %}
+        # Example of custom resource definition usage
+        custom_resources = [
+          {
+            apiVersion = "monitoring.coreos.com/v1"
+            kind = "ServiceMonitor"
+            metadata = {
+              name = "mantl-example"
+              labels = {
+                app = "mantl-example"
+              }
+            }
+            spec = {
+              selector = {
+                matchLabels = {
+                  app = "mantl-example"
+                }
+              }
+              endpoints = [
+                {
+                  port = "metrics"
+                  interval = "30s"
+                }
+              ]
+            }
+          }
+        ]
+        {% endif %}
+      }
+
+      # Resource constraints
+      resources {
+        cpu    = {{ kubernetes_nomad_example_nomad_cpu | default(200) }}
+        memory = {{ kubernetes_nomad_example_nomad_memory | default(256) }}
+        {% if kubernetes_nomad_gpu_enabled | default(false) and kubernetes_nomad_example_gpu_limit | default(0) | int > 0 %}
+        device "{{ kubernetes_nomad_gpu_vendor | default('nvidia') }}/gpu" {
+          count = {{ kubernetes_nomad_example_gpu_limit | default(0) }}
+          constraints {
+            attribute = "${device.attr.memory}"
+            operator  = ">="
+            value     = "{{ kubernetes_nomad_example_gpu_memory | default(1024) }}"
+          }
+        }
+        {% endif %}
+      }
+
+      # Example templates
+      template {
+        data = <<EOT
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mantl - Nomad and Kubernetes Integration</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+    h1 { color: #333; }
+    .info { background-color: #f4f4f4; padding: 20px; border-radius: 5px; }
+    .features { margin-top: 20px; }
+    .feature { margin-bottom: 10px; padding: 10px; background-color: #e9f7fe; border-radius: 3px; }
+    .enabled { color: green; font-weight: bold; }
+    .disabled { color: gray; }
+  </style>
+</head>
+<body>
+  <h1>Mantl Example - Nomad and Kubernetes Integration</h1>
+  <div class="info">
+    <p>This page demonstrates successful integration between Nomad and Kubernetes in Mantl.</p>
+    <p>Deployment Info:</p>
+    <ul>
+      <li>Datacenter: {{ nomad_datacenter | default('dc1') }}</li>
+      <li>Kubernetes Version: {{ kubernetes_version }}</li>
+      <li>Nomad Version: {{ nomad_version }}</li>
+      <li>Mantl Version: {{ mantl_version | default('latest') }}</li>
+      <li>Deployed: {{ ansible_date_time.date }} {{ ansible_date_time.time }}</li>
+    </ul>
+  </div>
+  
+  <div class="features">
+    <h2>Integrated Features:</h2>
+    <div class="feature">
+      <span class="{% if kubernetes_nomad_service_discovery_enabled | default(true) %}enabled{% else %}disabled{% endif %}">
+        Cross-platform Service Discovery: {% if kubernetes_nomad_service_discovery_enabled | default(true) %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+    <div class="feature">
+      <span class="{% if kubernetes_nomad_vault_integration_enabled | default(false) %}enabled{% else %}disabled{% endif %}">
+        Shared Vault Secrets Management: {% if kubernetes_nomad_vault_integration_enabled | default(false) %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+    <div class="feature">
+      <span class="{% if kubernetes_nomad_metrics_enabled | default(false) %}enabled{% else %}disabled{% endif %}">
+        Federated Metrics and Logging: {% if kubernetes_nomad_metrics_enabled | default(false) %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+    <div class="feature">
+      <span class="{% if kubernetes_nomad_multi_region_enabled | default(false) %}enabled{% else %}disabled{% endif %}">
+        Multi-region Orchestration: {% if kubernetes_nomad_multi_region_enabled | default(false) %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+    <div class="feature">
+      <span class="{% if kubernetes_nomad_gpu_enabled | default(false) %}enabled{% else %}disabled{% endif %}">
+        GPU Workload Scheduling: {% if kubernetes_nomad_gpu_enabled | default(false) %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+    <div class="feature">
+      <span class="{% if kubernetes_nomad_autoscaling_enabled | default(false) %}enabled{% else %}disabled{% endif %}">
+        Autoscaling Integration: {% if kubernetes_nomad_autoscaling_enabled | default(false) %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+    <div class="feature">
+      <span class="{% if kubernetes_nomad_crd_enabled | default(false) %}enabled{% else %}disabled{% endif %}">
+        Custom Resource Definition Support: {% if kubernetes_nomad_crd_enabled | default(false) %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+    <div class="feature">
+      <span class="{% if kubernetes_nomad_disaster_recovery_enabled | default(false) %}enabled{% else %}disabled{% endif %}">
+        Disaster Recovery with Automatic Failover: {% if kubernetes_nomad_disaster_recovery_enabled | default(false) %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+    <div class="feature">
+      <span class="{% if kubernetes_nomad_service_mesh_enabled | default(false) %}enabled{% else %}disabled{% endif %}">
+        Zero-downtime Migration Tools: {% if kubernetes_nomad_service_mesh_enabled | default(false) %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+    <div class="feature">
+      <span class="{% if kubernetes_nomad_opa_enabled | default(false) %}enabled{% else %}disabled{% endif %}">
+        Unified Policy Enforcement with OPA: {% if kubernetes_nomad_opa_enabled | default(false) %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </div>
+  </div>
+</body>
+</html>
+EOT
+        destination = "local/index.html"
+      }
+      
+      # Prometheus metrics configuration
+      {% if kubernetes_nomad_metrics_enabled | default(false) %}
+      template {
+        data = <<EOT
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'nomad-kubernetes'
+    static_configs:
+      - targets: ['localhost:9090']
+    metrics_path: /metrics
+EOT
+        destination = "local/prometheus.yml"
+      }
+      {% endif %}
+      
+      # Vault secrets integration
+      {% if kubernetes_nomad_vault_integration_enabled | default(false) %}
+      template {
+        data = <<EOT
+{{ with secret "kv/data/mantl/kubernetes-example" }}
+# This file contains sensitive information retrieved from Vault
+# Do not expose or share this information
+
+EXAMPLE_API_KEY={{ .Data.data.api_key }}
+EXAMPLE_DB_PASSWORD={{ .Data.data.db_password }}
+{{ end }}
+EOT
+        destination = "secrets/credentials.env"
+        env = true
+        change_mode = "restart"
+      }
+      {% endif %}
+    }
+    
+    # Example of a sidecar container for federated logging
+    {% if kubernetes_nomad_metrics_enabled | default(false) %}
+    task "logging-sidecar" {
+      driver = "kubernetes"
+      
+      config {
+        image = "{{ kubernetes_nomad_fluentd_image | default('fluent/fluentd:v1.14') }}"
+        
+        pod_spec = <<EOT
+spec:
+  containers:
+  - name: fluentd
+    resources:
+      limits:
+        cpu: "100m"
+        memory: "128Mi"
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+    volumeMounts:
+    - name: log-volume
+      mountPath: /logs
+  volumes:
+  - name: log-volume
+    emptyDir: {}
+EOT
+      }
+      
+      resources {
+        cpu    = 100
+        memory = 128
+      }
+      
+      template {
+        data = <<EOT
+<source>
+  @type tail
+  path /logs/nginx-*.log
+  pos_file /logs/nginx.log.pos
+  tag nginx
+  <parse>
+    @type json
+  </parse>
+</source>
+
+<match nginx>
+  @type elasticsearch
+  host {{ kubernetes_nomad_elasticsearch_host | default('elasticsearch.service.consul') }}
+  port {{ kubernetes_nomad_elasticsearch_port | default('9200') }}
+  index_name mantl-nginx-${tag}-%Y.%m.%d
+  include_tag_key true
+</match>
+EOT
+        destination = "local/fluentd.conf"
+      }
+    }
+    {% endif %}
+    
+    # OPA policy enforcement
+    {% if kubernetes_nomad_opa_enabled | default(false) %}
+    task "policy-agent" {
+      driver = "kubernetes"
+      
+      config {
+        image = "{{ kubernetes_nomad_opa_image | default('openpolicyagent/opa:latest') }}"
+        
+        args = [
+          "run",
+          "--server",
+          "--addr=:8181",
+          "--log-level=info",
+          "/policies"
+        ]
+        
+        pod_spec = <<EOT
+spec:
+  containers:
+  - name: opa
+    ports:
+    - containerPort: 8181
+    volumeMounts:
+    - name: policies
+      mountPath: /policies
+  volumes:
+  - name: policies
+    configMap:
+      name: opa-policies
+EOT
+      }
+      
+      resources {
+        cpu    = 100
+        memory = 128
+      }
+      
+      template {
+        data = <<EOT
+package kubernetes.admission
+
+default allow = false
+
+# Allow only if deployment has proper security context
+allow {
+  input.request.kind.kind == "Pod"
+  securityContext := input.request.object.spec.securityContext
+  securityContext.runAsNonRoot == true
+  securityContext.allowPrivilegeEscalation == false
+}
+
+# Always allow kube-system namespaces
+allow {
+  input.request.namespace == "kube-system"
+}
+
+# Allow Nomad-managed resources
+allow {
+  input.request.object.metadata.labels["managed-by"] == "nomad"
+}
+EOT
+        destination = "local/policies/kubernetes.rego"
+      }
+    }
+    {% endif %}
+  }
+}

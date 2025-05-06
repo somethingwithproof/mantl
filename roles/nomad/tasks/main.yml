@@ -1,0 +1,250 @@
+---
+# Main tasks file for nomad role
+
+- name: Include OS-specific variables
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_os_family }}.yml"
+    - "default.yml"
+  tags:
+    - nomad
+    - nomad:install
+
+- name: Create Nomad group
+  group:
+    name: "{{ nomad_group }}"
+    state: present
+  tags:
+    - nomad
+    - nomad:install
+
+- name: Create Nomad user
+  user:
+    name: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    system: yes
+    createhome: no
+    shell: /bin/false
+    state: present
+  tags:
+    - nomad
+    - nomad:install
+
+- name: Create Nomad directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0755
+  with_items:
+    - "{{ nomad_config_dir }}"
+    - "{{ nomad_data_dir }}"
+    - "{{ nomad_log_dir }}"
+    - "{{ nomad_config_dir }}/tls"
+    - "{{ nomad_config_dir }}/server"
+    - "{{ nomad_config_dir }}/client"
+  tags:
+    - nomad
+    - nomad:install
+
+- name: Check current Nomad version
+  command: "nomad --version"
+  register: nomad_current_version
+  changed_when: false
+  failed_when: false
+  check_mode: no
+  tags:
+    - nomad
+    - nomad:install
+
+- name: Download and install Nomad
+  include_tasks: install.yml
+  when: nomad_current_version.rc != 0 or not nomad_current_version.stdout is search("Nomad v" ~ nomad_version)
+  tags:
+    - nomad
+    - nomad:install
+
+- name: Configure Nomad base settings
+  template:
+    src: base.hcl.j2
+    dest: "{{ nomad_config_dir }}/base.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+
+- name: Configure Nomad server
+  template:
+    src: server.hcl.j2
+    dest: "{{ nomad_config_dir }}/server/server.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_server_enabled
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+
+- name: Configure Nomad client
+  template:
+    src: client.hcl.j2
+    dest: "{{ nomad_config_dir }}/client/client.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_client_enabled
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+
+- name: Configure Nomad telemetry
+  template:
+    src: telemetry.hcl.j2
+    dest: "{{ nomad_config_dir }}/telemetry.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_telemetry_enabled
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+
+- name: Configure Nomad Consul integration
+  template:
+    src: consul.hcl.j2
+    dest: "{{ nomad_config_dir }}/consul.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_consul_enabled
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+
+- name: Configure Nomad Vault integration
+  template:
+    src: vault.hcl.j2
+    dest: "{{ nomad_config_dir }}/vault.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_vault_enabled
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+
+- name: Configure Nomad Docker driver
+  template:
+    src: docker.hcl.j2
+    dest: "{{ nomad_config_dir }}/client/docker.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_client_enabled and nomad_docker_enable
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+
+- name: Configure Nomad ACLs
+  template:
+    src: acl.hcl.j2
+    dest: "{{ nomad_config_dir }}/acl.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_acl_enabled
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+
+- name: Configure Nomad TLS
+  template:
+    src: tls.hcl.j2
+    dest: "{{ nomad_config_dir }}/tls.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_tls_enabled
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+
+- name: Configure Nomad audit logging
+  template:
+    src: audit.hcl.j2
+    dest: "{{ nomad_config_dir }}/audit.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_audit_enabled
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+    - nomad:security
+
+- name: Configure Nomad Kubernetes integration
+  template:
+    src: kubernetes.hcl.j2
+    dest: "{{ nomad_config_dir }}/client/kubernetes.hcl"
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_client_enabled and nomad_kubernetes_integration_enabled
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:configure
+    - nomad:kubernetes
+
+- name: Create systemd service file
+  template:
+    src: nomad.service.j2
+    dest: /etc/systemd/system/nomad.service
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart nomad
+  tags:
+    - nomad
+    - nomad:install
+
+- name: Enable and start Nomad service
+  systemd:
+    name: nomad
+    daemon_reload: yes
+    enabled: yes
+    state: started
+  tags:
+    - nomad
+    - nomad:service
+
+- name: Wait for Nomad to start
+  wait_for:
+    host: "{{ nomad_bind_addr if nomad_bind_addr != '0.0.0.0' else '127.0.0.1' }}"
+    port: "{{ nomad_ports.http }}"
+    delay: 5
+    timeout: 60
+  tags:
+    - nomad
+    - nomad:service
+
+- name: Include Common Criteria compliance tasks
+  include_tasks: common_criteria.yml
+  when: common_criteria_nomad_enabled | bool
+  tags:
+    - nomad
+    - nomad:security
+    - common-criteria

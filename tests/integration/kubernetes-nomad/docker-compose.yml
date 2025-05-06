@@ -1,0 +1,144 @@
+# Kubernetes-Nomad Integration Test Environment
+
+services:
+  # Control node running Kubernetes control plane and Nomad server
+  control:
+    build:
+      context: .
+      dockerfile: Dockerfile.control
+    container_name: mantl-control
+    hostname: control
+    privileged: true
+    volumes:
+      - ./config:/etc/mantl/config
+      - ./scripts:/etc/mantl/scripts
+      - ./test:/etc/mantl/test
+      - control-data:/var/lib/mantl
+      - vault-data:/var/lib/vault
+      - etcd-data:/var/lib/etcd
+    ports:
+      - "8500:8500" # Consul UI
+      - "8200:8200" # Vault UI
+      - "4646:4646" # Nomad UI
+      - "6443:6443" # Kubernetes API
+      - "30080:30080" # Ingress HTTP
+      - "30443:30443" # Ingress HTTPS
+    networks:
+      mantl:
+        ipv4_address: 172.20.0.10
+    environment:
+      - MANTL_ROLE=control
+      - KUBERNETES_ENABLED=true
+      - NOMAD_ENABLED=true
+      - CONSUL_ENABLED=true
+      - VAULT_ENABLED=true
+      - COMMON_CRITERIA_ENABLED=true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8500/v1/status/leader"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  # Worker node 1 running Kubernetes and Nomad worker
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: mantl-worker1
+    hostname: worker1
+    privileged: true
+    volumes:
+      - ./config:/etc/mantl/config
+      - ./scripts:/etc/mantl/scripts
+      - worker1-data:/var/lib/mantl
+    depends_on:
+      control:
+        condition: service_healthy
+    networks:
+      mantl:
+        ipv4_address: 172.20.0.11
+    environment:
+      - MANTL_ROLE=worker
+      - KUBERNETES_ENABLED=true
+      - NOMAD_ENABLED=true
+      - CONSUL_ENABLED=true
+      - CONTROL_NODE=control
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://control:8500/v1/status/leader"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # Worker node 2 running Kubernetes and Nomad worker
+  worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: mantl-worker2
+    hostname: worker2
+    privileged: true
+    volumes:
+      - ./config:/etc/mantl/config
+      - ./scripts:/etc/mantl/scripts
+      - worker2-data:/var/lib/mantl
+    depends_on:
+      control:
+        condition: service_healthy
+    networks:
+      mantl:
+        ipv4_address: 172.20.0.12
+    environment:
+      - MANTL_ROLE=worker
+      - KUBERNETES_ENABLED=true
+      - NOMAD_ENABLED=true
+      - CONSUL_ENABLED=true
+      - CONTROL_NODE=control
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://control:8500/v1/status/leader"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # Test coordinator for running integration tests
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: mantl-test
+    hostname: test
+    volumes:
+      - ./test:/etc/mantl/test
+      - ./results:/etc/mantl/results
+      - ./config:/etc/mantl/config
+    depends_on:
+      control:
+        condition: service_healthy
+      worker1:
+        condition: service_healthy
+      worker2:
+        condition: service_healthy
+    environment:
+      - CONTROL_NODE=control
+      - WORKER_NODES=worker1,worker2
+      - TEST_KUBERNETES_NOMAD_INTEGRATION=true
+    networks:
+      mantl:
+        ipv4_address: 172.20.0.100
+    command: ["bash", "/etc/mantl/test/run-tests.sh"]
+
+networks:
+  mantl:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+volumes:
+  control-data:
+  worker1-data:
+  worker2-data:
+  vault-data:
+  etcd-data:

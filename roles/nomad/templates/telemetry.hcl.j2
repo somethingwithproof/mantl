@@ -1,0 +1,9 @@
+telemetry {
+  publish_allocation_metrics = {{ nomad_telemetry_publish_allocation_metrics | lower }}
+  publish_node_metrics = {{ nomad_telemetry_publish_node_metrics | lower }}
+  prometheus_metrics = {{ nomad_telemetry_prometheus_metrics | lower }}
+  disable_hostname = {{ nomad_telemetry_disable_hostname | lower }}
+{% if nomad_telemetry_enable_hostname_label is defined %}
+  enable_hostname_label = {{ nomad_telemetry_enable_hostname_label | lower }}
+{% endif %}
+}

@@ -1,0 +1,6 @@
+acl {
+  enabled = true
+{% if nomad_acl_replication_token %}
+  replication_token = "{{ nomad_acl_replication_token }}"
+{% endif %}
+}

@@ -1,0 +1,12 @@
+audit {
+  enabled = true
+  sink "file" {
+    type = "file"
+    format = "json"
+    path = "{{ nomad_audit_log_path }}"
+    delivery_guarantee = "enforced"
+    rotate_bytes = 100 * 1024 * 1024
+    rotate_duration = "24h"
+    rotate_max_files = 10
+  }
+}

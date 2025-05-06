@@ -1,0 +1,10 @@
+# Nomad sudo rules for Common Criteria compliance
+{{ nomad_user }} ALL=(ALL) NOPASSWD: /bin/systemctl start nomad
+{{ nomad_user }} ALL=(ALL) NOPASSWD: /bin/systemctl stop nomad
+{{ nomad_user }} ALL=(ALL) NOPASSWD: /bin/systemctl restart nomad
+{{ nomad_user }} ALL=(ALL) NOPASSWD: /bin/systemctl status nomad
+{{ nomad_user }} ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/nomad.d/*.hcl
+{{ nomad_user }} ALL=(ALL) NOPASSWD: /usr/bin/mount
+{{ nomad_user }} ALL=(ALL) NOPASSWD: /usr/bin/umount
+{{ nomad_user }} ALL=(ALL) NOPASSWD: /usr/bin/mkdir -p /data
+Defaults:{{ nomad_user }} !requiretty

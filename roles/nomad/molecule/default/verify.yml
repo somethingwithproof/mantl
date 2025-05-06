@@ -1,0 +1,88 @@
+---
+- name: Verify
+  hosts: all
+  become: true
+  gather_facts: true
+  
+  tasks:
+    - name: Check Nomad version
+      command: "nomad version"
+      register: nomad_version_check
+      changed_when: false
+      failed_when: not nomad_version_check.stdout is search("Nomad")
+    
+    - name: Debug Nomad version
+      debug:
+        var: nomad_version_check.stdout
+    
+    - name: Verify Nomad config directory
+      stat:
+        path: "/etc/nomad.d"
+      register: nomad_config_dir
+      failed_when: not nomad_config_dir.stat.exists
+    
+    - name: Verify Nomad base configuration file
+      stat:
+        path: "/etc/nomad.d/base.hcl"
+      register: nomad_base_config
+      failed_when: not nomad_base_config.stat.exists
+    
+    - name: Verify Nomad server configuration file (server node)
+      stat:
+        path: "/etc/nomad.d/server/server.hcl"
+      register: nomad_server_config
+      failed_when: not nomad_server_config.stat.exists
+      when: "'control' in group_names"
+    
+    - name: Verify Nomad client configuration file (client node)
+      stat:
+        path: "/etc/nomad.d/client/client.hcl"
+      register: nomad_client_config
+      failed_when: not nomad_client_config.stat.exists
+      when: "'worker' in group_names"
+    
+    - name: Verify Nomad audit configuration file
+      stat:
+        path: "/etc/nomad.d/audit.hcl"
+      register: nomad_audit_config
+      failed_when: not nomad_audit_config.stat.exists
+    
+    - name: Verify Nomad service is running
+      service:
+        name: nomad
+        state: started
+        enabled: true
+      register: nomad_service
+      failed_when: not nomad_service.status.ActiveState == "active"
+    
+    - name: Verify Nomad API is accessible
+      uri:
+        url: "http://localhost:4646/v1/agent/self"
+        method: GET
+        status_code: 200
+      register: nomad_api_check
+      until: nomad_api_check.status == 200
+      retries: 5
+      delay: 5
+      failed_when: nomad_api_check.status != 200
+    
+    - name: Verify Nomad data directories
+      stat:
+        path: "{{ item }}"
+      register: data_dirs
+      failed_when: not data_dirs.stat.exists
+      with_items:
+        - "/data/nomad"
+        - "/var/log/nomad"
+    
+    - name: Check Common Criteria compliance settings
+      command: "grep 'audit {' /etc/nomad.d/audit.hcl"
+      register: audit_check
+      changed_when: false
+      failed_when: "audit_check.rc != 0 or 'enabled = true' not in audit_check.stdout"
+      
+    - name: Check Nomad sudoers file
+      stat:
+        path: "/etc/sudoers.d/nomad"
+      register: nomad_sudoers
+      failed_when: not nomad_sudoers.stat.exists

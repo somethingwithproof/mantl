@@ -1,0 +1,79 @@
+---
+# Common Criteria compliance tasks for Nomad
+
+- name: Ensure audit logging is enabled
+  lineinfile:
+    path: "{{ nomad_config_dir }}/audit.hcl"
+    line: "audit { enabled = true }"
+    create: yes
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  notify: restart nomad
+
+- name: Configure audit logging path
+  lineinfile:
+    path: "{{ nomad_config_dir }}/audit.hcl"
+    line: '  sink "file" { path = "{{ nomad_audit_log_path }}" }'
+    insertafter: "audit { enabled = true }"
+    create: yes
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  notify: restart nomad
+
+- name: Ensure log directory has correct permissions
+  file:
+    path: "{{ nomad_log_dir }}"
+    state: directory
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0750
+
+- name: Configure system auditing for Nomad
+  template:
+    src: nomad-audit.rules.j2
+    dest: /etc/audit/rules.d/nomad.rules
+    owner: root
+    group: root
+    mode: 0640
+  notify: restart auditd
+
+- name: Add Nomad to sudoers for specific commands
+  template:
+    src: nomad-sudoers.j2
+    dest: /etc/sudoers.d/nomad
+    owner: root
+    group: root
+    mode: 0440
+    validate: 'visudo -cf %s'
+
+- name: Enable seccomp profiles for Nomad
+  lineinfile:
+    path: "{{ nomad_config_dir }}/client/client.hcl"
+    line: 'plugin "docker" { config { allow_caps = ["audit_write", "chown", "dac_override", "fowner", "fsetid", "kill", "mknod", "net_bind_service", "setfcap", "setgid", "setpcap", "setuid", "sys_chroot"] } }'
+    insertafter: 'client {'
+    state: present
+  when: nomad_client_enabled and nomad_docker_enable
+  notify: restart nomad
+
+- name: Configure privileged container restrictions
+  lineinfile:
+    path: "{{ nomad_config_dir }}/client/docker.hcl"
+    regexp: "privileged_containers"
+    line: '  config { privileged_containers = {{ nomad_docker_privileged_containers_enabled | lower }} }'
+    insertafter: 'plugin "docker" {'
+    state: present
+  when: nomad_client_enabled and nomad_docker_enable
+  notify: restart nomad
+
+- name: Configure Nomad to use mTLS
+  lineinfile:
+    path: "{{ nomad_config_dir }}/tls.hcl"
+    line: "tls { http = true }"
+    create: yes
+    owner: "{{ nomad_user }}"
+    group: "{{ nomad_group }}"
+    mode: 0640
+  when: nomad_tls_enabled
+  notify: restart nomad

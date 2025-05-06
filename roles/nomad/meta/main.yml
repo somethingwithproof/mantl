@@ -1,0 +1,27 @@
+---
+galaxy_info:
+  role_name: nomad
+  author: Mantl Team
+  description: Role to install and configure HashiCorp Nomad
+  license: "Apache-2.0"
+  min_ansible_version: 2.10
+  platforms:
+    - name: EL
+      versions:
+        - 7
+        - 8
+    - name: Ubuntu
+      versions:
+        - bionic
+        - focal
+  galaxy_tags:
+    - mantl
+    - hashicorp
+    - nomad
+    - orchestration
+    - containers
+    - cloud
+    - system
+
+dependencies:
+  - role: common
