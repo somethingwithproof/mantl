@@ -1,0 +1,49 @@
+[Unit]
+Description=Nomad
+Documentation=https://www.nomadproject.io/docs/
+Wants=network-online.target
+After=network-online.target
+{% if nomad_consul_enabled %}
+Wants=consul.service
+After=consul.service
+{% endif %}
+{% if nomad_vault_enabled %}
+Wants=vault.service
+After=vault.service
+{% endif %}
+
+# When using Nomad with Consul and Vault, ordering matters.
+# We need to make sure consul and vault are available before
+# starting Nomad.
+
+[Service]
+Type=simple
+User={{ nomad_user }}
+Group={{ nomad_group }}
+ExecStart={{ nomad_install_dir }}/nomad agent -config={{ nomad_config_dir }}
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+KillSignal=SIGINT
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+LimitNPROC=infinity
+TasksMax=infinity
+
+# Make sure stderr/stdout is captured into journald
+StandardOutput=journal
+StandardError=journal
+
+# Set capabilities
+CapabilityBoundingSet=CAP_SYS_ADMIN
+AmbientCapabilities=CAP_SYS_ADMIN
+
+# Set security settings
+NoNewPrivileges=yes
+SecureBits=keep-caps
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

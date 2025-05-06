@@ -1,0 +1,9 @@
+tls {
+  http = true
+  rpc = true
+  verify_server_hostname = {{ nomad_tls_verify_server_hostname | lower }}
+  verify_https_client = {{ nomad_tls_verify_https_client | lower }}
+  ca_file = "{{ nomad_tls_ca_file }}"
+  cert_file = "{{ nomad_tls_certificate_file }}"
+  key_file = "{{ nomad_tls_key_file }}"
+}

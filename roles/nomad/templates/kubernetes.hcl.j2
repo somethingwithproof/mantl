@@ -1,0 +1,29 @@
+plugin "raw_exec" {
+  config {
+    enabled = true
+  }
+}
+
+plugin "docker" {
+  config {
+    allow_privileged = true
+    volumes {
+      enabled = true
+    }
+    extra_labels = ["nomad.mantl.io/kubernetes-integration"]
+  }
+}
+
+client {
+  host_network {
+    # Enable CNI support
+    cni_path = "/opt/cni/bin"
+    cni_config_dir = "/etc/cni/net.d"
+  }
+  
+  # Custom configurations for Kubernetes integration
+  meta {
+    "k8s.enabled" = "true"
+    "k8s.version" = "{{ nomad_kubernetes_config.k8s_version | default('v1.27.0') }}"
+  }
+}

@@ -1,0 +1,10 @@
+vault {
+  enabled = true
+  address = "{{ nomad_vault_address }}"
+{% if nomad_vault_create_from_role %}
+  create_from_role = "{{ nomad_vault_create_from_role }}"
+{% endif %}
+  task_token_ttl = "1h"
+  ca_file = "/etc/ssl/certs/ca-bundle.crt"
+  allow_unauthenticated = {{ nomad_vault_allow_unauthenticated | lower }}
+}

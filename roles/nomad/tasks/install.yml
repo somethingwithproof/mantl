@@ -1,0 +1,55 @@
+---
+# Install Nomad binary
+
+- name: Create temporary directory for Nomad download
+  tempfile:
+    state: directory
+    prefix: nomad
+  register: nomad_temp_dir
+  check_mode: no
+
+- name: Download Nomad
+  get_url:
+    url: "https://releases.hashicorp.com/nomad/{{ nomad_version }}/nomad_{{ nomad_version }}_linux_{{ nomad_architecture }}.zip"
+    dest: "{{ nomad_temp_dir.path }}/nomad.zip"
+    mode: 0644
+  register: nomad_download
+  check_mode: no
+
+- name: Unzip Nomad package
+  unarchive:
+    src: "{{ nomad_temp_dir.path }}/nomad.zip"
+    dest: "{{ nomad_temp_dir.path }}"
+    remote_src: yes
+  check_mode: no
+  when: nomad_download.changed
+
+- name: Install Nomad binary
+  copy:
+    src: "{{ nomad_temp_dir.path }}/nomad"
+    dest: "{{ nomad_install_dir }}/nomad"
+    remote_src: yes
+    owner: root
+    group: root
+    mode: 0755
+  when: nomad_download.changed
+
+- name: Verify Nomad is installed
+  command: "nomad version"
+  register: nomad_version_output
+  changed_when: false
+  check_mode: no
+
+- name: Clean up temporary files
+  file:
+    path: "{{ nomad_temp_dir.path }}"
+    state: absent
+  when: nomad_temp_dir.path is defined
+  check_mode: no
+  
+- name: Create nomad bash completion file
+  shell: "{{ nomad_install_dir }}/nomad -autocomplete-install"
+  args:
+    creates: /etc/bash_completion.d/nomad.bash
+  changed_when: false
+  check_mode: no

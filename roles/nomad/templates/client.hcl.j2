@@ -1,0 +1,25 @@
+client {
+  enabled = true
+  node_class = "{{ nomad_client_node_class }}"
+  
+  server_join {
+    retry_join = [ {% for server in nomad_server_retry_join.split() %}"{{ server }}"{% if not loop.last %}, {% endif %}{% endfor %} ]
+    retry_max = 5
+    retry_interval = "15s"
+  }
+  
+  meta {
+{% for key, value in nomad_client_meta.items() %}
+    {{ key }} = "{{ value }}"
+{% endfor %}
+  }
+  
+  reserved {
+    cpu = {{ nomad_client_reserved_cpu }}
+    memory = {{ nomad_client_reserved_memory }}
+    disk = {{ nomad_client_reserved_disk }}
+{% if nomad_client_cpu_total_compute is not none %}
+    cpu_total_compute = {{ nomad_client_cpu_total_compute }}
+{% endif %}
+  }
+}

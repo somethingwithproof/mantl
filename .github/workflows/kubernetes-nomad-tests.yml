@@ -1,0 +1,103 @@
+name: Kubernetes-Nomad Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'roles/kubernetes/**'
+      - 'roles/nomad/**'
+      - 'tests/integration/kubernetes-nomad/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'roles/kubernetes/**'
+      - 'roles/nomad/**'
+      - 'tests/integration/kubernetes-nomad/**'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of test to run'
+        required: true
+        default: 'standalone'
+        type: choice
+        options:
+          - standalone
+          - docker
+
+jobs:
+  standalone-tests:
+    name: Standalone Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+          
+      - name: Run Standalone Tests
+        run: |
+          cd tests/integration/kubernetes-nomad/test
+          python standalone-test.py -v
+          
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: standalone-test-results
+          path: tests/integration/kubernetes-nomad/results/
+
+  docker-tests:
+    name: Docker Tests
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'docker' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Setup Test Environment
+        run: |
+          cd tests/integration/kubernetes-nomad
+          mkdir -p config
+          echo "root_token_for_testing" > test/vault-token.txt
+          chmod +x scripts/*.sh test/*.sh *.sh
+      
+      - name: Build Docker Images
+        run: |
+          cd tests/integration/kubernetes-nomad
+          docker-compose build
+      
+      - name: Run Tests
+        run: |
+          cd tests/integration/kubernetes-nomad
+          # Start core containers
+          docker-compose up -d control worker1 worker2
+          
+          # Wait for services to start
+          echo "Waiting for services to start..."
+          sleep 120
+          
+          # Run tests directly
+          docker-compose up test
+          
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-test-results
+          path: tests/integration/kubernetes-nomad/results/
+      
+      - name: Clean up
+        if: always()
+        run: |
+          cd tests/integration/kubernetes-nomad
+          docker-compose down -v

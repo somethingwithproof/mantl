@@ -1,0 +1,22 @@
+---
+# Handlers for Nomad role
+
+- name: restart nomad
+  systemd:
+    name: nomad
+    state: restarted
+    daemon_reload: yes
+  listen: restart nomad
+
+- name: reload nomad
+  systemd:
+    name: nomad
+    state: reloaded
+  listen: reload nomad
+
+- name: restart auditd
+  systemd:
+    name: auditd
+    state: restarted
+  when: ansible_os_family == "RedHat"
+  listen: restart auditd

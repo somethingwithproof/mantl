@@ -1,0 +1,9 @@
+plugin "docker" {
+  config {
+    volumes {
+      enabled = {{ nomad_docker_volumes_enabled | lower }}
+    }
+    privileged_containers = {{ nomad_docker_privileged_containers_enabled | lower }}
+    infra_image = "gcr.io/google_containers/pause-amd64:3.1"
+  }
+}

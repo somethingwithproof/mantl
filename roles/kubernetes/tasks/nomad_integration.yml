@@ -1,0 +1,141 @@
+---
+# Tasks for Kubernetes and Nomad integration
+
+- name: Check if Nomad is installed
+  command: "nomad --version"
+  register: nomad_check
+  failed_when: false
+  changed_when: false
+  check_mode: no
+
+- name: Skip Nomad integration if Nomad not installed
+  meta: end_play
+  when: nomad_check.rc != 0
+
+- name: Create Kubernetes Nomad integration directory
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+  with_items:
+    - "/etc/kubernetes/nomad-integration"
+    - "/var/lib/kubernetes/nomad-integration"
+
+- name: Generate Kubernetes service account for Nomad
+  shell: |
+    kubectl create serviceaccount nomad-integration \
+      --namespace kube-system \
+      --dry-run=client -o yaml > /etc/kubernetes/nomad-integration/nomad-sa.yaml
+  args:
+    creates: "/etc/kubernetes/nomad-integration/nomad-sa.yaml"
+  when: inventory_hostname == groups['control'][0]
+
+- name: Generate Kubernetes ClusterRole for Nomad
+  copy:
+    content: |
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        name: nomad-integration
+      rules:
+      - apiGroups: [""]
+        resources: ["pods", "services", "configmaps", "secrets"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      - apiGroups: ["batch"]
+        resources: ["jobs", "cronjobs"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      - apiGroups: ["networking.k8s.io"]
+        resources: ["ingresses", "networkpolicies"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      - apiGroups: ["storage.k8s.io"]
+        resources: ["storageclasses", "persistentvolumes", "persistentvolumeclaims"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    dest: "/etc/kubernetes/nomad-integration/nomad-clusterrole.yaml"
+    mode: 0644
+  when: inventory_hostname == groups['control'][0]
+
+- name: Generate Kubernetes ClusterRoleBinding for Nomad
+  copy:
+    content: |
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: nomad-integration
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: nomad-integration
+      subjects:
+      - kind: ServiceAccount
+        name: nomad-integration
+        namespace: kube-system
+    dest: "/etc/kubernetes/nomad-integration/nomad-clusterrolebinding.yaml"
+    mode: 0644
+  when: inventory_hostname == groups['control'][0]
+
+- name: Apply Kubernetes RBAC for Nomad
+  command: "kubectl apply -f /etc/kubernetes/nomad-integration/{{ item }}"
+  with_items:
+    - "nomad-sa.yaml"
+    - "nomad-clusterrole.yaml"
+    - "nomad-clusterrolebinding.yaml"
+  when: inventory_hostname == groups['control'][0]
+
+- name: Get Nomad service account token
+  shell: |
+    kubectl -n kube-system get secret \
+      $(kubectl -n kube-system get serviceaccount nomad-integration -o jsonpath='{.secrets[0].name}') \
+      -o jsonpath='{.data.token}' | base64 --decode > /etc/kubernetes/nomad-integration/nomad-token
+  args:
+    creates: "/etc/kubernetes/nomad-integration/nomad-token"
+  when: inventory_hostname == groups['control'][0]
+
+- name: Get Kubernetes API server address
+  shell: |
+    kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' > /etc/kubernetes/nomad-integration/k8s-api-server
+  args:
+    creates: "/etc/kubernetes/nomad-integration/k8s-api-server"
+  when: inventory_hostname == groups['control'][0]
+
+- name: Extract Kubernetes CA certificate
+  shell: |
+    kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 --decode > /etc/kubernetes/nomad-integration/k8s-ca.crt
+  args:
+    creates: "/etc/kubernetes/nomad-integration/k8s-ca.crt"
+  when: inventory_hostname == groups['control'][0]
+
+- name: Set permissions on Kubernetes credentials
+  file:
+    path: "/etc/kubernetes/nomad-integration/{{ item }}"
+    mode: 0600
+  with_items:
+    - "nomad-token"
+    - "k8s-api-server"
+    - "k8s-ca.crt"
+  when: inventory_hostname == groups['control'][0]
+
+- name: Distribute Kubernetes credentials to Nomad servers
+  synchronize:
+    src: "/etc/kubernetes/nomad-integration/"
+    dest: "/etc/kubernetes/nomad-integration/"
+    mode: pull
+  delegate_to: "{{ groups['control'][0] }}"
+  when: "'control' in group_names and inventory_hostname != groups['control'][0]"
+
+- name: Generate Nomad configuration for Kubernetes integration
+  template:
+    src: kubernetes-integration.hcl.j2
+    dest: "/etc/nomad.d/kubernetes-integration.hcl"
+    mode: 0640
+  when: "'control' in group_names"
+  notify: restart nomad
+
+- name: Create Nomad Kubernetes job template
+  template:
+    src: kubernetes-example.nomad.j2
+    dest: "/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad"
+    mode: 0644
+  when: inventory_hostname == groups['control'][0]
