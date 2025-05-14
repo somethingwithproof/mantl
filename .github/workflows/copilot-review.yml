@@ -1,0 +1,33 @@
+name: GitHub Copilot PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  copilot-review:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Copilot PR Review
+        uses: github/copilot-preview-action/review@v0
+        with:
+          custom-tokens: |
+            {
+              "project_description": "Mantl is a modern, batteries included platform for rapidly deploying globally distributed services"
+            }
+          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Report review status
+        run: |
+          echo "::notice::Copilot review completed. Check PR comments for details."

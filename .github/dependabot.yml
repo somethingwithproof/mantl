@@ -1,0 +1,52 @@
+version: 2
+updates:
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "github-actions[bot]"
+    labels:
+      - "dependencies"
+      - "security"
+    assignees:
+      - "thomasvincent"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "github-actions[bot]"
+    labels:
+      - "dependencies"
+      - "docker"
+    assignees:
+      - "thomasvincent"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "github-actions[bot]"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    assignees:
+      - "thomasvincent"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
