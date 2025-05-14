@@ -1,6 +1,9 @@
 FAQs
 ====
 
+General Questions
+----------------
+
 What is the relationship between Mantl and `OpenStack Magnum <https://wiki.openstack.org/wiki/Magnum>`_?
 ---------------------------------------------------------------------------------------
 
@@ -43,4 +46,71 @@ that has received consistent attention. Mantl currently supports GlusterFS as an
 persistent storage. Even without this software, there are databases and patterns that
 can provide reliable and consistent data for various use cases. For example, it is 
 possible to run MongoDB, Redis, or Cassandra in a way that provides a consistent distributed quorum.
+
+Development Questions
+--------------------
+
+Where can I find documentation about contributing to Mantl?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Mantl now has comprehensive documentation for contributors:
+
+- `CONTRIBUTING.md <https://github.com/mantl/mantl/blob/master/CONTRIBUTING.md>`_ - Basic guidelines for contributing to Mantl
+- `DEVELOPMENT.md <https://github.com/mantl/mantl/blob/master/DEVELOPMENT.md>`_ - Detailed development guide
+- :doc:`development/index` - Full development documentation
+
+How do I report a bug or request a feature?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Please open an issue on the `Mantl GitHub repository <https://github.com/mantl/mantl/issues>`_. 
+Be sure to provide:
+
+1. Clear steps to reproduce the issue (for bugs)
+2. Expected behavior and actual behavior
+3. Environment details (OS, cloud provider, etc.)
+
+For feature requests, describe the feature and why it would be valuable to Mantl users.
+
+How can I check if my code follows Mantl's style guidelines?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Mantl includes several tools to check code quality:
+
+1. Run ``make lint`` to check all code
+2. Run ``./scripts/lint.sh`` for more detailed linting
+3. Use ``flake8`` for Python code
+4. Use ``ansible-lint`` for Ansible roles and playbooks
+5. Use ``terraform fmt`` for Terraform files
+
+Documentation Questions
+---------------------
+
+How do I build the documentation locally?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To build the documentation, run:
+
+.. code-block:: bash
+
+   # Install dependencies
+   pip install -r requirements.txt
+   
+   # Build the docs
+   cd docs
+   make html
+   
+   # View the docs
+   open _build/html/index.html
+
+How can I contribute to the documentation?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Documentation improvements are always welcome! To contribute:
+
+1. Fork the repository
+2. Make your changes to files in the ``docs/`` directory
+3. Build the documentation locally to verify your changes
+4. Submit a pull request
+
+For more details, see :doc:`development/index`.
 

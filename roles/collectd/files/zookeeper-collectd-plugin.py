@@ -107,7 +107,6 @@ def read_callback():
                     val.dispatch()
                 except (TypeError, ValueError):
                     collectd.error('error dispatching stat; host=%s, key=%s, val=%s' % (host, k, v))
-                    pass
         except socket.error, e:
             # ignore because the cluster can still work even
             # if some servers fail completely

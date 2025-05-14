@@ -1,15 +1,29 @@
-Mantl documentation
+Mantl Documentation
 ==========================================
 
 .. image:: /_static/gitter.svg
-   :alt: Join the chat at https://gitter.im/CiscoCloud/mantl
-   :target: https://gitter.im/CiscoCloud/mantl
+   :alt: Join the chat at https://gitter.im/mantl/mantl
+   :target: https://gitter.im/mantl/mantl
 
 
 Mantl is a modern platform for rapidly deploying globally distributed services.
 Please see `the README
-<https://github.com/CiscoCloud/mantl/blob/master/README.md>`_ for a high level
+<https://github.com/mantl/mantl/blob/master/README.md>`_ for a high level
 overview.
+
+Documentation Status
+-------------------
+
+This documentation provides comprehensive information about installing, configuring, 
+and using Mantl. The project is community-maintained, and we welcome contributions
+to improve the documentation.
+
+Getting Started
+--------------
+
+If you're new to Mantl, start with the :doc:`getting_started/index` section, which
+covers installation and basic usage. For details about specific components, see
+the :doc:`components/index` section.
 
 Contents:
 
@@ -21,11 +35,13 @@ Contents:
    addons.rst
    security/index.rst
    upgrading/index.rst
+   troubleshooting.rst
+   development/index.rst
    packer.rst
    faq.rst
    license.rst
 
-* `Changelog <https://github.com/CiscoCloud/mantl/blob/master/CHANGELOG.md>`_
+* `Changelog <https://github.com/mantl/mantl/blob/master/CHANGELOG.md>`_
 
 .. only:: html
 
