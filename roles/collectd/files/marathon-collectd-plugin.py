@@ -3,7 +3,7 @@
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# You may obtain a copy of the License a
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
 #
@@ -13,8 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collectd
 import json
+
+import collectd
 import urllib2
 
 PREFIX = "marathon"
@@ -39,7 +40,8 @@ def configure_callback(conf):
 
     MARATHON_URL = "http://" + MARATHON_HOST + ":" + str(MARATHON_PORT) + "/metrics"
 
-    log_verbose('Configured with host=%s, port=%s, url=%s' % (MARATHON_HOST, MARATHON_PORT, MARATHON_URL))
+    log_verbose('Configured with host=%s, port=%s, url=%s' %
+                (MARATHON_HOST, MARATHON_PORT, MARATHON_URL))
 
 
 def read_callback():
@@ -49,9 +51,9 @@ def read_callback():
         metrics = json.load(urllib2.urlopen(MARATHON_URL, timeout=10))
 
         for group in ['gauges', 'histograms', 'meters', 'timers', 'counters']:
-            for name,values in metrics.get(group, {}).items():
+            for name, values in metrics.get(group, {}).items():
                 for metric, value in values.items():
-                    if not isinstance(value, basestring):
+                    if not isinstance(value, str):
                         dispatch_stat('gauge', '.'.join((name, metric)), value)
     except urllib2.URLError as e:
         collectd.error('marathon plugin: Error connecting to %s - %r' % (MARATHON_URL, e))
@@ -75,6 +77,7 @@ def log_verbose(msg):
     if not VERBOSE_LOGGING:
         return
     collectd.info('marathon plugin [verbose]: %s' % msg)
+
 
 collectd.register_config(configure_callback)
 collectd.register_read(read_callback)

@@ -11,24 +11,27 @@ import ssl
 import subprocess
 import sys
 import time
+
 import urllib2
+
+import terraform as tf
 
 # FROM plugins/inventory/terraform.py
 sys.path += [os.getcwd() + "/plugins/inventory"]
 # PYTHON_PATH is added to in .travis.yml
-import terraform as tf
 
 LINT_PROVIDERS = ["clc", "softlayer", "triton"]
 DEPLOY_PROVIDERS = ["gce", "aws", "do"]
 
-## TRAVIS STEPS
+# TRAVIS STEPS
+
 
 def install():
     bin_dir = "{}/bin".format(os.environ['HOME'])
     ssh_dir = "{}/.ssh".format(os.environ['HOME'])
     run_cmds([
         (["pip", "install", "-r", "requirements.txt"], 1),
-        (["curl", "-Lo", "terraform.zip",  "https://releases.hashicorp.com/terraform/{0}/terraform_{0}_linux_amd64.zip".format(os.environ['TERRAFORM_VERSION'])], 1),
+        (["curl", "-Lo", "terraform.zip", "https://releases.hashicorp.com/terraform/{0}/terraform_{0}_linux_amd64.zip".format(os.environ['TERRAFORM_VERSION'])], 1),
         (["mkdir", "-p", bin_dir], 1),
         (["unzip", "-d", bin_dir, "terraform.zip"], 1),
         (["mkdir", "-p", ssh_dir], 1),
@@ -41,7 +44,7 @@ def script():
 
     # Filter out commits that are documentation changes.
     commit_range = os.environ.get("TRAVIS_COMMIT_RANGE", "master..HEAD")
-    diff_names = str(subprocess.check_output(["git",  "diff",  "--name-only", commit_range]))
+    diff_names = str(subprocess.check_output(["git", "diff", "--name-only", commit_range]))
 
     not_docfiles = filter_not_docfiles(diff_names)
     if len(not_docfiles) < 1:
@@ -78,17 +81,17 @@ def script():
 def after_script():
     """Cleanup after ci_build"""
 
-    destroy_cmd = ["terraform",  "destroy",  "-force"]
+    destroy_cmd = ["terraform", "destroy", "-force"]
     logging.info("Destroying cloud provider resources")
 
     sys.exit(run_cmd(destroy_cmd))
     # send slack notification
 
 
-## PURE-ISH FUNCTIONS
+# PURE-ISH FUNCTIONS
 
 def run_cmd(cmd, attempts=1):
-    """ Runs a command attempts times, logging its output. Returns True if it
+    """ Runs a command attempts times, logging its output. Returns True if i
     succeeds once, or False if it never does. """
     try:
         for i in range(attempts):
@@ -127,7 +130,7 @@ def run_cmds(cmds, fail_sequential=False):
 
 def filter_not_docfiles(diff_names):
 
-    is_doc = lambda f: f.startswith('docs') or any([f.endswith(ext) for ext in ['md', 'rst']])
+    def is_doc(f): return f.startswith('docs') or any([f.endswith(ext) for ext in ['md', 'rst']])
     return [f for f in diff_names.split() if not is_doc(f)]
 
 
@@ -146,7 +149,7 @@ def get_credentials():
                     # credentials are the whole string after the key
                     password = line[len(yaml_key):].strip()
                     # only grab what we need
-                    return "admin:"+password
+                    return "admin:" + password
     except IOError:
         logging.info('security.yml missing, return "" for unit test instead')
         return ""
@@ -187,7 +190,7 @@ def health_checks():
 
     for host, dic in host_data.iteritems():
         if dic.get("role", "").lower() == "control":
-            hosts.append( (host, dic["public_ipv4"]) )
+            hosts.append((host, dic["public_ipv4"]))
 
     if len(hosts) == 0:
         logging.error("terraform.py reported no control hosts")
@@ -210,7 +213,9 @@ def health_checks():
                         name = check.get("Name", "<unknown>")
                         status = check.get("Status", "<unknown>")
                         output = check.get("Output", "<unknown>")
-                        logging.warn("Check '{}' failing with status '{}' and output: {}".format(name, status, output))
+                        logging.warn(
+                            "Check '{}' failing with status '{}' and output: {}".format(
+                                name, status, output))
 
             except socket.timeout as e:
                 logging.warn("Network timeout: {}".format(e))

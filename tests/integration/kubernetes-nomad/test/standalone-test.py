@@ -6,8 +6,10 @@ This script can be run outside of Docker to verify test logic.
 
 import unittest
 
+
 class MockNomadClient:
     """Mock client for Nomad tests."""
+
     def get(self, endpoint):
         """Return mock data for Nomad endpoints."""
         if endpoint == "job/mantl-kubernetes-example":
@@ -88,8 +90,10 @@ class MockNomadClient:
             }
         return {}
 
+
 class MockK8sApiClient:
     """Mock client for Kubernetes tests."""
+
     def list_service_for_all_namespaces(self, label_selector=None):
         """Return mock services."""
         class MockServiceList:
@@ -102,7 +106,7 @@ class MockK8sApiClient:
                 })
             ]
         return MockServiceList()
-    
+
     def list_pod_for_all_namespaces(self, label_selector=None):
         """Return mock pods."""
         class MockContainer:
@@ -123,7 +127,7 @@ class MockK8sApiClient:
                         'nvidia.com/gpu': '1'
                     }
                 })
-                
+
         class MockPodList:
             items = [
                 type('obj', (object,), {
@@ -146,8 +150,10 @@ class MockK8sApiClient:
             ]
         return MockPodList()
 
+
 class MockConsulClient:
     """Mock client for Consul tests."""
+
     def catalog(self):
         """Return mock catalog."""
         class MockCatalog:
@@ -156,7 +162,7 @@ class MockConsulClient:
                     'mantl-example-service': ['mantl', 'example', 'nginx', 'mantl-service=true'],
                     'mantl-example-metrics': ['mantl', 'metrics', 'prometheus']
                 }
-            
+
             def service(self, service_name):
                 return None, [{
                     'ServiceAddress': '172.20.0.10',
@@ -166,18 +172,20 @@ class MockConsulClient:
                 }]
         return MockCatalog()
 
+
 class MockVaultClient:
     """Mock client for Vault tests."""
+
     def sys(self):
         """Return mock sys."""
         class MockSys:
             def read_health_status(self, method):
                 return {'initialized': True}
-            
+
             def list_policies(self):
                 return {'policies': ['nomad-server']}
         return MockSys()
-    
+
     def secrets(self):
         """Return mock secrets."""
         class MockKV:
@@ -191,51 +199,53 @@ class MockVaultClient:
                             }
                         }
                     }
-                
+
                 def create_or_update_secret(self, path, secret, mount_point):
                     return True
-            
+
             def __init__(self):
                 self.v2 = self.MockV2()
-        
+
         class MockSecrets:
             def __init__(self):
                 self.kv = MockKV()
-        
+
         return MockSecrets()
+
 
 class StandaloneTests(unittest.TestCase):
     """Test suite that runs without Docker containers."""
-    
+
     def setUp(self):
         """Set up test fixtures."""
         self.nomad_client = MockNomadClient()
         self.k8s_api_client = MockK8sApiClient()
         self.consul_client = MockConsulClient()
         self.vault_client = MockVaultClient()
-    
+
     def test_service_discovery(self):
         """Test service discovery integration."""
         services = self.consul_client.catalog().services()[1]
         self.assertIn('mantl-example-service', services)
-        
-        service_tags = self.consul_client.catalog().service('mantl-example-service')[1][0]['ServiceTags']
+
+        service_tags = self.consul_client.catalog().service(
+            'mantl-example-service')[1][0]['ServiceTags']
         self.assertIn('mantl-service=true', service_tags)
-        
+
         k8s_services = self.k8s_api_client.list_service_for_all_namespaces()
         self.assertTrue(len(k8s_services.items) > 0)
-    
+
     def test_vault_integration(self):
         """Test Vault integration."""
         secret = self.vault_client.secrets().kv.v2.read_secret_version(
             path="mantl/kubernetes-example", mount_point="kv"
         )
         self.assertEqual(secret['data']['data']['api_key'], "test-api-key")
-    
+
     def test_gpu_support(self):
         """Test GPU support."""
         job_info = self.nomad_client.get("job/mantl-kubernetes-example")
-        
+
         # Find nginx task
         nginx_task = None
         for group in job_info["TaskGroups"]:
@@ -243,44 +253,45 @@ class StandaloneTests(unittest.TestCase):
                 if task["Name"] == "nginx":
                     nginx_task = task
                     break
-        
+
         self.assertIsNotNone(nginx_task)
-        
+
         # Check GPU device
         devices = nginx_task["Resources"]["Devices"]
         gpu_device = next((d for d in devices if "nvidia/gpu" in d["Name"]), None)
         self.assertIsNotNone(gpu_device)
         self.assertGreater(gpu_device["Count"], 0)
-    
+
     def test_all_features(self):
         """Test all features are working together."""
         job_info = self.nomad_client.get("job/mantl-kubernetes-example")
         self.assertEqual(job_info["Status"], "running")
-        
+
         # Check for all required task types
         tasks = []
         for group in job_info["TaskGroups"]:
             for task in group["Tasks"]:
                 tasks.append(task["Name"])
-        
+
         required_tasks = ["nginx", "logging-sidecar", "policy-agent"]
         for task_name in required_tasks:
             self.assertIn(task_name, tasks)
-        
+
         # Verify Kubernetes resources
         pods = self.k8s_api_client.list_pod_for_all_namespaces(
             label_selector="managed-by=nomad"
         )
         self.assertTrue(len(pods.items) > 0)
-        
+
         # Check pod for all feature labels
         pod = pods.items[0]
         self.assertIn("managed-by", pod.metadata.labels)
         self.assertIn("mantl-service", pod.metadata.labels)
-        
+
         # Check container resources
         container = pod.spec.containers[0]
         self.assertIn("nvidia.com/gpu", container.resources.limits)
+
 
 if __name__ == '__main__':
     unittest.main()

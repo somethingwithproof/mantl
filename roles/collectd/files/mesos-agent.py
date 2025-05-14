@@ -3,7 +3,7 @@
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# You may obtain a copy of the License a
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
 #
@@ -13,11 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collectd
-import json
-import urllib2
-import socket
 import collections
+import json
+import socke
+
+import collectd
+import urllib2
 
 PREFIX = "mesos-slave"
 MESOS_INSTANCE = ""
@@ -92,25 +93,29 @@ STATS_MESOS_021 = {
 STATS_MESOS_022 = STATS_MESOS_021.copy()
 
 # FUNCTION: gets the list of stats based on the version of mesos
+
+
 def get_stats_string(version):
     if version == "0.19.0" or version == "0.19.1":
-       stats_cur = dict(STATS_MESOS.items() + STATS_MESOS_019.items())
+        stats_cur = dict(STATS_MESOS.items() + STATS_MESOS_019.items())
     elif version == "0.20.0" or version == "0.20.1":
-       stats_cur = dict(STATS_MESOS.items() + STATS_MESOS_020.items())
+        stats_cur = dict(STATS_MESOS.items() + STATS_MESOS_020.items())
     elif version == "0.21.0" or version == "0.21.1":
-       stats_cur = dict(STATS_MESOS.items() + STATS_MESOS_021.items())
+        stats_cur = dict(STATS_MESOS.items() + STATS_MESOS_021.items())
     elif version == "0.22.0" or version == "0.22.1":
-       stats_cur = dict(STATS_MESOS.items() + STATS_MESOS_022.items())
+        stats_cur = dict(STATS_MESOS.items() + STATS_MESOS_022.items())
     else:
-       stats_cur = dict(STATS_MESOS.items() + STATS_MESOS_022.items())
+        stats_cur = dict(STATS_MESOS.items() + STATS_MESOS_022.items())
 
     return stats_cur
 
-# FUNCTION: Collect stats from JSON result
+# FUNCTION: Collect stats from JSON resul
+
+
 def lookup_stat(stat, json, conf):
     val = dig_it_up(json, get_stats_string(conf['version'])[stat].path)
 
-    # Check to make sure we have a valid result
+    # Check to make sure we have a valid resul
     # dig_it_up returns False if no match found
     if not isinstance(val, bool):
         return val
@@ -140,7 +145,14 @@ def configure_callback(conf):
             collectd.warning('mesos-slave plugin: Unknown config key: %s.' % node.key)
             continue
 
-    log_verbose('true','mesos-slave plugin configured with host = %s, port = %s, verbose logging = %s, version = %s, instance = %s' % (host,port,verboseLogging,version,instance))
+    log_verbose(
+        'true',
+        'mesos-slave plugin configured with host = %s, port = %s, verbose logging = %s, version = %s, instance = %s' %
+        (host,
+         port,
+         verboseLogging,
+         version,
+         instance))
     CONFIGS.append({
         'host': host,
         'port': port,
@@ -150,14 +162,17 @@ def configure_callback(conf):
         'instance': instance,
     })
 
+
 def fetch_stats():
     for conf in CONFIGS:
-      try:
-        result = json.load(urllib2.urlopen(conf['mesos_url'], timeout=10))
-      except urllib2.URLError, e:
-        collectd.error('mesos-slave plugin: Error connecting to %s - %r' % (conf['mesos_url'], e))
-        return None
-      parse_stats(conf, result)
+        try:
+            result = json.load(urllib2.urlopen(conf['mesos_url'], timeout=10))
+        except (urllib2.URLError, socket.error) as e:
+            collectd.error(
+                'mesos-slave plugin: Error connecting to %s - %r' %
+                (conf['mesos_url'], e))
+            return None
+        parse_stats(conf, result)
 
 
 def parse_stats(conf, json):
@@ -173,8 +188,10 @@ def dispatch_stat(result, name, key, conf):
         collectd.warning('mesos-slave plugin: Value not found for %s' % name)
         return
     estype = key.type
-    value = result
-    log_verbose(conf['verboseLogging'], 'Sending value[%s]: %s=%s for instance:%s' % (estype, name, value, conf['instance']))
+    value = resul
+    log_verbose(
+        conf['verboseLogging'], 'Sending value[%s]: %s=%s for instance:%s' %
+        (estype, name, value, conf['instance']))
 
     val = collectd.Values(plugin='mesos-slave')
     val.type = estype
@@ -196,7 +213,7 @@ def dig_it_up(obj, path):
         if type(path) in (str, unicode):
             path = path.split('.')
         return reduce(lambda x, y: x[y], path, obj)
-    except:
+    except BaseException:
         return False
 
 
@@ -204,6 +221,7 @@ def log_verbose(enabled, msg):
     if not enabled:
         return
     collectd.info('mesos-slave plugin [verbose]: %s' % msg)
+
 
 collectd.register_config(configure_callback)
 collectd.register_read(read_callback)
