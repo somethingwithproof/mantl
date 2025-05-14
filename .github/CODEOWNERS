@@ -1,0 +1,19 @@
+# These owners will be the default reviewers for all pull requests in the repository
+# and will automatically be requested for review when a pull request is opened
+
+# Default owners for everything in the repo
+* @thomasvincent @github-actions[bot]
+
+# Python files
+*.py @thomasvincent @github-actions[bot]
+
+# Documentation files
+/docs/ @thomasvincent @github-actions[bot]
+*.md @thomasvincent @github-actions[bot]
+*.rst @thomasvincent @github-actions[bot]
+
+# Configuration files
+*.yml @thomasvincent @github-actions[bot]
+*.yaml @thomasvincent @github-actions[bot]
+*.toml @thomasvincent @github-actions[bot]
+*.ini @thomasvincent @github-actions[bot]
