@@ -20,13 +20,14 @@ jobs:
           fetch-depth: 0
           
       - name: Copilot PR Review
-        uses: github/copilot-preview-action/review@v0
+        uses: github/copilot-action@v0
         with:
+          operation: 'pr-review'
           custom-tokens: |
             {
               "project_description": "Mantl is a modern, batteries included platform for rapidly deploying globally distributed services"
             }
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Report review status
         run: |
