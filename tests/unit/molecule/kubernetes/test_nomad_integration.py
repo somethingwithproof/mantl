@@ -1,4 +1,5 @@
 import os
+
 import pytest
 import testinfra.utils.ansible_runner
 
@@ -32,7 +33,7 @@ def test_integration_files(host):
     # Skip test if not a control node
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     files = [
         '/etc/kubernetes/nomad-integration/k8s-api-server',
         '/etc/kubernetes/nomad-integration/k8s-ca.crt',
@@ -40,7 +41,7 @@ def test_integration_files(host):
         '/etc/nomad.d/kubernetes-integration.hcl',
         '/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad'
     ]
-    
+
     for file_path in files:
         assert host.file(file_path).exists
         assert host.file(file_path).is_file
@@ -51,7 +52,7 @@ def test_nomad_k8s_config_content(host):
     # Skip test if not a control node
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.is_file
@@ -66,7 +67,7 @@ def test_example_job_content(host):
     # Skip test if not a control node
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     job_file = host.file('/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad')
     assert job_file.exists
     assert job_file.is_file
@@ -80,13 +81,13 @@ def test_rbac_files(host):
     # Skip test if not a control node
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     rbac_files = [
         '/etc/kubernetes/nomad-integration/nomad-sa.yaml',
         '/etc/kubernetes/nomad-integration/nomad-clusterrole.yaml',
         '/etc/kubernetes/nomad-integration/nomad-clusterrolebinding.yaml'
     ]
-    
+
     for file_path in rbac_files:
         assert host.file(file_path).exists
         assert host.file(file_path).is_file
@@ -97,10 +98,10 @@ def test_common_criteria_settings(host):
     # Skip test if not a control node or if Common Criteria not enabled
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     if not host.ansible.get_variables().get('nomad_common_criteria_enabled', False):
         pytest.skip("Common Criteria not enabled")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.contains('audit {')
@@ -114,17 +115,17 @@ def test_service_discovery(host):
     # Skip test if not a control node or if service discovery not enabled
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     if not host.ansible.get_variables().get('kubernetes_nomad_service_discovery_enabled', True):
         pytest.skip("Service discovery not enabled")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.contains('service_discovery "kubernetes"')
     assert config_file.contains('server_address =')
     assert config_file.contains('token =')
     assert config_file.contains('label_selector =')
-    
+
     # Also test in example job
     job_file = host.file('/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad')
     assert job_file.exists
@@ -137,10 +138,10 @@ def test_vault_integration(host):
     # Skip test if not a control node or if Vault integration not enabled
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     if not host.ansible.get_variables().get('kubernetes_nomad_vault_integration_enabled', False):
         pytest.skip("Vault integration not enabled")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.contains('vault {')
@@ -148,7 +149,7 @@ def test_vault_integration(host):
     assert config_file.contains('address =')
     assert config_file.contains('token =')
     assert config_file.contains('kubernetes_auth {')
-    
+
     # Also test in example job
     job_file = host.file('/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad')
     assert job_file.exists
@@ -164,17 +165,17 @@ def test_federated_metrics(host):
     # Skip test if not a control node or if metrics not enabled
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     if not host.ansible.get_variables().get('kubernetes_nomad_metrics_enabled', False):
         pytest.skip("Metrics not enabled")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.contains('telemetry {')
     assert config_file.contains('prometheus_metrics = true')
     assert config_file.contains('publish_allocation_metrics = true')
     assert config_file.contains('collection_interval =')
-    
+
     # Also test in example job
     job_file = host.file('/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad')
     assert job_file.exists
@@ -189,17 +190,17 @@ def test_multi_region(host):
     # Skip test if not a control node or if multi-region not enabled
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     if not host.ansible.get_variables().get('kubernetes_nomad_multi_region_enabled', False):
         pytest.skip("Multi-region not enabled")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.contains('multi_region {')
     assert config_file.contains('enabled = true')
     assert config_file.contains('regions =')
     assert config_file.contains('strategy =')
-    
+
     # Also test in example job
     job_file = host.file('/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad')
     assert job_file.exists
@@ -212,15 +213,15 @@ def test_gpu_scheduling(host):
     # Skip test if not a control node or if GPU not enabled
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     if not host.ansible.get_variables().get('kubernetes_nomad_gpu_enabled', False):
         pytest.skip("GPU scheduling not enabled")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.contains('gpu_support = true')
     assert config_file.contains('gpu_vendor =')
-    
+
     # Also test in example job
     job_file = host.file('/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad')
     assert job_file.exists
@@ -233,17 +234,17 @@ def test_autoscaling(host):
     # Skip test if not a control node or if autoscaling not enabled
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     if not host.ansible.get_variables().get('kubernetes_nomad_autoscaling_enabled', False):
         pytest.skip("Autoscaling not enabled")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.contains('autoscaling {')
     assert config_file.contains('enabled = true')
     assert config_file.contains('min_replicas =')
     assert config_file.contains('max_replicas =')
-    
+
     # Also test in example job
     job_file = host.file('/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad')
     assert job_file.exists
@@ -258,15 +259,15 @@ def test_crd_support(host):
     # Skip test if not a control node or if CRD not enabled
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     if not host.ansible.get_variables().get('kubernetes_nomad_crd_enabled', False):
         pytest.skip("CRD support not enabled")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.contains('custom_resources =')
     assert config_file.contains('custom_resource_groups =')
-    
+
     # Also test in example job
     job_file = host.file('/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad')
     assert job_file.exists
@@ -280,17 +281,17 @@ def test_disaster_recovery(host):
     # Skip test if not a control node or if disaster recovery not enabled
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     if not host.ansible.get_variables().get('kubernetes_nomad_disaster_recovery_enabled', False):
         pytest.skip("Disaster recovery not enabled")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.contains('disaster_recovery {')
     assert config_file.contains('enabled = true')
     assert config_file.contains('recovery_threshold =')
     assert config_file.contains('snapshot_path =')
-    
+
     # Also test in example job
     job_file = host.file('/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad')
     assert job_file.exists
@@ -303,17 +304,17 @@ def test_opa_enforcement(host):
     # Skip test if not a control node or if OPA not enabled
     if 'control' not in host.ansible.get_variables().get('group_names', []):
         pytest.skip("Not a control node")
-    
+
     if not host.ansible.get_variables().get('kubernetes_nomad_opa_enabled', False):
         pytest.skip("OPA policy enforcement not enabled")
-    
+
     config_file = host.file('/etc/nomad.d/kubernetes-integration.hcl')
     assert config_file.exists
     assert config_file.contains('policy {')
     assert config_file.contains('enabled = true')
     assert config_file.contains('opa_url =')
     assert config_file.contains('evaluation_paths =')
-    
+
     # Also test in example job
     job_file = host.file('/var/lib/kubernetes/nomad-integration/kubernetes-example.nomad')
     assert job_file.exists

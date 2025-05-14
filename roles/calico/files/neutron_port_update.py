@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # This script updates the allowed address pairs in Neutron with the
 # 'neutron port-update' command. This is required by Calico in OpenStack,
-# otherwise BGP will not be working. We query OpenStack API directly to prevent
+# otherwise BGP will not be working. We query OpenStack API directly to preven
 # installing any dependencies such as python-neutronclient.
 #
 # USAGE: script_name arg1 arg2...argN
@@ -15,8 +15,10 @@
 
 import json
 import os
-import requests
 import sys
+
+import requests
+
 
 def credentials():
     """Retrieves credentials"""
@@ -37,21 +39,22 @@ def credentials():
         'auth_url': auth_url
     }
 
+
 def get_catalog():
     """Get service catalog from Keystone with token and all endpoints"""
 
     creds = credentials()
     headers = {'Content-Type': 'application/json'}
     payload = {
-                "auth":
-                  {
-                    "tenantName": creds['tenant_name'],
-                    "passwordCredentials": {
-                                             "username": creds['username'],
-                                             "password": creds['password']
-                                           }
-                  }
-              }
+        "auth":
+        {
+            "tenantName": creds['tenant_name'],
+            "passwordCredentials": {
+                "username": creds['username'],
+                "password": creds['password']
+            }
+        }
+    }
     auth_url = creds['auth_url'] + "/tokens"
     r = requests.post(auth_url, headers=headers, data=json.dumps(payload))
 
@@ -62,10 +65,12 @@ def get_catalog():
 
     return parsed_json
 
+
 def get_token(catalog):
     """Get Keystone authentication token"""
 
     return catalog['access']['token']['id']
+
 
 def neutron_public_url(catalog):
     """Get Neutron publicURL"""
@@ -74,6 +79,7 @@ def neutron_public_url(catalog):
         if i['type'] == 'network':
             for endpoint in i['endpoints']:
                 return endpoint['publicURL']
+
 
 def list_ports(token, public_url):
     """List Neutron ports"""
@@ -89,20 +95,21 @@ def list_ports(token, public_url):
         sys.stderr.write("ERROR: Unable to retrieve Neutron ports list\n")
         exit(1)
 
+
 def update_port(token, public_url, port_id, mac_address, calico_network):
     """Update Neutron port with the allowed address pairs"""
 
     headers = {'Content-Type': 'application/json', 'X-Auth-Token': token}
     payload = {
-                "port": {
-                          "allowed_address_pairs": [
-                             {
-                               "ip_address": calico_network,
-                               "mac_address": mac_address
-                             }
-                          ]
-                        }
-              }
+        "port": {
+            "allowed_address_pairs": [
+                {
+                    "ip_address": calico_network,
+                    "mac_address": mac_address
+                }
+            ]
+        }
+    }
     auth_url = public_url + "v2.0/ports/" + port_id
     r = requests.put(auth_url, headers=headers, data=json.dumps(payload))
 
@@ -112,6 +119,7 @@ def update_port(token, public_url, port_id, mac_address, calico_network):
         exit(1)
     else:
         return r.status_code
+
 
 if __name__ == "__main__":
 
@@ -127,7 +135,7 @@ if __name__ == "__main__":
     public_url = neutron_public_url(catalog)
     ports = list_ports(token, public_url)
 
-    exit_code = 0 # no update to port
+    exit_code = 0  # no update to por
 
     for port in ports:
         port_id = port['id']
@@ -135,6 +143,6 @@ if __name__ == "__main__":
         if mac_address in vms_mac_addresses and not port['allowed_address_pairs']:
             status_code = update_port(token, public_url, port_id, mac_address, calico_network)
             if status_code == 200:
-                exit_code = 2 # port has been updated
+                exit_code = 2  # port has been updated
 
     exit(exit_code)
