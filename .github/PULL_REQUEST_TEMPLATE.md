@@ -1,8 +1,29 @@
-Hi, thank you for your contribution to Mantl! Before we can accept any code into
-master, we need it to meet the following criteria. If there are any you can't
-satisfy yourself, go ahead and open the pull request anyway and we'll help you
-test. Feel free to delete this message once you're done. Thanks again!
+# Pull Request
 
-- [ ] Installs cleanly on a fresh build of most recent master branch
-- [ ] Upgrades cleanly from the most recent release
-- [ ] Updates documentation relevant to the changes
+## Description
+<\!-- Provide a brief description of the changes in this PR -->
+
+## Related Issues
+<\!-- Link to any related issues using the format: Fixes #123, Resolves #456 -->
+
+## Type of Change
+- [ ] Bug fix (non-breaking change that fixes an issue)
+- [ ] New feature (non-breaking change that adds functionality)
+- [ ] Breaking change (causes existing functionality to change)
+- [ ] Documentation update
+
+## Checklist
+- [ ] I have read the [CONTRIBUTING](../CONTRIBUTING.md) document
+- [ ] My code follows the code style of this project
+- [ ] I have added tests to cover my changes
+- [ ] All new and existing tests passed
+- [ ] I have updated the documentation accordingly
+- [ ] I have run linting tools on my code
+- [ ] I have checked for potential security issues
+
+## Testing
+<\!-- Describe the testing you've done for your changes -->
+
+## Additional Notes
+<\!-- Add any other context about the PR here -->
+EOL < /dev/null

@@ -4,10 +4,7 @@ Standalone test script for Kubernetes-Nomad integration.
 This script can be run outside of Docker to verify test logic.
 """
 
-import os
-import sys
 import unittest
-import json
 
 class MockNomadClient:
     """Mock client for Nomad tests."""

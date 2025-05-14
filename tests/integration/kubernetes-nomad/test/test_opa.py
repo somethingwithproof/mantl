@@ -1,5 +1,4 @@
 import pytest
-import json
 import requests
 import time
 
@@ -48,7 +47,7 @@ def test_opa_policy_enforcement(nomad_client):
             headers={"Content-Type": "application/json"}
         )
         assert resp.status_code == 200, "Rego policy file not found"
-    except Exception as e:
+    except Exception:
         # Alternative check - look for the template that creates the policy
         for task in task_states:
             if task == "policy-agent":

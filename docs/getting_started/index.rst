@@ -39,6 +39,7 @@ Here are some guides specific to each of the platforms that Mantl supports:
 .. toctree::
    :maxdepth: 1
 
+   quickstart.rst
    openstack.rst
    gce.rst
    aws.rst
