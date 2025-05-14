@@ -16,6 +16,12 @@ updates:
     commit-message:
       prefix: "deps"
       include: "scope"
+    allow:
+      - dependency-type: "direct"
+    versioning-strategy: increase-if-necessary
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     
   # Docker dependencies
   - package-ecosystem: "docker"

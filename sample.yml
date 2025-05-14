@@ -2,6 +2,7 @@
 # CHECK SECURITY - when customizing you should leave this in. If you
 # take it out and forget to specify security.yml, security could be turned off
 # on components in your cluster!
+# Note: This sample file is configured for Ansible 9.3.0
 - include: "{{ playbook_dir }}/playbooks/check-requirements.yml"
 
 # BASICS - we need every node in the cluster to have common software running to
