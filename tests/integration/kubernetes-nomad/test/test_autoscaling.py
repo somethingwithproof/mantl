@@ -1,6 +1,3 @@
-import pytest
-import json
-import time
 
 def test_autoscaling_integration(nomad_client):
     """Test autoscaling integration."""

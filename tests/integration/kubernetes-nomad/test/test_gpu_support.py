@@ -1,5 +1,3 @@
-import pytest
-import json
 
 def test_gpu_support(nomad_client, k8s_api_client):
     """Test GPU workload scheduling support."""

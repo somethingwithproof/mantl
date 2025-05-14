@@ -1,6 +1,5 @@
 import pytest
 import json
-import time
 from kubernetes import client
 
 def test_custom_resource_definition_support(nomad_client, k8s_api_client):
@@ -48,7 +47,7 @@ def test_custom_resource_definition_support(nomad_client, k8s_api_client):
         # Try to list ServiceMonitor CRDs if they're available
         try:
             # First check if the API resource exists
-            api_resources = client.ApisApi(api_client).get_api_resources_with_http_info('monitoring.coreos.com/v1')
+            client.ApisApi(api_client).get_api_resources_with_http_info('monitoring.coreos.com/v1')
             
             # If we get here, the API resource exists, so try to list ServiceMonitors
             service_monitors = api_instance.list_cluster_custom_object(
@@ -73,7 +72,7 @@ def test_custom_resource_definition_support(nomad_client, k8s_api_client):
                 pass
             else:
                 raise
-    except Exception as e:
+    except Exception:
         # Fallback check - verify the pod has the expected labels that would be used by ServiceMonitor
         pods = k8s_api_client.list_pod_for_all_namespaces(
             label_selector="app=mantl-example"

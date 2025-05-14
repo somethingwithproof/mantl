@@ -1,6 +1,4 @@
 import pytest
-import json
-import time
 
 def test_disaster_recovery(nomad_client):
     """Test disaster recovery with automatic failover."""

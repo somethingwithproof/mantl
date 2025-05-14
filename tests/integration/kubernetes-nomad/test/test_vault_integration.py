@@ -1,6 +1,5 @@
 import pytest
 import requests
-import json
 import time
 
 def test_vault_secrets_integration(nomad_client, vault_client):
@@ -9,7 +8,6 @@ def test_vault_secrets_integration(nomad_client, vault_client):
     assert vault_client.sys.read_health_status(method='GET')['initialized'], "Vault is not initialized"
     
     # Check if the example secret exists
-    secret_path = "kv/data/mantl/kubernetes-example"
     secret = vault_client.secrets.kv.v2.read_secret_version(path="mantl/kubernetes-example", mount_point="kv")
     assert secret['data']['data']['api_key'] == "test-api-key", "API key secret is incorrect"
     assert secret['data']['data']['db_password'] == "test-db-password", "DB password secret is incorrect"

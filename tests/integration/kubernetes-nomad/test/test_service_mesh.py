@@ -1,6 +1,4 @@
 import pytest
-import json
-import time
 
 def test_service_mesh_integration(nomad_client, consul_client, k8s_api_client):
     """Test service mesh and zero-downtime migration features."""
@@ -49,7 +47,7 @@ def test_service_mesh_integration(nomad_client, consul_client, k8s_api_client):
     
     # Check for connect sidecars in Consul services
     services = consul_client.catalog.services()[1]
-    service_details = consul_client.catalog.service("mantl-example-service")[1]
+    consul_client.catalog.service("mantl-example-service")[1]
     
     # If the service mesh is fully applied, we should see a tagged service
     tagged_services = []

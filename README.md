@@ -2,9 +2,8 @@
 
 # Overview
 
-[![Join the chat at https://gitter.im/CiscoCloud/mantl](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/CiscoCloud/mantl?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://gitter.im/mantl/mantl](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/mantl/mantl?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://img.shields.io/travis/mantl/mantl.svg)](https://travis-ci.org/mantl/mantl)
-[![Stories in Progress](https://badge.waffle.io/mantl/mantl.svg?label=in%20progress&title=InProgress)](http://waffle.io/mantl/mantl)
 
 Mantl is a modern, batteries included platform for rapidly deploying globally
 distributed services
@@ -166,6 +165,14 @@ cd docs
 make html
 ```
 
+### Additional Documentation
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Guidelines for contributing to Mantl
+- [DEVELOPMENT.md](DEVELOPMENT.md) - Detailed development guide
+- [UPGRADE.md](UPGRADE.md) - Guide for upgrading between versions
+- [CHANGES.md](CHANGES.md) - Recent changes to documentation and tooling
+- [code-of-conduct.md](code-of-conduct.md) - Code of conduct for the Mantl community
+
 ## Roadmap
 
 ### Mesos Frameworks
@@ -232,9 +239,34 @@ more details on the roadmap.
 
 If you're interested in contributing to the project, install
 [Terraform](https://www.terraform.io/downloads.html) and the Python modules
-listed in `requirements.txt` and follow the Getting Started instructions. To
-build the docs, enter the `docs` directory and run `make html`. The docs will
-be output to `_build/html`.
+listed in `requirements.txt` and follow the Getting Started instructions.
+
+### Development Tools
+
+Several tools are available to help with development:
+
+* **Makefile**: Run common development tasks
+  ```
+  make help        # Show available commands
+  make test        # Run tests
+  make lint        # Check code quality
+  make docs        # Build documentation
+  ```
+
+* **Scripts**: Helper scripts in the `scripts` directory
+  ```
+  ./scripts/lint.sh   # Run linting tools
+  ./scripts/test.sh   # Run tests with coverage
+  ```
+
+* **Documentation**: To build the docs, run:
+  ```
+  cd docs
+  make html
+  ```
+  The docs will be output to `_build/html`.
+
+See the [CONTRIBUTING.md](CONTRIBUTING.md) and [DEVELOPMENT.md](DEVELOPMENT.md) files for more detailed information about the development process.
 
 Good issues to start with are marked with the [low hanging
 fruit](https://github.com/mantl/mantl/issues?q=is%3Aopen+is%3Aissue+label%3A%22low+hanging+fruit%22)
