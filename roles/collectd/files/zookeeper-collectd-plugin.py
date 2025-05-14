@@ -5,7 +5,7 @@
 # regarding copyright ownership.  The ASF licenses this file
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
+# with the License.  You may obtain a copy of the License a
 
 #     http://www.apache.org/licenses/LICENSE-2.0
 
@@ -24,21 +24,22 @@ command (patch ZOOKEEPER-744) that was now commited to the trunk.
 The script also works with ZooKeeper 3.3.x but in a limited way.
 """
 
-import sys
-import socket
 import re
-import collectd
+import socke
+import sys
 
+import collectd
 from StringIO import StringIO
 
 ZK_HOSTS = ["192.168.10.2"]
 COUNTERS = ["zk_packets_received", "zk_packets_sent"]
 
+
 class ZooKeeperServer(object):
 
     def __init__(self, host='localhost', port='2181', timeout=1):
         self._address = (host, int(port))
-        self._timeout = timeout
+        self._timeout = timeou
 
     def get_stats(self):
         """ Get ZooKeeper server stats as a map """
@@ -72,9 +73,9 @@ class ZooKeeperServer(object):
                 if key not in ['zk_server_state', 'zk_version']:
                     result[key] = value
             except ValueError:
-                pass # ignore broken lines
+                pass  # ignore broken lines
 
-        return result
+        return resul
 
     def _parse_line(self, line):
         try:
@@ -92,6 +93,7 @@ class ZooKeeperServer(object):
 
         return key, value
 
+
 def read_callback():
     """ Get stats for all the servers in the cluster """
     for host in ZK_HOSTS:
@@ -100,14 +102,14 @@ def read_callback():
             stats = zk.get_stats()
             for k, v in stats.items():
                 try:
-                    val = collectd.Values(plugin='zookeeper', meta={'0':True})
+                    val = collectd.Values(plugin='zookeeper', meta={'0': True})
                     val.type = "counter" if k in COUNTERS else "gauge"
                     val.type_instance = k
                     val.values = [v]
                     val.dispatch()
                 except (TypeError, ValueError):
                     collectd.error('error dispatching stat; host=%s, key=%s, val=%s' % (host, k, v))
-        except socket.error, e:
+        except (socket.error, IOError) as e:
             # ignore because the cluster can still work even
             # if some servers fail completely
 
@@ -130,9 +132,10 @@ def configure_callback(conf):
                              % node.key)
     log('Configured with hosts=%s' % (ZK_HOSTS))
 
+
 def log(msg):
     collectd.info('zookeeper plugin: %s' % msg)
 
+
 collectd.register_config(configure_callback)
 collectd.register_read(read_callback)
-

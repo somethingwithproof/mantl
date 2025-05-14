@@ -57,7 +57,7 @@ options:
   state:
     required: false
     choices: ['present', 'absent', 'latest', 'reloaded', 'stopped']
-    default: present
+    default: presen
     description:
       - present handles checking existence or creating if definition file provided,
         absent handles deleting resource(s) based on other options,
@@ -70,16 +70,16 @@ author: "Kenny Jones (@kenjones-cisco)"
 """
 
 EXAMPLES = """
-- name: test nginx is present
-  kube: name=nginx resource=rc state=present
+- name: test nginx is presen
+  kube: name=nginx resource=rc state=presen
 
 - name: test nginx is stopped
   kube: name=nginx resource=rc state=stopped
 
-- name: test nginx is absent
-  kube: name=nginx resource=rc state=absent
+- name: test nginx is absen
+  kube: name=nginx resource=rc state=absen
 
-- name: test nginx is present
+- name: test nginx is presen
   kube: filename=/tmp/nginx.yml
 """
 
@@ -114,7 +114,8 @@ class KubeManager(object):
             rc, out, err = self.module.run_command(args)
             if rc != 0:
                 self.module.fail_json(
-                    msg='error running kubectl (%s) command (rc=%d): %s' % (' '.join(args), rc, out or err))
+                    msg='error running kubectl (%s) command (rc=%d): %s' %
+                    (' '.join(args), rc, out or err))
         except Exception as exc:
             self.module.fail_json(
                 msg='error running kubectl (%s) command: %s' % (' '.join(args), str(exc)))
@@ -255,8 +256,8 @@ def main():
             all=dict(default=False, type='bool'),
             log_level=dict(default=0, type='int'),
             state=dict(default='present', choices=['present', 'absent', 'latest', 'reloaded', 'stopped']),
-            )
         )
+    )
 
     changed = False
 
@@ -292,6 +293,7 @@ def main():
                      )
 
 
-from ansible.module_utils.basic import *  # noqa
+from ansible.module_utils.basic import AnsibleModule  # noqa
+
 if __name__ == '__main__':
     main()
