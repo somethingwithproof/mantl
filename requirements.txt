@@ -1,7 +1,7 @@
 alabaster==0.7.16
 # Change concurrently with the required ansible version in sample.yml - update comment in sample.yml as needed
 ansible==9.3.0
-pytest==7.4.3
+pytest==8.4.2
 pytest-cov==7.0.0
 PyYAML==6.0.3
 Sphinx==7.2.6
