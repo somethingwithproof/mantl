@@ -9,4 +9,4 @@ ansible-lint==6.22.2
 netaddr==0.8.0
 flake8==6.1.0
 pylint==3.3.9
-pre-commit==3.5.0
+pre-commit==4.3.0
