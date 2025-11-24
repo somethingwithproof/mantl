@@ -10,6 +10,12 @@ on:
       - '.github/dependabot.yml'
       - 'Dockerfile'
 
+# Cancel previous runs on the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+
 permissions:
   contents: write
   pull-requests: write
