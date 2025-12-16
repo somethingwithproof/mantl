@@ -1,4 +1,4 @@
-FROM alpine:3.22
+FROM alpine:3.23
 
 RUN apk add --no-cache bash build-base curl git libffi-dev openssh openssl-dev py3-pip python3 python3-dev unzip \
 	&& git clone https://github.com/mantl/mantl /mantl \
