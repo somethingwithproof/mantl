@@ -10,6 +10,20 @@ variable "datastore" {}
 variable "disk_type" { default = "thin" }
 variable "network_label" {}
 
+# Feature flag for modern schema
+variable "use_modern_vsphere_schema" {
+  description = "If true, use modern vsphere_virtual_machine schema with customization specs"
+  type        = bool
+  default     = false
+}
+
+# Customization spec inputs (modern path)
+variable "customization_spec_name" {
+  description = "vSphere customization spec name to apply"
+  type        = string
+  default     = ""
+}
+
 variable "short_name" {default = "mantl"}
 variable "long_name" {default = "mantl"}
 

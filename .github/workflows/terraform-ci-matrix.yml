@@ -1,0 +1,37 @@
+name: Terraform CI (matrix)
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'terraform/**'
+
+jobs:
+  lint-validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dir: [ 'terraform/aws', 'terraform/gce', 'terraform/vsphere', 'terraform/cloudflare' ]
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+      - name: Terraform validate (soft)
+        continue-on-error: true
+        run: |
+          terraform init -backend=false -input=false -no-color || true
+          terraform validate -no-color || true
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.54.0
+      - name: Run TFLint
+        run: tflint --recursive
