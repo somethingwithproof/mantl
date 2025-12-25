@@ -453,12 +453,12 @@ resource "aws_security_group" "ui" {
 }
 
 resource "aws_security_group" "edge" {
-  name = "${var.short_name}-edge"
+  name        = "${var.short_name}-edge"
   description = "Allow inbound traffic for edge routing"
-  vpc_id = "${aws_vpc.main.id}"
+  vpc_id      = "${aws_vpc.main.id}"
 
-  tags {
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    KubernetesCluster = var.short_name
   }
 
   ingress { # SSH
