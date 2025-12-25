@@ -30,8 +30,8 @@ variable "zone" {default = "us-central1-a"}
 
 # Network
 resource "google_compute_network" "mi-network" {
-  name = "${var.long_name}"
-  ipv4_range = "${var.network_ipv4}"
+  name                    = "${var.long_name}"
+  auto_create_subnetworks = true
 }
 
 # Firewall
@@ -59,9 +59,9 @@ resource "google_compute_firewall" "mi-firewall-external" {
 }
 
 resource "google_compute_firewall" "mi-firewall-internal" {
-  name = "${var.short_name}-firewall-internal"
-  network = "${google_compute_network.mi-network.name}"
-  source_ranges = ["${google_compute_network.mi-network.ipv4_range}"]
+  name          = "${var.short_name}-firewall-internal"
+  network       = google_compute_network.mi-network.name
+  source_ranges = [var.network_ipv4]
 
   allow {
     protocol = "4"
