@@ -21,12 +21,15 @@ After analysis, we're adopting a **focused, production-ready stack** rather than
 | External Secrets | 1.2.x | Incubating | Secret sync |
 | External DNS | 1.19.x | Incubating | DNS automation |
 
-### New Additions
+### Observability & Security Additions
 
 | Component | Version | CNCF Status | Purpose |
 |-----------|---------|-------------|---------|
 | Prometheus | 65.2.0 (stack) | Graduated | Metrics + Alerting |
 | OpenTelemetry | 0.115.x | Graduated | Telemetry pipeline |
+| Jaeger | 3.3.1 | Graduated | Distributed tracing |
+| Loki | 6.x | — | Log aggregation |
+| Tempo | 2.x | — | Tracing (alternative) |
 | Grafana | 11.x | — | Visualization |
 | Falco | 4.15.0 | Graduated | Runtime security |
 | Harbor | 1.16.0 | Graduated | On-prem registry |
@@ -43,7 +46,6 @@ After analysis, we're adopting a **focused, production-ready stack** rather than
 | Crossplane | Terraform/OpenTofu handles IaC |
 | Knative | No serverless requirements |
 | SPIRE | Cloud workload identity suffices |
-| Jaeger/Tempo | OpenTelemetry exports to backend of choice |
 
 ---
 
@@ -59,7 +61,10 @@ platform/
 │   └── external-dns/     ✅ DNS sync
 ├── observability/
 │   ├── prometheus/       🆕 Metrics + Grafana
-│   └── otel-collector/   🆕 Telemetry
+│   ├── otel-collector/   🆕 Telemetry pipeline
+│   ├── jaeger/           🆕 Distributed tracing
+│   ├── loki/             🆕 Log aggregation
+│   └── tempo/            🆕 Tracing (alternative)
 ├── registry/
 │   └── harbor/           🆕 On-prem registry
 ├── secrets/
@@ -68,19 +73,22 @@ platform/
     └── falco/            🆕 Runtime security
 
 policies/
-└── kyverno/              ✅ Policy (remove opa/)
+└── kyverno/              ✅ Policy enforcement
 ```
 
 ---
 
 ## CNCF Coverage
 
-**Graduated Projects Used**: 9
+**Graduated Projects Used**: 10
 - Kubernetes, Cilium, ArgoCD, cert-manager, Kyverno
-- Prometheus, OpenTelemetry, Falco, Harbor
+- Prometheus, OpenTelemetry, Jaeger, Falco, Harbor
 
 **Incubating Projects Used**: 2
 - External Secrets, External DNS
+
+**Non-CNCF Components**: 3
+- Grafana (visualization), Loki (logs), Tempo (tracing alternative)
 
 This is a focused stack optimized for production use, not badge collection.
 
@@ -93,11 +101,14 @@ This is a focused stack optimized for production use, not badge collection.
 2. cert-manager     (sync-wave: 2) - TLS prereq
 3. External Secrets (sync-wave: 3) - Secrets
 4. Kyverno          (sync-wave: 3) - Policy
-5. Prometheus       (sync-wave: 4) - Observability
-6. OpenTelemetry    (sync-wave: 5) - Telemetry
-7. Falco            (sync-wave: 5) - Security
-8. Harbor           (sync-wave: 6) - Registry
-9. External DNS     (sync-wave: 6) - DNS
+5. Prometheus       (sync-wave: 4) - Metrics + Grafana
+6. Loki             (sync-wave: 4) - Log aggregation
+7. Tempo            (sync-wave: 4) - Tracing backend
+8. OpenTelemetry    (sync-wave: 5) - Telemetry pipeline
+9. Jaeger           (sync-wave: 5) - Distributed tracing
+10. Falco           (sync-wave: 5) - Security
+11. Harbor          (sync-wave: 6) - Registry
+12. External DNS    (sync-wave: 6) - DNS
 ```
 
 ---
