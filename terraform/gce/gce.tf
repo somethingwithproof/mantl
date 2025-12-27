@@ -1,5 +1,12 @@
 #monolithic file saved for backward compatibility
 variable "control_count" {default = 3}
+
+# Allowed CIDRs for external access (override to restrict). Default preserves legacy behavior.
+variable "allowed_cidrs" {
+  description = "CIDR blocks allowed to access exposed services (SSH/HTTP/HTTPS/etc.)"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
 variable "control_type" {default = "n1-standard-1"}
 variable "control_volume_size" {default = "20"} # size is in gigabytes
 variable "worker_volume_size" {default = "20"} # size is in gigabytes
@@ -29,9 +36,9 @@ resource "google_compute_network" "mi-network" {
 
 # Firewall
 resource "google_compute_firewall" "mi-firewall-external" {
-  name = "${var.short_name}-firewall-external"
-  network = "${google_compute_network.mi-network.name}"
-  source_ranges = ["0.0.0.0/0"]
+  name          = "${var.short_name}-firewall-external"
+  network       = google_compute_network.mi-network.name
+  source_ranges = var.allowed_cidrs
 
   allow {
     protocol = "icmp"
@@ -145,14 +152,6 @@ resource "google_compute_instance" "mi-control-nodes" {
 
   count = "${var.control_count}"
 
-  provisioner "remote-exec" {
-    script = "./terraform/gce/disk.sh"
-
-    connection {
-      type = "ssh"
-      user = "${var.ssh_user}"
-    }
-  }
 }
 
 resource "google_compute_instance" "mi-worker-nodes" {
@@ -192,14 +191,6 @@ resource "google_compute_instance" "mi-worker-nodes" {
 
   count = "${var.worker_count}"
 
-  provisioner "remote-exec" {
-    script = "./terraform/gce/disk.sh"
-
-    connection {
-      type = "ssh"
-      user = "${var.ssh_user}"
-    }
-  }
 }
 
 
