@@ -116,6 +116,25 @@ Supported frameworks:
 | OpenStack | Magnum | 🚧 Beta |
 | Bare Metal | k3s | 🚧 Beta |
 
+## Modernization and Migration (Terraform 1.x)
+
+The Terraform modules under `terraform/` are being modernized with security-focused defaults and feature flags to avoid breaking legacy behavior. Highlights:
+
+- AWS (terraform/aws)
+  - EBS encryption enabled by default; optional KMS key via `kms_key_id`.
+  - Public ingress controlled via `allowed_cidrs` (defaults to ["0.0.0.0/0"], override to restrict).
+  - Optional Auto Scaling Groups for workers (and other roles) via flags.
+  - Optional VPC Flow Logs (enabled by default).
+- GCE (terraform/gce)
+  - Optional modern instance schema via `use_modern_gce_schema` (shielded VM, block project SSH keys, no public IP by default). Supports `modern_subnetwork_self_link` to attach to a modern subnetwork.
+  - Optional modern custom-mode VPC/subnet via `use_modern_gce_network`; external firewall uses `allowed_cidrs`.
+  - When enabling modern instances for a role, set the legacy counts to 0 in `gce.tf` to avoid duplicates (e.g., `control_count = 0`, `worker_count = 0`, `kubeworker_count = 0`).
+- vSphere (terraform/vsphere)
+  - Optional modern schema via `use_modern_vsphere_schema`, cloning from a template with optional `customization_spec_name`.
+  - When enabling modern instances for a role, set the legacy counts to 0 to avoid duplicates.
+
+See module READMEs for details and examples.
+
 ## Documentation
 
 - [Quick Start Guide](docs/quickstart-platform.md)
