@@ -1,0 +1,38 @@
+name: Terraform CI (cloudflare)
+on:
+  pull_request:
+    paths:
+      - 'terraform/cloudflare/**'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'terraform/cloudflare/**'
+
+jobs:
+  validate-cloudflare:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/cloudflare
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+      - name: Terraform validate
+        run: |
+          terraform init -backend=false -input=false -no-color
+          terraform validate -no-color
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.54.0
+      - name: Run TFLint
+        run: tflint --recursive
+      - name: Run tfsec (soft fail)
+        uses: aquasecurity/tfsec-action@v1.0.6
+        with:
+          working_directory: terraform/cloudflare
+          soft_fail: true
