@@ -59,13 +59,31 @@ Mantl provides everything you need to build, deploy, and operate production Kube
 
 ## 🚀 Quickstart
 
-### Option 1: Local Development (kind)
+### Local Development Options
 
-Perfect for testing and development:
+Choose your preferred local Kubernetes environment for testing and development:
+
+#### Option A: kind (Kubernetes in Docker)
+
+**Best for**: CI/CD pipelines, quick testing, multi-node clusters
 
 ```bash
+# Install kind (if not already installed)
+# macOS
+brew install kind
+# Linux
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
+
 # Create local Kubernetes cluster
-kind create cluster --name mantl
+kind create cluster --name mantl --config - <<EOF
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+- role: worker
+- role: worker
+EOF
 
 # Install ArgoCD and platform apps
 kubectl create namespace argocd
@@ -78,9 +96,112 @@ kubectl apply -k clusters/production
 kubectl port-forward svc/argocd-server -n argocd 8080:443
 ```
 
-See [docs/quickstart-platform.md](docs/quickstart-platform.md) for detailed instructions.
+#### Option B: minikube
 
-### Option 2: AWS (EKS)
+**Best for**: Beginners, cross-platform support, addons ecosystem
+
+```bash
+# Install minikube (if not already installed)
+# macOS
+brew install minikube
+# Linux
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+# Start cluster
+minikube start --cpus=4 --memory=8192 --kubernetes-version=v1.28.0
+
+# Enable useful addons
+minikube addons enable ingress
+minikube addons enable metrics-server
+
+# Deploy platform
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -k clusters/production
+
+# Access ArgoCD UI
+minikube service argocd-server -n argocd
+```
+
+#### Option C: k3d (k3s in Docker)
+
+**Best for**: Lightweight clusters, resource-constrained environments, fast iteration
+
+```bash
+# Install k3d (if not already installed)
+curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+# Create cluster with load balancer
+k3d cluster create mantl \
+  --api-port 6550 \
+  --servers 1 \
+  --agents 2 \
+  --port "8080:80@loadbalancer" \
+  --port "8443:443@loadbalancer"
+
+# Deploy platform
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -k clusters/production
+
+# Access ArgoCD UI
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+
+#### Option D: Docker Desktop Kubernetes
+
+**Best for**: macOS/Windows users, integrated Docker experience
+
+```bash
+# Enable Kubernetes in Docker Desktop settings
+# Settings → Kubernetes → Enable Kubernetes → Apply & Restart
+
+# Wait for Kubernetes to be ready
+kubectl cluster-info
+
+# Deploy platform
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -k clusters/production
+
+# Access ArgoCD UI
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+
+#### Option E: MicroK8s
+
+**Best for**: Ubuntu/Linux users, production-like experience, snap users
+
+```bash
+# Install MicroK8s (Ubuntu/Linux)
+sudo snap install microk8s --classic
+
+# Add user to microk8s group
+sudo usermod -a -G microk8s $USER
+sudo chown -f -R $USER ~/.kube
+newgrp microk8s
+
+# Enable required addons
+microk8s enable dns storage ingress
+
+# Configure kubectl alias
+alias kubectl='microk8s kubectl'
+
+# Deploy platform
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -k clusters/production
+
+# Access ArgoCD UI
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+
+**📚 Detailed Setup**: See [docs/quickstart-platform.md](docs/quickstart-platform.md) for comprehensive local setup instructions.
+
+### Cloud Deployment Options
+
+### Option 1: AWS (EKS)
 
 ```bash
 # Navigate to EKS blueprint
@@ -102,7 +223,7 @@ aws eks update-kubeconfig --name mantl-eks --region us-east-1
 kubectl apply -k clusters/production/overlays/aws
 ```
 
-### Option 3: Google Cloud (GKE)
+### Option 2: Google Cloud (GKE)
 
 ```bash
 # Navigate to GKE blueprint
@@ -122,7 +243,7 @@ gcloud container clusters get-credentials mantl-gke --region us-central1
 kubectl apply -k clusters/production/overlays/gke-wi
 ```
 
-### Option 4: Azure (AKS)
+### Option 3: Azure (AKS)
 
 ```bash
 cd terraform/blueprints/azure/aks
@@ -192,16 +313,22 @@ mantl/
 - **Cosign**: Container image signing and verification
 - **Network Policies**: Pod-to-pod security with Cilium
 
-### Multi-Cloud Support
+### Multi-Cloud & Local Support
 
 | Provider | Infrastructure | Workload Identity | DNS | Cert Manager |
 |----------|---------------|-------------------|-----|--------------|
+| **Cloud Providers** |
 | AWS | ✅ EKS | ✅ IRSA | ✅ Route53 | ✅ ACM |
 | GCP | ✅ GKE | ✅ Workload Identity | ✅ Cloud DNS | ✅ Google CA |
 | Azure | ✅ AKS | ✅ Managed Identity | ✅ Azure DNS | ✅ Azure CA |
 | DigitalOcean | ✅ DOKS | ⚠️ API Token | ✅ DO DNS | ✅ ACME |
 | Linode | ✅ LKE | ⚠️ API Token | ✅ Linode DNS | ✅ ACME Webhook |
-| Local | ✅ kind | N/A | ✅ Manual | ✅ Self-signed |
+| **Local Development** |
+| kind | ✅ Multi-node | N/A | ✅ Manual/Local | ✅ Self-signed |
+| minikube | ✅ Single/Multi-node | N/A | ✅ Addons | ✅ Self-signed |
+| k3d | ✅ k3s in Docker | N/A | ✅ Local LB | ✅ Self-signed |
+| Docker Desktop | ✅ Integrated | N/A | ✅ localhost | ✅ Self-signed |
+| MicroK8s | ✅ Production-like | N/A | ✅ Addons | ✅ Self-signed |
 
 ## 🔐 Security Features
 
