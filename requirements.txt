@@ -1,7 +1,7 @@
 # Core Python dependencies for development and docs
 # Pin strategy: direct pins for reproducibility; keep aligned with CI runners.
 # Note: pytest version should match requirements-test.txt. We plan to unify under a single file soon.
-alabaster==0.7.16
+alabaster==1.0.0
 # Change concurrently with the required ansible version in sample.yml - update comment in sample.yml as needed
 ansible==9.3.0
 pytest==8.4.2
