@@ -54,3 +54,7 @@ resource "google_compute_firewall" "internal_modern" {
     ports    = ["1-65535"]
   }
 }
+
+output "modern_subnetwork_self_link" {
+  value = var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : null
+}
