@@ -1,0 +1,183 @@
+# Falco Helm values
+# CNCF Graduated Project - Runtime Security
+# https://falco.org/docs/
+
+# Driver configuration
+driver:
+  kind: modern_ebpf  # Preferred for kernel 5.8+, fallback to ebpf or module
+  
+# Falco configuration
+falco:
+  grpc:
+    enabled: true
+    bind_address: "unix:///run/falco/falco.sock"
+    threadiness: 0
+  
+  grpc_output:
+    enabled: true
+  
+  # Output channels
+  json_output: true
+  json_include_output_property: true
+  json_include_tags_property: true
+  
+  # Log level
+  log_level: info
+  log_stderr: true
+  log_syslog: false
+  
+  # Buffer sizes
+  syscall_buf_size_preset: 4
+  
+  # Rules
+  rules_files:
+    - /etc/falco/falco_rules.yaml
+    - /etc/falco/falco_rules.local.yaml
+    - /etc/falco/rules.d
+  
+  # Watch config changes
+  watch_config_files: true
+
+# Falcosidekick for alerting
+falcosidekick:
+  enabled: true
+  
+  config:
+    # Slack integration (configure in production)
+    slack:
+      webhookurl: ""
+      outputformat: "all"
+      minimumpriority: "warning"
+    
+    # Prometheus metrics
+    prometheus:
+      extralabels: "cluster:mantl"
+    
+    # Webhook for custom integrations
+    webhook:
+      address: ""
+      minimumpriority: "warning"
+
+  # Web UI for viewing alerts
+  webui:
+    enabled: true
+    replicaCount: 1
+    
+    ingress:
+      enabled: false  # Enable with proper domain
+      # hosts:
+      #   - host: falco.example.com
+      #     paths:
+      #       - path: /
+      #         pathType: Prefix
+    
+    redis:
+      enabled: true
+      storageEnabled: false
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Tolerations for running on all nodes
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+  - effect: NoExecute
+    operator: Exists
+
+# Priority class
+priorityClassName: system-node-critical
+
+# Pod security
+podSecurityContext:
+  runAsNonRoot: false  # Falco needs root for eBPF
+
+# Service account
+serviceAccount:
+  create: true
+  name: falco
+
+# Metrics for Prometheus
+metrics:
+  enabled: true
+  service:
+    ports:
+      - port: 8765
+        targetPort: 8765
+        protocol: TCP
+        name: metrics
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    labels:
+      release: prometheus
+
+# Custom rules (add to rules.d/)
+customRules:
+  # Kubernetes-specific rules
+  k8s-rules.yaml: |-
+    - rule: Create Privileged Pod
+      desc: Detect creation of privileged pods
+      condition: >
+        kevt and kcreate and pod and
+        ka.req.pod.containers.privileged=true
+      output: >
+        Privileged pod created 
+        (user=%ka.user.name pod=%ka.resp.name ns=%ka.target.namespace)
+      priority: WARNING
+      tags: [k8s, pod, privileged]
+
+    - rule: Pod Created in Kube Namespace
+      desc: Detect pod creation in kube-system or kube-public
+      condition: >
+        kevt and kcreate and pod and
+        (ka.target.namespace=kube-system or ka.target.namespace=kube-public) and
+        not ka.user.name in (system:serviceaccount:kube-system:*)
+      output: >
+        Pod created in system namespace 
+        (user=%ka.user.name pod=%ka.resp.name ns=%ka.target.namespace)
+      priority: NOTICE
+      tags: [k8s, pod, namespace]
+
+    - rule: Service Account Token Accessed
+      desc: Detect access to service account tokens
+      condition: >
+        open_read and fd.name startswith /var/run/secrets/kubernetes.io/serviceaccount
+        and not proc.name in (pause, kubelet)
+      output: >
+        Service account token accessed 
+        (proc=%proc.name file=%fd.name container=%container.name)
+      priority: NOTICE
+      tags: [k8s, credential, token]
+  
+  # Container escape detection
+  container-escape.yaml: |-
+    - rule: Container Escape via Hostpath
+      desc: Detect potential container escape via hostpath mount
+      condition: >
+        spawned_process and container and
+        (proc.name = nsenter or proc.name = chroot) and
+        proc.pname != runc
+      output: >
+        Potential container escape detected 
+        (proc=%proc.name container=%container.name image=%container.image.repository)
+      priority: CRITICAL
+      tags: [container, escape, mitre_privilege_escalation]
+
+    - rule: Write Below Root
+      desc: Detect writes to root filesystem
+      condition: >
+        write and fd.directory = / and 
+        not fd.name in (/.dockerenv, /dev/null) and
+        container
+      output: >
+        Write to root filesystem 
+        (file=%fd.name proc=%proc.name container=%container.name)
+      priority: ERROR
+      tags: [container, filesystem]

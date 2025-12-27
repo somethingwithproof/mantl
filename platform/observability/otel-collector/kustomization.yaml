@@ -1,0 +1,17 @@
+# CNCF Graduated: OpenTelemetry
+# https://opentelemetry.io/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: observability
+
+resources:
+  - namespace.yaml
+
+helmCharts:
+  - name: opentelemetry-collector
+    repo: https://open-telemetry.github.io/opentelemetry-helm-charts
+    version: 0.107.0
+    releaseName: otel-collector
+    namespace: observability
+    valuesFile: values.yaml
