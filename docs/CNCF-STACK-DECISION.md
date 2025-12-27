@@ -27,9 +27,8 @@ After analysis, we're adopting a **focused, production-ready stack** rather than
 |-----------|---------|-------------|---------|
 | Prometheus | 65.2.0 (stack) | Graduated | Metrics + Alerting |
 | OpenTelemetry | 0.115.x | Graduated | Telemetry pipeline |
-| Jaeger | 3.3.1 | Graduated | Distributed tracing |
+| Tempo | 2.x | — | Distributed tracing |
 | Loki | 6.x | — | Log aggregation |
-| Tempo | 2.x | — | Tracing (alternative) |
 | Grafana | 11.x | — | Visualization |
 | Falco | 4.15.0 | Graduated | Runtime security |
 | Harbor | 1.16.0 | Graduated | On-prem registry |
@@ -62,9 +61,8 @@ platform/
 ├── observability/
 │   ├── prometheus/       🆕 Metrics + Grafana
 │   ├── otel-collector/   🆕 Telemetry pipeline
-│   ├── jaeger/           🆕 Distributed tracing
-│   ├── loki/             🆕 Log aggregation
-│   └── tempo/            🆕 Tracing (alternative)
+│   ├── tempo/            🆕 Distributed tracing
+│   └── loki/             🆕 Log aggregation
 ├── registry/
 │   └── harbor/           🆕 On-prem registry
 ├── secrets/
@@ -80,15 +78,15 @@ policies/
 
 ## CNCF Coverage
 
-**Graduated Projects Used**: 10
+**Graduated Projects Used**: 9
 - Kubernetes, Cilium, ArgoCD, cert-manager, Kyverno
-- Prometheus, OpenTelemetry, Jaeger, Falco, Harbor
+- Prometheus, OpenTelemetry, Falco, Harbor
 
 **Incubating Projects Used**: 2
 - External Secrets, External DNS
 
 **Non-CNCF Components**: 3
-- Grafana (visualization), Loki (logs), Tempo (tracing alternative)
+- Grafana (visualization), Loki (logs), Tempo (tracing)
 
 This is a focused stack optimized for production use, not badge collection.
 
@@ -103,12 +101,11 @@ This is a focused stack optimized for production use, not badge collection.
 4. Kyverno          (sync-wave: 3) - Policy
 5. Prometheus       (sync-wave: 4) - Metrics + Grafana
 6. Loki             (sync-wave: 4) - Log aggregation
-7. Tempo            (sync-wave: 4) - Tracing backend
+7. Tempo            (sync-wave: 4) - Distributed tracing
 8. OpenTelemetry    (sync-wave: 5) - Telemetry pipeline
-9. Jaeger           (sync-wave: 5) - Distributed tracing
-10. Falco           (sync-wave: 5) - Security
-11. Harbor          (sync-wave: 6) - Registry
-12. External DNS    (sync-wave: 6) - DNS
+9. Falco            (sync-wave: 5) - Runtime security
+10. Harbor          (sync-wave: 6) - Registry
+11. External DNS    (sync-wave: 6) - DNS
 ```
 
 ---

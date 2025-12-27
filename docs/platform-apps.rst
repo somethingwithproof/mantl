@@ -44,14 +44,14 @@ Platform Components
   - Path: ``platform/observability/otel-collector``
   - Namespace: ``observability``
   - Receives: OTLP, Jaeger, Zipkin protocols
-  - Exports to: Prometheus (metrics), Jaeger (traces)
+  - Exports to: Prometheus (metrics), Tempo (traces), Loki (logs)
 
-- **jaeger**: Installs Jaeger distributed tracing platform
-  - Path: ``platform/observability/jaeger``
+- **tempo**: Installs Grafana Tempo distributed tracing backend
+  - Path: ``platform/observability/tempo``
   - Namespace: ``observability``
-  - Components: Collector, Query UI, Elasticsearch backend
-  - Storage: 7-day trace retention in Elasticsearch
-  - UI: ``http://jaeger-query:16686``
+  - Components: Distributor, Ingester, Querier, Compactor
+  - Storage: Object storage backend (S3, GCS, etc.)
+  - Query: Via Grafana Explore or HTTP API at port 3100
 
 - **falco**: Installs Falco runtime security monitoring
   - Path: ``platform/security/falco``
@@ -101,17 +101,17 @@ The observability stack provides full telemetry correlation:
 2. **Collection**: OTel Collector receives and processes telemetry
 3. **Storage**:
    - Metrics → Prometheus
-   - Traces → Jaeger → Elasticsearch
-   - Logs → (Loki planned)
+   - Traces → Tempo → Object Storage
+   - Logs → Loki → Object Storage
 4. **Visualization**: Grafana with pre-configured data sources
 
 Access Grafana::
 
   kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
 
-Access Jaeger UI::
+Access Tempo API::
 
-  kubectl port-forward -n observability svc/jaeger-query 16686:16686
+  kubectl port-forward -n observability svc/tempo 3100:3100
 
 See ``docs/ara/ARA-0005-observability-stack.md`` for architecture details.
 
