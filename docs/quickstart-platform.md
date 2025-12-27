@@ -1,20 +1,208 @@
-# Mantl 2026 Platform Quickstart
+# Mantl Platform Quickstart
 
-1) Bootstrap ArgoCD
-- Apply platform/base/argocd/kustomization.yaml or install ArgoCD via Helm and then apply clusters/production/apps/argocd*.yaml.
+**Last Updated**: 2025-12-27
 
-2) Apply production app set
+Deploy a production-ready Kubernetes platform with observability, security, and GitOps in minutes.
+
+## Prerequisites
+
+- Kubernetes cluster 1.27+ (EKS, GKE, AKS, DOKS, LKE, or kind for local)
+- `kubectl` configured for your cluster
+- Git repository access (GitHub, GitLab, etc.)
+
+## Quick Deploy
+
+### 1. Install ArgoCD
+
+```bash
+kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 ```
-kubectl apply -k clusters/production
+
+Wait for ArgoCD to be ready:
+```bash
+kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
 ```
-This installs cert-manager, ESO, Kyverno (+ policies), Gateway API CRDs, Cilium, Spinnaker Operator, Spinnaker secrets/base, and the sample Gateway/HTTPRoute.
 
-3) DNS/Certificates
-- Choose one DNS‑01 issuer app in clusters/production/apps and add it to clusters/production/kustomization.yaml, or use the default HTTP‑01 issuer.
+### 2. Deploy Platform Stack
 
-4) Secrets via Vault
-- Populate Vault with keys referenced by ExternalSecrets (see platform/base/cert-manager/acme/* and addons/spinnaker/*/externalsecret.yaml).
+Deploy all platform components using the app-of-apps pattern:
 
-5) Verify
-- ArgoCD UI (namespace argocd) shows apps healthy.
-- Gateway: create an A record for app.example.com pointing at the cluster LB and curl through the sample route.
+```bash
+kubectl apply -f clusters/production/platform-apps.yaml
+```
+
+This deploys in dependency order (sync waves):
+- **Wave 1**: Cilium (CNI + service mesh)
+- **Wave 2**: cert-manager (TLS automation)
+- **Wave 3**: External Secrets, Kyverno (secrets + policy)
+- **Wave 4**: Prometheus, Loki, Tempo (observability backends)
+- **Wave 5**: OTel Collector, Jaeger, Falco (telemetry + security)
+- **Wave 6**: Harbor, External DNS (registry + DNS)
+
+### 3. Monitor Deployment
+
+**Watch ArgoCD sync status:**
+```bash
+kubectl get applications -n argocd -w
+```
+
+**Access ArgoCD UI:**
+```bash
+# Get admin password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+# Port forward to UI
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# Open https://localhost:8080
+# Username: admin
+# Password: (from command above)
+```
+
+### 4. Access Observability Stack
+
+**Grafana (metrics + dashboards):**
+```bash
+kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
+# Open http://localhost:3000
+# Default credentials: admin/prom-operator
+```
+
+**Jaeger (distributed tracing):**
+```bash
+kubectl port-forward -n observability svc/jaeger-query 16686:16686
+# Open http://localhost:16686
+```
+
+**Prometheus (metrics):**
+```bash
+kubectl port-forward -n monitoring svc/prometheus-prometheus 9090:9090
+# Open http://localhost:9090
+```
+
+## Optional Configuration
+
+### DNS Automation (Cloud Providers)
+
+Choose one ExternalDNS configuration for your provider:
+
+```bash
+# AWS Route53
+kubectl apply -f clusters/production/apps/external-dns-aws.yaml
+
+# Google Cloud DNS
+kubectl apply -f clusters/production/apps/external-dns-gcp.yaml
+
+# Azure DNS
+kubectl apply -f clusters/production/apps/external-dns-azure.yaml
+
+# DigitalOcean
+kubectl apply -f clusters/production/apps/external-dns-digitalocean.yaml
+
+# Linode
+kubectl apply -f clusters/production/apps/external-dns-linode.yaml
+```
+
+### TLS Certificate Issuers
+
+Choose one DNS-01 ACME issuer for automated TLS:
+
+```bash
+# Cloudflare
+kubectl apply -f clusters/production/apps/cert-manager-issuer-dns-cloudflare.yaml
+
+# Route53
+kubectl apply -f clusters/production/apps/cert-manager-issuer-dns-route53.yaml
+
+# Google Cloud DNS
+kubectl apply -f clusters/production/apps/cert-manager-issuer-dns-gcp.yaml
+```
+
+### Secrets Management
+
+Configure External Secrets to sync from your cloud provider:
+
+1. **AWS Secrets Manager**: Set up IRSA for the external-secrets pod
+2. **GCP Secret Manager**: Configure Workload Identity
+3. **Azure Key Vault**: Set up Managed Identity
+4. **HashiCorp Vault**: Configure Vault authentication
+
+See `docs/secrets-and-issuers.md` for detailed configuration.
+
+## Verification
+
+### Check All Platform Components
+
+```bash
+# All applications should show "Healthy" and "Synced"
+kubectl get applications -n argocd
+
+# Check all platform pods are running
+kubectl get pods -A | grep -E "argocd|monitoring|observability|kube-system|cert-manager|kyverno|falco"
+```
+
+### Test Observability Stack
+
+**1. Generate test metrics:**
+```bash
+kubectl run test-pod --image=nginx --restart=Never
+kubectl delete pod test-pod
+```
+
+**2. Send test traces:**
+```bash
+# Port forward OTel Collector
+kubectl port-forward -n observability svc/otel-collector 4317:4317
+
+# Use any OTLP-compatible client to send traces to localhost:4317
+```
+
+**3. View in Grafana:**
+- Navigate to http://localhost:3000
+- Explore → Select "Prometheus" data source
+- Query: `up{job="kubernetes-pods"}`
+
+**4. View traces in Jaeger:**
+- Navigate to http://localhost:16686
+- Select a service from the dropdown
+- Click "Find Traces"
+
+## Next Steps
+
+1. **Deploy your first application**: See `applications/templates/web-service/base/`
+2. **Configure ingress**: Deploy Gateway API resources in `platform/ingress/gateway-api/`
+3. **Set up Spinnaker**: Deploy continuous delivery pipelines (see `docs/spinnaker-registries.md`)
+4. **Review policies**: Check Kyverno policies in `policies/kyverno/`
+5. **Enable runtime security**: Review Falco alerts in Grafana
+
+## Troubleshooting
+
+**ArgoCD sync failures:**
+```bash
+# Get detailed sync status
+kubectl describe application <app-name> -n argocd
+
+# View application logs
+kubectl logs -n argocd deployment/argocd-application-controller
+```
+
+**Pod failures:**
+```bash
+# Check pod status
+kubectl get pods -A | grep -v Running
+
+# View pod logs
+kubectl logs -n <namespace> <pod-name>
+
+# Describe pod for events
+kubectl describe pod -n <namespace> <pod-name>
+```
+
+## Documentation
+
+- Platform Components: `docs/platform-apps.rst`
+- Architecture Decisions: `docs/ara/README.md`
+- Observability Stack: `docs/ara/ARA-0005-observability-stack.md`
+- Security Baseline: `docs/security.md`
+- Multi-Cloud Setup: `docs/multicloud.rst`
