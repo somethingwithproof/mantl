@@ -59,6 +59,27 @@ jobs:
         run: terraform validate
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@v4
-      - name: TFLint (non-blocking)
+      - name: TFLint init
+        run: tflint --init
+      - name: TFLint (blocking)
         run: tflint -f compact
-        continue-on-error: true
+
+  tfsec:
+    name: tfsec (repo)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aquasecurity/tfsec-action@v1
+        with:
+          working_directory: terraform
+          soft_fail: false
+
+  checkov:
+    name: Checkov (repo)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terraform
+          soft_fail: false
