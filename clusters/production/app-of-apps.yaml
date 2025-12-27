@@ -1,0 +1,45 @@
+# Mantl Platform - Root Application
+# This is the single entry point for bootstrapping the entire platform.
+#
+# Deploy with:
+#   kubectl apply -f clusters/production/app-of-apps.yaml
+#
+# Prerequisites:
+#   1. ArgoCD installed in the cluster
+#   2. kubectl configured for target cluster
+#
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mantl-platform
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: mantl-platform
+    app.kubernetes.io/part-of: mantl
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/thomasvincent/mantl.git
+    targetRevision: main
+    path: clusters/production
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
