@@ -1,0 +1,109 @@
+# Evidence Collector: Metric-based Evidence
+# Queries Prometheus for compliance metrics
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: compliance-metric-evidence
+  namespace: compliance-system
+  labels:
+    compliance.mantl.io/collector: metric-evidence
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: compliance-collector
+          restartPolicy: OnFailure
+          containers:
+            - name: collector
+              image: ghcr.io/mantl/compliance-collector:latest
+              args:
+                - metric-evidence
+                - --prometheus-url=http://prometheus-prometheus.monitoring.svc.cluster.local:9090
+                - --queries-file=/etc/compliance/metric-queries.yaml
+                - --output=s3://$(EVIDENCE_BUCKET)/metric-evidence/$(DATE)/
+              env:
+                - name: EVIDENCE_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: compliance-config
+                      key: evidence-bucket
+                - name: DATE
+                  value: "$(date +%Y-%m-%d-%H%M)"
+              volumeMounts:
+                - name: queries
+                  mountPath: /etc/compliance
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+          volumes:
+            - name: queries
+              configMap:
+                name: compliance-metric-queries
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: compliance-metric-queries
+  namespace: compliance-system
+data:
+  metric-queries.yaml: |
+    queries:
+      # CC7.1 - Security Event Detection
+      - name: falco-events
+        controlId: CC7.1
+        query: |
+          sum(increase(falco_events_total[24h])) by (rule, priority)
+        description: "Falco security events in the last 24 hours"
+
+      # A1.1 - Capacity Management
+      - name: memory-utilization
+        controlId: A1.1
+        query: |
+          sum(container_memory_usage_bytes{namespace!="kube-system"}) by (namespace) /
+          sum(kube_resourcequota{type="hard",resource="memory"}) by (namespace) * 100
+        description: "Memory utilization by namespace"
+
+      - name: cpu-utilization
+        controlId: A1.1
+        query: |
+          sum(rate(container_cpu_usage_seconds_total{namespace!="kube-system"}[5m])) by (namespace) /
+          sum(kube_resourcequota{type="hard",resource="cpu"}) by (namespace) * 100
+        description: "CPU utilization by namespace"
+
+      # CC4.1 - Ongoing Monitoring
+      - name: system-uptime
+        controlId: CC4.1
+        query: |
+          avg(up{job=~".*"}) * 100
+        description: "Average system uptime percentage"
+
+      - name: probe-success-rate
+        controlId: CC4.1
+        query: |
+          avg(probe_success{job="blackbox"}) * 100
+        description: "External probe success rate"
+
+      # A1.2 - Environmental Protection
+      - name: pod-restarts
+        controlId: A1.2
+        query: |
+          sum(increase(kube_pod_container_status_restarts_total[24h])) by (namespace, pod)
+        description: "Pod restart count in last 24 hours"
+
+      - name: pdb-coverage
+        controlId: A1.2
+        query: |
+          count(kube_poddisruptionbudget_status_expected_pods > 0) /
+          count(kube_deployment_spec_replicas > 1) * 100
+        description: "Percentage of multi-replica deployments with PDB"
+
+      # CC6.8 - Vulnerability Metrics
+      - name: vulnerability-counts
+        controlId: CC6.8
+        query: |
+          sum(trivy_vulnerability_count{severity=~"CRITICAL|HIGH"}) by (image, severity)
+        description: "Critical and high vulnerabilities by image"

@@ -1,0 +1,69 @@
+# Standard SOC2 Profile
+# Enables all automated controls with sane defaults
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceProfile
+metadata:
+  name: soc2-standard
+  labels:
+    compliance.mantl.io/framework: soc2-type2
+spec:
+  frameworkRef: soc2-type2
+  mode: enforce
+
+  # Exclude system namespaces from enforcement
+  excludeNamespaces:
+    - kube-system
+    - kube-public
+    - kube-node-lease
+    - argocd
+    - monitoring
+    - observability
+    - cert-manager
+    - external-secrets
+
+  # Evidence storage configuration
+  evidenceStore:
+    type: s3
+    bucket: mantl-compliance-evidence
+    prefix: soc2/
+    encryption:
+      type: aws-kms
+      keyId: alias/mantl-compliance
+
+  # Alert on violations
+  notificationChannels:
+    - type: slack
+      secretRef: compliance-slack-webhook
+      minSeverity: high
+    - type: pagerduty
+      secretRef: compliance-pagerduty-key
+      minSeverity: critical
+---
+# Minimal SOC2 Profile
+# For development/staging environments - audit mode only
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceProfile
+metadata:
+  name: soc2-minimal
+  labels:
+    compliance.mantl.io/framework: soc2-type2
+spec:
+  frameworkRef: soc2-type2
+  mode: audit  # Don't block, just report
+
+  # Only critical controls
+  includeControls:
+    - CC6.1   # Network segmentation
+    - CC6.6   # Boundary protection
+    - CC6.8   # Malicious software prevention
+    - CC7.1   # Security event detection
+
+  evidenceStore:
+    type: s3
+    bucket: mantl-compliance-evidence-dev
+    prefix: soc2-dev/
+
+  notificationChannels:
+    - type: slack
+      secretRef: compliance-slack-webhook-dev
+      minSeverity: critical

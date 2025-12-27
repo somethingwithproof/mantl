@@ -1,0 +1,98 @@
+# Evidence Collector: Log-based Evidence
+# Queries Loki for security-relevant logs
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: compliance-log-evidence
+  namespace: compliance-system
+  labels:
+    compliance.mantl.io/collector: log-evidence
+spec:
+  schedule: "0 1 * * *"  # Daily at 1 AM
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: compliance-collector
+          restartPolicy: OnFailure
+          containers:
+            - name: collector
+              image: ghcr.io/mantl/compliance-collector:latest
+              args:
+                - log-evidence
+                - --loki-url=http://loki-gateway.observability.svc.cluster.local
+                - --queries-file=/etc/compliance/log-queries.yaml
+                - --output=s3://$(EVIDENCE_BUCKET)/log-evidence/$(DATE)/
+                - --time-range=24h
+              env:
+                - name: EVIDENCE_BUCKET
+                  valueFrom:
+                    configMapKeyRef:
+                      name: compliance-config
+                      key: evidence-bucket
+                - name: DATE
+                  value: "$(date +%Y-%m-%d)"
+              volumeMounts:
+                - name: queries
+                  mountPath: /etc/compliance
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+          volumes:
+            - name: queries
+              configMap:
+                name: compliance-log-queries
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: compliance-log-queries
+  namespace: compliance-system
+data:
+  log-queries.yaml: |
+    queries:
+      # CC6.3 - Access Removal Evidence
+      - name: access-changes
+        controlId: CC6.3
+        query: |
+          {namespace="kube-system"} 
+          |= "rolebinding" or |= "clusterrolebinding"
+          |= "delete" or |= "create" or |= "update"
+        description: "Role binding changes indicating access modifications"
+
+      # CC7.1 - Security Events
+      - name: security-events
+        controlId: CC7.1
+        query: |
+          {app="falco"}
+          | json
+          | priority=~"Critical|Error|Warning"
+        description: "Falco security events"
+
+      # CC7.2 - Incident Response
+      - name: alertmanager-alerts
+        controlId: CC7.2
+        query: |
+          {app="alertmanager"}
+          |= "firing"
+        description: "Alertmanager firing alerts"
+
+      # CC7.3 - Kubernetes Audit
+      - name: kubernetes-audit
+        controlId: CC7.3
+        query: |
+          {job="kubernetes-audit"}
+          | json
+          | verb=~"create|delete|update|patch"
+        description: "Kubernetes API audit log"
+
+      # CC4.2 - Deficiency Communication
+      - name: critical-errors
+        controlId: CC4.2
+        query: |
+          {namespace=~".+"}
+          |= "error" or |= "critical" or |= "fatal"
+          | rate() by (namespace) > 0
+        description: "Critical application errors"

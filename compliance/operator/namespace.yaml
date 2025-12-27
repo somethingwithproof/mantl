@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: compliance-system
+  labels:
+    app.kubernetes.io/name: compliance
+    app.kubernetes.io/part-of: mantl
+    # Exempt from compliance policies to avoid chicken-egg
+    compliance.mantl.io/exempt: "true"

@@ -1,0 +1,76 @@
+# Kyverno Policy: Require Signed Container Images
+# SOC2 CC6.8 - Malicious Software Prevention
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: soc2-require-image-signatures
+  labels:
+    compliance.mantl.io/framework: soc2
+    compliance.mantl.io/control: CC6.8
+    compliance.mantl.io/severity: critical
+  annotations:
+    policies.kyverno.io/title: Require Signed Container Images
+    policies.kyverno.io/category: SOC2 Compliance
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: |
+      SOC2 CC6.8 requires controls to prevent malicious software.
+      This policy verifies that all container images are signed
+      using Sigstore/Cosign.
+spec:
+  validationFailureAction: Enforce
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-image-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+      verifyImages:
+        - imageReferences:
+            - "*"  # All images
+          attestors:
+            - count: 1
+              entries:
+                - keyless:
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subject: "https://github.com/YOUR_ORG/*/.github/workflows/*"
+                    rekor:
+                      url: "https://rekor.sigstore.dev"
+          mutateDigest: true
+          verifyDigest: true
+---
+# Alternative: Key-based verification for private registries
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: soc2-verify-internal-images
+  labels:
+    compliance.mantl.io/framework: soc2
+    compliance.mantl.io/control: CC6.8
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: verify-harbor-images
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - imageReferences:
+            - "harbor.internal/*"
+          attestors:
+            - count: 1
+              entries:
+                - keys:
+                    publicKeys: |
+                      -----BEGIN PUBLIC KEY-----
+                      # Add your cosign public key here
+                      -----END PUBLIC KEY-----

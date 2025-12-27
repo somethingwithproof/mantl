@@ -1,0 +1,90 @@
+# Kyverno Policy: Require Resource Limits
+# SOC2 A1.1 - Capacity Management
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: soc2-require-resource-limits
+  labels:
+    compliance.mantl.io/framework: soc2
+    compliance.mantl.io/control: A1.1
+    compliance.mantl.io/severity: medium
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/category: SOC2 Compliance
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: |
+      SOC2 A1.1 requires capacity management. This policy ensures all
+      containers have resource requests and limits defined to prevent
+      resource exhaustion.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-cpu-limits
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: |
+          SOC2 A1.1 Violation: CPU limits are required for capacity management.
+          Set spec.containers[*].resources.limits.cpu
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    cpu: "?*"
+                  requests:
+                    cpu: "?*"
+
+    - name: require-memory-limits
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: |
+          SOC2 A1.1 Violation: Memory limits are required for capacity management.
+          Set spec.containers[*].resources.limits.memory
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    memory: "?*"
+                  requests:
+                    memory: "?*"
+
+    - name: validate-memory-ratio
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      preconditions:
+        all:
+          - key: "{{request.object.spec.containers[0].resources.limits.memory || ''}}"
+            operator: NotEquals
+            value: ""
+      validate:
+        message: |
+          SOC2 A1.1: Memory limit should not exceed 4x the request to prevent over-provisioning.
+        deny:
+          conditions:
+            any:
+              - key: "{{ divide(request.object.spec.containers[0].resources.limits.memory, request.object.spec.containers[0].resources.requests.memory) }}"
+                operator: GreaterThan
+                value: 4
