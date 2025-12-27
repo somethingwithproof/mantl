@@ -14,3 +14,4 @@ Contents:
    ansible_style
    testing
    release_process
+   ara

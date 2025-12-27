@@ -1,97 +1,62 @@
-# Contributing to Mantl
+# Contributing
 
-We are excited that you're interested in contributing to Mantl! This document provides a high-level overview of how you can get involved.
+Thanks for helping modernize Mantl. This guide covers the day‑to‑day contributor workflow for the 2026 Kubernetes‑first toolkit.
 
-## Getting Started
+## TL;DR
+- Base branch: main
+- Install hooks: `pipx install pre-commit && pre-commit install` (or `pip install pre-commit`)
+- Format/lint/test locally, then open a PR. All CI checks must pass.
 
-1. **Fork the repository**: Start by forking the [Mantl repository](https://github.com/mantl/mantl).
+## Prerequisites
+- GitHub CLI (gh) for PRs and release utilities
+- Docker/Podman
+- kind, kubectl, helm
+- Terraform/OpenTofu
+- Python 3.11+ (Black, Ruff, pytest)
+- Tools used in CI (recommended locally): conftest, kyverno-cli, kubeconform, cosign, syft, trivy
 
-2. **Clone your fork**: 
-   ```
-   git clone git@github.com:YOUR-USERNAME/mantl.git
-   cd mantl
-   ```
+Install methods vary by OS; see your package manager or the projects’ docs.
 
-3. **Set up your environment**:
-   - Install [Terraform](https://www.terraform.io/downloads.html) (required for development)
-   - Install Python dependencies with `pip install -r requirements.txt`
+## Setup
+- Clone and create a feature branch: `git checkout -b feat/short-description`
+- Install dev tools: `pip install -r requirements-dev.txt` if present; otherwise `pip install -r requirements.txt`
+- Enable hooks:
+  ```
+  pre-commit install
+  pre-commit run -a
+  ```
 
-4. **Add the upstream repository**:
-   ```
-   git remote add upstream git://github.com/mantl/mantl.git
-   git fetch upstream
-   ```
+## Dev loop
+- Format/lint: `make fmt && make lint` (Black, Ruff, yamllint, terraform fmt, etc.)
+- Unit/policy tests: `make test` or `pytest -q` if available; `conftest test` on policies/manifests
+- Validate manifests: `kubeconform -strict -summary -ignore-missing-schemas -k8s-version 1.30 -schema-location default` against rendered YAML
+- Kyverno: `kyverno apply policies/kyverno -r <rendered_yaml_dir> --audit-warn` and `kyverno test` if tests exist
+- kind smoke: `make kind-smoke` or follow docs/quickstart-platform.md
 
-5. **Stay in sync**:
-   ```
-   git pull upstream master
-   ```
+## CI parity and required checks
+CI runs policy tests, kyverno validation, kubeconform, kind smoke/e2e, sbom, and security scans. Required checks are listed in docs/ci-required-checks.md. Use `scripts/set-required-checks.sh main` to configure branch protection with gh.
 
-## Development Workflow
+## Security policy promotion (Audit → Enforce)
+Kyverno policies live in policies/kyverno and are applied by the kyverno-policies ArgoCD app.
+- Begin in Audit, review PolicyReports, then flip to Enforce.
+- Signature verification policies ship in Enforce with namespace exceptions for core system namespaces; narrow exceptions over time.
+- Key‑based: inject your Cosign public key: `scripts/set-cosign-key.sh path/to/cosign.pub`.
+- Keyless: set your OIDC subject: `scripts/set-keyless-subject.sh "https://github.com/ORG/REPO/.github/workflows/ci.yaml@refs/heads/main"`.
+See docs/security.md.
 
-1. **Create a branch**: Create a new branch for your feature or bugfix.
-   ```
-   git checkout -b feature/your-feature-name
-   ```
+## Overlays and bootstrap
+- Baseline app set: `kubectl apply -k clusters/production`
+- Provider overlays: see docs/overlays.md for AWS/GKE/AKS and WI overlays
+- Domain customization for Gateway sample: see docs/overlays.md (gateway-sample-custom)
 
-2. **Make your changes**: Develop and test your changes locally.
+## Release
+- Tag vX.Y.Z to trigger release workflow (signs OCI bundles, publishes SBOM)
+- Images and bundles are signed with Cosign; verify with `cosign verify --certificate-oidc-issuer https://token.actions.githubusercontent.com <ref>`
 
-3. **Follow code style**: 
-   - Python code should follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) guidelines
-   - Ansible roles should follow [Ansible best practices](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html)
-   - Terraform configurations should be properly formatted with `terraform fmt`
-
-4. **Write tests**: Add tests for your changes when applicable.
-
-5. **Update documentation**: Update or add documentation as needed.
-
-6. **Commit your changes**: Use clear commit messages that explain your changes.
-
-7. **Push your branch**: Push your branch to your fork.
-   ```
-   git push origin feature/your-feature-name
-   ```
-
-8. **Submit a pull request**: Open a pull request against the upstream master branch.
-
-## Pull Request Guidelines
-
-* Keep PRs focused on a single topic.
-* Provide a clear description of the changes.
-* Link to related issues if applicable.
-* Make sure tests pass.
-* Update documentation as needed.
-
-## Documentation
-
-Documentation is written in reStructuredText and built using Sphinx. The documentation source is in the `docs` directory.
-
-To build the documentation locally:
-
-```
-cd docs
-make html
-```
-
-Then open `_build/html/index.html` in your browser.
-
-## Testing
-
-Before submitting a PR, make sure your changes pass all tests:
-
-- Linting: Ensure your code passes style checks
-- Unit tests: Run available tests
-- Integration tests: When applicable, test your changes in a local environment
-
-## Getting Help
-
-If you have questions or need help, you can:
-
-- Join the [Mantl chat room on Gitter](https://gitter.im/CiscoCloud/mantl)
-- Open an issue on GitHub
+## Pull requests
+- Keep PRs focused; include motivation and testing notes
+- Ensure pre-commit and all CI checks pass
+- Link issues where applicable
 
 ## Code of Conduct
-
-Please respect our [Code of Conduct](code-of-conduct.md) when participating in the Mantl community.
-
-Thank you for your contributions!
+Please respect our [Code of Conduct](code-of-conduct.md).

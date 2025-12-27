@@ -1,0 +1,40 @@
+apiVersion: kyverno.io/v2beta1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+  annotations:
+    policies.kyverno.io/title: Verify Image Signatures (Cosign)
+    policies.kyverno.io/description: >-
+      Require container images to be signed by Cosign for approved registries. Start in Audit, then Enforce.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  exclude:
+    any:
+      - resources:
+          namespaces:
+            - kube-system
+            - kube-public
+            - kube-node-lease
+            - cert-manager
+            - external-dns
+            - spinnaker
+            - argocd
+            - kyverno
+  rules:
+    - name: verify-cosign-ghcr
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/*/*"
+          attestors:
+            - entries:
+                - keys:
+                    publicKeys: |
+                      # TODO: replace with your Cosign public key(s)
+                      -----BEGIN PUBLIC KEY-----
+                      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnPlaceholderKey
+                      -----END PUBLIC KEY-----

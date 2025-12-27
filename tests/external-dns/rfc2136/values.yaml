@@ -1,0 +1,14 @@
+provider: rfc2136
+policy: upsert-only
+registry: txt
+txtOwnerId: mantl-ci
+rfc2136:
+  host: bind9.dns.svc.cluster.local
+  port: 53
+  zone: test.local
+  tsigSecret: testkey
+  tsigKeyname: externaldns-key
+  tsigAxfr: true
+  tsigAlgorithm: hmac-sha256
+sources:
+  - service

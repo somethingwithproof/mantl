@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: spinnaker
+resources:
+  - ../../base
+  - ../accounts/docker/externalsecret.yaml
+patches:
+  - path: patch-artifacts.yaml
+  - path: patch-clouddriver-env.yaml

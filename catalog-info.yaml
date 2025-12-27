@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: mantl-platform
+  description: Mantl 2026 platform repo
+  annotations:
+    github.com/project-slug: YOUR_ORG/mantl
+spec:
+  type: service
+  owner: platform
+  lifecycle: production

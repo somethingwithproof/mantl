@@ -1,3 +1,6 @@
+# Validates AWS Terraform modules. Intentionally "soft" (continue-on-error)
+# to avoid blocking PRs while modules evolve. We will add security/policy checks
+# and consider OpenTofu support in future CI.
 name: Terraform CI (aws)
 on:
   pull_request:

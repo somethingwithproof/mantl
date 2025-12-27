@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-dns
+  namespace: default
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: app.test.local
+spec:
+  selector:
+    app: app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  type: ClusterIP

@@ -1,0 +1,25 @@
+[build-system]
+requires = []
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312", "py313"]
+exclude = ["docs/_build", "legacy", ".git", "build", "dist"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+select = ["E","F","I","B","UP","SIM"]
+ignore = ["E501"]
+exclude = ["docs/_build","legacy","build","dist"]
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-q --maxfail=1 --disable-warnings"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+ignore_missing_imports = true

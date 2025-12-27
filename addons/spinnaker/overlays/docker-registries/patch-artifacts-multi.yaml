@@ -1,0 +1,27 @@
+apiVersion: spinnaker.io/v1alpha2
+kind: SpinnakerService
+metadata:
+  name: spinnaker
+spec:
+  spinnakerConfig:
+    config:
+      artifacts:
+        dockerRegistry:
+          enabled: true
+          accounts:
+            - name: docker-hub
+              address: ${DOCKER_registry}
+              username: ${DOCKER_username}
+              password: ${DOCKER_password}
+            - name: aws-ecr
+              address: ${ECR_registry}
+              username: ${ECR_username}
+              password: ${ECR_password}
+            - name: gcr
+              address: ${GCR_registry}
+              username: ${GCR_username}
+              password: ${GCR_password}
+            - name: ghcr
+              address: ${GHCR_registry}
+              username: ${GHCR_username}
+              password: ${GHCR_password}

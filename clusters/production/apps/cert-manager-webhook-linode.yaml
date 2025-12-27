@@ -1,0 +1,22 @@
+# Placeholder: verify upstream chart details and pin versions before enabling
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-webhook-linode
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://linode.github.io/cert-manager-webhook-linode  # VERIFY
+    chart: cert-manager-webhook-linode                            # VERIFY
+    targetRevision: 1.0.0                                         # PIN
+    helm:
+      values: |
+        groupName: acme.your-domain.com                           # adjust
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

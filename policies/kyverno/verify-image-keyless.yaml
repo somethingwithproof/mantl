@@ -1,0 +1,39 @@
+apiVersion: kyverno.io/v2beta1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-keyless
+  annotations:
+    policies.kyverno.io/title: Verify Keyless Signatures (Fulcio/Rekor)
+    policies.kyverno.io/description: >-
+      Require images to be signed keylessly using Sigstore Fulcio/Rekor. Narrow the subject to your org/repo/workflow.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  exclude:
+    any:
+      - resources:
+          namespaces:
+            - kube-system
+            - kube-public
+            - kube-node-lease
+            - cert-manager
+            - external-dns
+            - spinnaker
+            - argocd
+            - kyverno
+  rules:
+    - name: verify-keyless-gha
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/*/*"
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/YOUR_ORG/*"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: "https://rekor.sigstore.dev"
