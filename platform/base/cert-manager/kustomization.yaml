@@ -7,6 +7,15 @@ namespace: cert-manager
 
 resources:
   - namespace.yaml
+  # Base ClusterIssuers (self-signed + Let's Encrypt)
+  - cluster-issuers/self-signed.yaml
+  - cluster-issuers/letsencrypt-staging.yaml
+  - cluster-issuers/letsencrypt-production.yaml
+  # Provider-specific issuers - uncomment one:
+  # - cluster-issuers/aws-route53.yaml
+  # - cluster-issuers/gcp-cloud-dns.yaml
+  # - cluster-issuers/azure-dns.yaml
+  # - cluster-issuers/cloudflare.yaml
 
 helmCharts:
   - name: cert-manager
