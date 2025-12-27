@@ -1,3 +1,9 @@
+#
+# Mantl • GCE modern instances
+# This file tries to be both secure and readable.
+# Witty: yes. Serious: absolutely. Self‑deprecating: we’ve learned enough from our 2016 selves to earn it.
+# If you spot something dubious, please open a PR and roast Past Us (politely).
+#
 variable "use_modern_gce_schema" {
   description = "If true, create control nodes with modern google_compute_instance schema."
   default     = false
@@ -50,6 +56,7 @@ resource "google_compute_instance" "control_modern" {
   tags         = [var.short_name, "control"]
 
   # Boot disk
+  # Boot like you mean it: pinned image family + optional CMEK.
   boot_disk {
     initialize_params {
       image = data.google_compute_image.boot.self_link
@@ -65,6 +72,7 @@ resource "google_compute_instance" "control_modern" {
   }
 
   # Attached LVM/data disk
+  # Because someone always needs more IOPS later: attach the LVM/data disk.
   attached_disk {
     source      = element(google_compute_disk.mi-control-lvm.*.self_link, count.index)
     device_name = "lvm"
@@ -72,6 +80,7 @@ resource "google_compute_instance" "control_modern" {
   }
 
   # Network
+  # Networking: default to no public IP; modern subnetwork when provided.
   network_interface {
     network    = (var.use_modern_gce_network || var.modern_subnetwork_self_link != "") ? null : google_compute_network.mi-network.name
     subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : null
@@ -82,6 +91,7 @@ resource "google_compute_instance" "control_modern" {
   }
 
   # Shielded VM
+  # Shielded VMs: future you will thank you; attacker you will curse you.
   shielded_instance_config {
     enable_secure_boot          = true
     enable_vtpm                 = true
