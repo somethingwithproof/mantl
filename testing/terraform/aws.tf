@@ -12,16 +12,16 @@ variable "amis" {
     sa-east-1      = "ami-26b93b4a"
   }
 }
-variable "availability_zones"  {
+variable "availability_zones" {
   default = "a,b,c"
 }
 variable "control_count" { default = 3 }
-variable "datacenter" {default = "aws-us-west-2"}
+variable "datacenter" { default = "aws-us-west-2" }
 variable "edge_count" { default = 2 }
-variable "region" {default = "us-west-2"}
-variable "short_name" {default = "mantl-ci"}
-variable "long_name" {default = "ciscocloud-mantl-ci"}
-variable "ssh_username" {default = "centos"}
+variable "region" { default = "us-west-2" }
+variable "short_name" { default = "mantl-ci" }
+variable "long_name" { default = "ciscocloud-mantl-ci" }
+variable "ssh_username" { default = "centos" }
 variable "worker_count" { default = 4 }
 variable "kubeworker_count" { default = 2 }
 variable "dns_subdomain" { default = ".dev" }
@@ -33,7 +33,7 @@ variable "worker_type" { default = "m3.large" }
 variable "kubeworker_type" { default = "m3.large" }
 
 provider "aws" {
-  region = "${var.region}"
+  region = var.region
 }
 
 # _local is for development only s3 or something else should be used
@@ -56,43 +56,43 @@ provider "aws" {
 #}
 
 module "vpc" {
-  source ="./terraform/aws/vpc"
-  availability_zones = "${var.availability_zones}"
-  short_name = "${var.short_name}-${var.build_number}"
-  long_name = "${var.long_name}"
-  region = "${var.region}"
+  source             = "./terraform/aws/vpc"
+  availability_zones = var.availability_zones
+  short_name         = "${var.short_name}-${var.build_number}"
+  long_name          = var.long_name
+  region             = var.region
 }
 
 module "ssh-key" {
-  source ="./terraform/aws/ssh"
+  source     = "./terraform/aws/ssh"
   short_name = "${var.short_name}-${var.build_number}"
 }
 
 module "security-groups" {
-  source = "./terraform/aws/security_groups"
+  source     = "./terraform/aws/security_groups"
   short_name = "${var.short_name}-${var.build_number}"
-  vpc_id = "${module.vpc.vpc_id}"
+  vpc_id     = module.vpc.vpc_id
 }
 
 module "iam-profiles" {
-  source = "./terraform/aws/iam"
+  source     = "./terraform/aws/iam"
   short_name = "${var.short_name}-${var.build_number}"
 }
 
 module "control-nodes" {
-  source = "./terraform/aws/instance"
-  count = "${var.control_count}"
-  datacenter = "${var.datacenter}"
-  role = "control"
-  ec2_type = "${var.control_type}"
-  iam_profile = "${module.iam-profiles.control_iam_instance_profile}"
-  ssh_username = "${var.ssh_username}"
-  source_ami = "${lookup(var.amis, var.region)}"
-  short_name = "${var.short_name}-${var.build_number}"
-  ssh_key_pair = "${module.ssh-key.ssh_key_name}"
-  availability_zones = "${module.vpc.availability_zones}"
+  source             = "./terraform/aws/instance"
+  count              = var.control_count
+  datacenter         = var.datacenter
+  role               = "control"
+  ec2_type           = var.control_type
+  iam_profile        = module.iam-profiles.control_iam_instance_profile
+  ssh_username       = var.ssh_username
+  source_ami         = lookup(var.amis, var.region)
+  short_name         = "${var.short_name}-${var.build_number}"
+  ssh_key_pair       = module.ssh-key.ssh_key_name
+  availability_zones = module.vpc.availability_zones
   security_group_ids = "${module.vpc.default_security_group},${module.security-groups.ui_security_group},${module.security-groups.control_security_group}"
-  vpc_subnet_ids = "${module.vpc.subnet_ids}"
+  vpc_subnet_ids     = module.vpc.subnet_ids
   # uncomment below it you want to use remote state for vpc variables
   #availability_zones = "${terraform_remote_state.vpc.output.availability_zones}"
   #security_group_ids = "${terraform_remote_state.vpc.output.default_security_group},${module.security-groups.ui_security_group},${module.security-groups.control_security_group}"
@@ -100,18 +100,18 @@ module "control-nodes" {
 }
 
 module "edge-nodes" {
-  source = "./terraform/aws/instance"
-  count = "${var.edge_count}"
-  datacenter = "${var.datacenter}"
-  role = "edge"
-  ec2_type = "${var.edge_type}"
-  ssh_username = "${var.ssh_username}"
-  source_ami = "${lookup(var.amis, var.region)}"
-  short_name = "${var.short_name}-${var.build_number}"
-  ssh_key_pair = "${module.ssh-key.ssh_key_name}"
-  availability_zones = "${module.vpc.availability_zones}"
+  source             = "./terraform/aws/instance"
+  count              = var.edge_count
+  datacenter         = var.datacenter
+  role               = "edge"
+  ec2_type           = var.edge_type
+  ssh_username       = var.ssh_username
+  source_ami         = lookup(var.amis, var.region)
+  short_name         = "${var.short_name}-${var.build_number}"
+  ssh_key_pair       = module.ssh-key.ssh_key_name
+  availability_zones = module.vpc.availability_zones
   security_group_ids = "${module.vpc.default_security_group},${module.security-groups.edge_security_group}"
-  vpc_subnet_ids = "${module.vpc.subnet_ids}"
+  vpc_subnet_ids     = module.vpc.subnet_ids
   # uncomment below it you want to use remote state for vpc variables
   #availability_zones = "${terraform_remote_state.vpc.output.availability_zones}"
   #security_group_ids = "${terraform_remote_state.vpc.output.default_security_group},${module.security-groups.edge_security_group}"
@@ -119,21 +119,21 @@ module "edge-nodes" {
 }
 
 module "worker-nodes" {
-  source = "./terraform/aws/instance"
-  count = "${var.worker_count}"
-  count_format = "%03d"
-  datacenter = "${var.datacenter}"
+  source               = "./terraform/aws/instance"
+  count                = var.worker_count
+  count_format         = "%03d"
+  datacenter           = var.datacenter
   data_ebs_volume_size = "100"
-  role = "worker"
-  ec2_type = "${var.worker_type}"
-  iam_profile = "${module.iam-profiles.worker_iam_instance_profile}"
-  ssh_username = "${var.ssh_username}"
-  source_ami = "${lookup(var.amis, var.region)}"
-  short_name = "${var.short_name}-${var.build_number}"
-  ssh_key_pair = "${module.ssh-key.ssh_key_name}"
-  availability_zones = "${module.vpc.availability_zones}"
-  security_group_ids = "${module.vpc.default_security_group},${module.security-groups.worker_security_group}"
-  vpc_subnet_ids = "${module.vpc.subnet_ids}"
+  role                 = "worker"
+  ec2_type             = var.worker_type
+  iam_profile          = module.iam-profiles.worker_iam_instance_profile
+  ssh_username         = var.ssh_username
+  source_ami           = lookup(var.amis, var.region)
+  short_name           = "${var.short_name}-${var.build_number}"
+  ssh_key_pair         = module.ssh-key.ssh_key_name
+  availability_zones   = module.vpc.availability_zones
+  security_group_ids   = "${module.vpc.default_security_group},${module.security-groups.worker_security_group}"
+  vpc_subnet_ids       = module.vpc.subnet_ids
   # uncomment below it you want to use remote state for vpc variables
   #availability_zones = "${terraform_remote_state.vpc.output.availability_zones}"
   #security_group_ids = "${terraform_remote_state.vpc.output.default_security_group},${module.security-groups.worker_security_group}"
@@ -141,21 +141,21 @@ module "worker-nodes" {
 }
 
 module "kubeworker-nodes" {
-  source = "./terraform/aws/instance"
-  count = "${var.kubeworker_count}"
-  count_format = "%03d"
-  datacenter = "${var.datacenter}"
+  source               = "./terraform/aws/instance"
+  count                = var.kubeworker_count
+  count_format         = "%03d"
+  datacenter           = var.datacenter
   data_ebs_volume_size = "100"
-  role = "kubeworker"
-  ec2_type = "${var.kubeworker_type}"
-  iam_profile = "${module.iam-profiles.worker_iam_instance_profile}"
-  ssh_username = "${var.ssh_username}"
-  source_ami = "${lookup(var.amis, var.region)}"
-  short_name = "${var.short_name}-${var.build_number}"
-  ssh_key_pair = "${module.ssh-key.ssh_key_name}"
-  availability_zones = "${module.vpc.availability_zones}"
-  security_group_ids = "${module.vpc.default_security_group},${module.security-groups.worker_security_group}"
-  vpc_subnet_ids = "${module.vpc.subnet_ids}"
+  role                 = "kubeworker"
+  ec2_type             = var.kubeworker_type
+  iam_profile          = module.iam-profiles.worker_iam_instance_profile
+  ssh_username         = var.ssh_username
+  source_ami           = lookup(var.amis, var.region)
+  short_name           = "${var.short_name}-${var.build_number}"
+  ssh_key_pair         = module.ssh-key.ssh_key_name
+  availability_zones   = module.vpc.availability_zones
+  security_group_ids   = "${module.vpc.default_security_group},${module.security-groups.worker_security_group}"
+  vpc_subnet_ids       = module.vpc.subnet_ids
   # uncomment below it you want to use remote state for vpc variables
   #availability_zones = "${terraform_remote_state.vpc.output.availability_zones}"
   #security_group_ids = "${terraform_remote_state.vpc.output.default_security_group},${module.security-groups.worker_security_group}"

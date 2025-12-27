@@ -4,7 +4,13 @@ variable "availability_zone" {}
 variable "allowed_cidrs" {
   description = "List of CIDR blocks allowed for public ingress (SSH/HTTP/HTTPS and service ports)"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = ["*******/0"]
+}
+
+variable "kms_key_id" {
+  description = "Optional KMS key ID or ARN for EBS encryption. If null, the AWS-managed key is used."
+  type        = string
+  default     = null
 }
 
 variable "control_count" {default = "3"}
@@ -94,6 +100,8 @@ resource "aws_ebs_volume" "mi-control-lvm" {
   count = "${var.control_count}"
   size = "${var.control_data_volume_size}"
   type = "gp2"
+  encrypted = true
+  kms_key_id = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
 
   tags = {
     Name              = "${var.short_name}-control-lvm-${format("%02d", count.index+1)}"
@@ -118,9 +126,11 @@ resource "aws_instance" "mi-control-nodes" {
 
   iam_instance_profile = "${module.iam-profiles.control_iam_instance_profile}"
 
-  root_block_device {
+root_block_device {
     delete_on_termination = true
     volume_size           = "${var.control_volume_size}"
+    encrypted             = true
+    kms_key_id            = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
   }
 
   metadata_options {
@@ -150,6 +160,8 @@ resource "aws_ebs_volume" "mi-worker-lvm" {
   count = "${var.worker_count}"
   size = "${var.worker_data_volume_size}"
   type = "gp2"
+  encrypted = true
+  kms_key_id = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
 
   tags = {
     Name              = "${var.short_name}-worker-lvm-${format("%02d", count.index+1)}"
@@ -175,9 +187,11 @@ resource "aws_instance" "mi-worker-nodes" {
 
   iam_instance_profile = "${module.iam-profiles.worker_iam_instance_profile}"
 
-  root_block_device {
+root_block_device {
     delete_on_termination = true
     volume_size           = "${var.worker_volume_size}"
+    encrypted             = true
+    kms_key_id            = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
   }
 
   metadata_options {
@@ -262,6 +276,8 @@ resource "aws_ebs_volume" "mi-kubeworker-lvm" {
   count = "${var.kubeworker_count}"
   size = "${var.worker_data_volume_size}"
   type = "gp2"
+  encrypted = true
+  kms_key_id = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
 
   tags = {
     Name              = "${var.short_name}-kubeworker-lvm-${format("%02d", count.index+1)}"
@@ -287,9 +303,11 @@ resource "aws_instance" "mi-kubeworker-nodes" {
 
   iam_instance_profile = "${module.iam-profiles.worker_iam_instance_profile}"
 
-  root_block_device {
+root_block_device {
     delete_on_termination = true
     volume_size           = "${var.worker_volume_size}"
+    encrypted             = true
+    kms_key_id            = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
   }
 
   metadata_options {
@@ -319,6 +337,8 @@ resource "aws_ebs_volume" "mi-edge-lvm" {
   count = "${var.edge_count}"
   size = "${var.edge_data_volume_size}"
   type = "gp2"
+  encrypted = true
+  kms_key_id = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
 
   tags = {
     Name              = "${var.short_name}-edge-lvm-${format("%02d", count.index+1)}"
@@ -343,9 +363,11 @@ resource "aws_instance" "mi-edge-nodes" {
 
   iam_instance_profile = "${var.edge_iam_profile}"
 
-  root_block_device {
+root_block_device {
     delete_on_termination = true
     volume_size           = "${var.edge_volume_size}"
+    encrypted             = true
+    kms_key_id            = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
   }
 
   metadata_options {
@@ -390,35 +412,35 @@ resource "aws_security_group" "control" {
     from_port = 5050
     to_port = 5050
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Marathon
     from_port = 8080
     to_port = 8080
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Chronos
     from_port = 4400
     to_port = 4400
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Consul
     from_port = 8500
     to_port = 8500
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # ICMP
     from_port = -1
     to_port = -1
     protocol = "icmp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
 }
@@ -443,14 +465,14 @@ resource "aws_security_group" "worker" {
     from_port = 80
     to_port = 80
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # HTTPS
     from_port = 443
     to_port = 443
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Mesos
