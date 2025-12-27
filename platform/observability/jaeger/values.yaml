@@ -1,0 +1,293 @@
+# Jaeger Helm values
+# CNCF Graduated Project
+# https://www.jaegertracing.io/
+
+# Deployment mode: production (separate components) vs. all-in-one
+# For production, use 'production' mode with external storage (Elasticsearch/Cassandra)
+# For dev/staging, use 'all-in-one' mode with in-memory storage
+provisionDataStore:
+  cassandra: false
+  elasticsearch: true
+
+# Storage backend
+storage:
+  type: elasticsearch
+  elasticsearch:
+    host: elasticsearch.observability.svc.cluster.local
+    port: 9200
+    scheme: http
+    user: elastic
+    usePassword: false
+    # For production, set password via secret:
+    # passwordSecretName: jaeger-elasticsearch
+    # passwordSecretKey: password
+    indexPrefix: jaeger
+
+    # Index settings
+    indexDateSeparator: "-"
+    indexRolloverFrequencySpans: day
+    indexRolloverFrequencyServices: day
+    indexRolloverFrequencySampling: day
+
+    # Replica settings
+    esIndexCleaner:
+      enabled: true
+      numberOfDays: 7
+      schedule: "0 2 * * *"
+
+    # Resources for ES index cleaner
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+# Alternative: In-memory storage for development
+# Uncomment this section and comment out elasticsearch above for dev/test
+# allInOne:
+#   enabled: true
+#   image: jaegertracing/all-in-one
+#   tag: 1.62.0
+#   resources:
+#     requests:
+#       cpu: 100m
+#       memory: 128Mi
+#     limits:
+#       cpu: 500m
+#       memory: 512Mi
+
+# Jaeger Collector - Receives traces from OTel Collector
+collector:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: jaegertracing/jaeger-collector
+    tag: 1.62.0
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    # OTLP gRPC port (used by OTel Collector)
+    otlp:
+      grpc:
+        port: 4317
+      http:
+        port: 4318
+    # Legacy Jaeger ports
+    grpc:
+      port: 14250
+    http:
+      port: 14268
+    zipkin:
+      port: 9411
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  # Security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  # Collector configuration
+  config:
+    sampling:
+      strategies: |
+        {
+          "service_strategies": [
+            {
+              "service": ".*",
+              "type": "probabilistic",
+              "param": 0.1
+            }
+          ],
+          "default_strategy": {
+            "type": "probabilistic",
+            "param": 0.01
+          }
+        }
+
+# Jaeger Query - UI and API for querying traces
+query:
+  enabled: true
+  replicaCount: 2
+
+  image:
+    repository: jaegertracing/jaeger-query
+    tag: 1.62.0
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 16686
+    targetPort: 16686
+
+  # Ingress for Jaeger UI
+  ingress:
+    enabled: false
+    # For production, enable ingress:
+    # enabled: true
+    # className: cilium
+    # hosts:
+    #   - host: jaeger.example.com
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    # tls:
+    #   - secretName: jaeger-tls
+    #     hosts:
+    #       - jaeger.example.com
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  # Security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false  # Query needs write for tmp files
+    capabilities:
+      drop:
+        - ALL
+
+  # Query configuration
+  config:
+    queryTimeout: 30s
+    maxClockSkewAdjust: 30s
+
+# Jaeger Agent - Sidecar for collecting traces (optional with OTel)
+# With OTel Collector, agent is typically not needed
+agent:
+  enabled: false
+
+# Service account
+serviceAccount:
+  create: true
+  name: jaeger
+
+# RBAC
+rbac:
+  create: true
+
+# Spark dependencies job (analyze service dependencies)
+spark:
+  enabled: false
+  # For production with large trace volumes:
+  # enabled: true
+  # schedule: "0 3 * * *"
+  # resources:
+  #   requests:
+  #     cpu: 500m
+  #     memory: 1Gi
+  #   limits:
+  #     cpu: 2000m
+  #     memory: 4Gi
+
+# Elasticsearch dependency (if provisionDataStore.elasticsearch is true)
+elasticsearch:
+  enabled: true
+  replicas: 2
+  minimumMasterNodes: 1
+
+  # Elasticsearch resources
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+  # Volume for data persistence
+  volumeClaimTemplate:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: 50Gi
+
+  # Elasticsearch configuration
+  esConfig:
+    elasticsearch.yml: |
+      cluster.name: jaeger
+      network.host: 0.0.0.0
+      xpack.security.enabled: false
+
+      # Index settings for better performance
+      indices.memory.index_buffer_size: 30%
+      indices.queries.cache.size: 10%
+
+  # Security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+# ServiceMonitor for Prometheus metrics
+# Note: Requires prometheus-operator CRDs
+serviceMonitor:
+  enabled: true
+  labels:
+    release: prometheus
+  interval: 30s
+  scrapeTimeout: 10s
+
+# Schema job - creates Elasticsearch indices
+schema:
+  enabled: true
+  activeDeadlineSeconds: 300
+
+# Hotrod example application (disable in production)
+hotrod:
+  enabled: false
