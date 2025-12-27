@@ -70,9 +70,6 @@ resource "vsphere_virtual_machine" "mi-control-nodes" {
       host = "${self.network_interface.0.ipv4_address}"
   }
 
-  provisioner "remote-exec" {
-    inline = [ "sudo hostnamectl --static set-hostname ${self.name}" ]
-  }
 
   count = "${var.control_count}"
 }
@@ -115,9 +112,6 @@ resource "vsphere_virtual_machine" "mi-worker-nodes" {
       host = "${self.network_interface.0.ipv4_address}"
   }
 
-  provisioner "remote-exec" {
-    inline = [ "sudo hostnamectl --static set-hostname ${self.name}" ]
-  }
 
   count = "${var.worker_count}"
 }
@@ -161,9 +155,6 @@ resource "vsphere_virtual_machine" "mi-kubeworker-nodes" {
       host = "${self.network_interface.0.ipv4_address}"
   }
 
-  provisioner "remote-exec" {
-    inline = [ "sudo hostnamectl --static set-hostname ${self.name}" ]
-  }
 
   count = "${var.kubeworker_count}"
 }

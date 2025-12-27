@@ -28,6 +28,12 @@ variable "source_ami" {}
 variable "ssh_key" {default = "~/.ssh/id_rsa.pub"}
 variable "ssh_username"  {default = "centos"}
 variable "worker_count" {default = "1"}
+
+variable "use_autoscaling" {
+  description = "If true, create workers via Launch Template + Auto Scaling Group instead of standalone instances"
+  type        = bool
+  default     = false
+}
 variable "kubeworker_count" {default = "0"}
 variable "worker_type" {default = "m3.medium"}
 variable "worker_volume_size" {default = "20"} # size is in gigabytes
@@ -152,10 +158,10 @@ resource "aws_ebs_volume" "mi-worker-lvm" {
 }
 
 resource "aws_instance" "mi-worker-nodes" {
-  ami = "${var.source_ami}"
+  count             = var.use_autoscaling ? 0 : "${var.worker_count}"
+  ami               = "${var.source_ami}"
   availability_zone = "${var.availability_zone}"
-  instance_type = "${var.worker_type}"
-  count = "${var.worker_count}"
+  instance_type     = "${var.worker_type}"
 
   vpc_security_group_ids = ["${aws_security_group.worker.id}",
     "${aws_vpc.main.default_security_group_id}"]
@@ -189,11 +195,66 @@ resource "aws_instance" "mi-worker-nodes" {
 }
 
 resource "aws_volume_attachment" "mi-worker-nodes-lvm-attachment" {
-  count = "${var.worker_count}"
+  count = var.use_autoscaling ? 0 : "${var.worker_count}"
   device_name = "xvdh"
   instance_id = "${element(aws_instance.mi-worker-nodes.*.id, count.index)}"
   volume_id = "${element(aws_ebs_volume.mi-worker-lvm.*.id, count.index)}"
   force_detach = true
+}
+
+# Optional modern path: Launch Template + Auto Scaling Group for workers
+resource "aws_launch_template" "worker" {
+  count         = var.use_autoscaling ? 1 : 0
+  name_prefix   = "${var.short_name}-worker-"
+  image_id      = var.source_ami
+  instance_type = var.worker_type
+
+  iam_instance_profile {
+    name = module.iam-profiles.worker_iam_instance_profile
+  }
+
+  key_name = aws_key_pair.deployer.key_name
+
+  vpc_security_group_ids = [
+    aws_security_group.worker.id,
+    aws_vpc.main.default_security_group_id
+  ]
+
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name              = "${var.short_name}-worker-asg"
+      sshUser           = var.ssh_username
+      role              = "worker"
+      dc                = var.datacenter
+      KubernetesCluster = var.short_name
+    }
+  }
+}
+
+resource "aws_autoscaling_group" "worker" {
+  count               = var.use_autoscaling ? 1 : 0
+  name                = "${var.short_name}-worker-asg"
+  desired_capacity    = tonumber(var.worker_count)
+  min_size            = tonumber(var.worker_count)
+  max_size            = tonumber(var.worker_count)
+  vpc_zone_identifier = [aws_subnet.main.id]
+
+  launch_template {
+    id      = aws_launch_template.worker[0].id
+    version = "$Latest"
+  }
+
+  tag {
+    key                 = "KubernetesCluster"
+    value               = var.short_name
+    propagate_at_launch = true
+  }
 }
 
 resource "aws_ebs_volume" "mi-kubeworker-lvm" {
