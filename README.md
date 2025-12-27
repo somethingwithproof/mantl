@@ -17,6 +17,7 @@ Deploy a complete, production-ready Kubernetes platform in minutes:
 | **TLS** | cert-manager | Graduated |
 | **Policy** | Kyverno | Graduated |
 | **Secrets** | External Secrets Operator | Graduated |
+| **Infrastructure** | Crossplane | Incubating |
 | **Metrics** | Prometheus + Grafana | Graduated |
 | **Logs** | Grafana Loki | — |
 | **Traces** | Grafana Tempo | — |
@@ -47,7 +48,7 @@ terraform -chdir=terraform/blueprints/aws-eks init && terraform -chdir=terraform
 # 3. Bootstrap platform via GitOps
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-kubectl apply -f clusters/production/app-of-apps.yaml
+kubectl apply -f clusters/production/platform-apps.yaml
 
 # 4. Access ArgoCD
 kubectl port-forward svc/argocd-server -n argocd 8080:443
@@ -63,7 +64,7 @@ kind create cluster --name mantl
 # Deploy platform
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-kubectl apply -f clusters/dev/app-of-apps.yaml
+kubectl apply -f clusters/production/platform-apps.yaml
 ```
 
 ## 📁 Project Structure
@@ -82,6 +83,7 @@ mantl/
 │   │   ├── argocd/            # GitOps engine
 │   │   ├── cilium/            # CNI + Gateway API + Network Policy
 │   │   └── cert-manager/      # TLS automation
+│   ├── crossplane/            # Declarative infrastructure as code
 │   ├── observability/
 │   │   ├── prometheus/        # Metrics + Alertmanager + Grafana
 │   │   ├── loki/              # Log aggregation
@@ -164,6 +166,33 @@ mantl/
 | **cert-manager** | Automated TLS from Let's Encrypt or cloud CA |
 | **Cosign** | Container image signing and verification |
 
+### Infrastructure as Code
+
+**Crossplane** provides declarative infrastructure management using Kubernetes APIs:
+
+- **Cluster Bootstrap**: Terraform blueprints create initial Kubernetes clusters
+- **Day 2 Operations**: Crossplane manages cloud resources (databases, storage, networking) as Kubernetes CRs
+- **Self-Service**: Teams provision infrastructure via GitOps without cloud console access
+- **Multi-Cloud**: Single API for AWS, GCP, Azure, and 100+ providers
+
+Example: Provision an RDS database via Kubernetes manifest:
+
+```yaml
+apiVersion: database.aws.crossplane.io/v1beta1
+kind: RDSInstance
+metadata:
+  name: my-db
+spec:
+  forProvider:
+    region: us-west-2
+    dbInstanceClass: db.t3.micro
+    engine: postgres
+    engineVersion: "15"
+    masterUsername: admin
+```
+
+See `docs/CNCF-STACK-DECISION.md` for Crossplane provider configuration.
+
 ### Secrets Providers
 
 Choose one provider in `platform/secrets/external-secrets/kustomization.yaml`:
@@ -225,7 +254,7 @@ ArgoCD deploys components in order:
 |------|------------|
 | 1 | Cilium (CNI must be first) |
 | 2 | cert-manager (TLS prerequisite) |
-| 3 | External Secrets, Kyverno |
+| 3 | External Secrets, Kyverno, Crossplane |
 | 4 | Prometheus, Loki, Tempo |
 | 5 | OTel Collector, Falco |
 | 6 | Harbor, External DNS |
@@ -290,7 +319,15 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 ## 🙏 Acknowledgments
 
-Mantl was originally created by Cisco Cloud in 2015 for Mesos/Marathon orchestration. This 2026 modernization rebuilds the platform on Kubernetes-native, CNCF-backed technologies while maintaining the "batteries-included" philosophy.
+Mantl was originally created by Cisco Cloud in 2015 for Mesos/Marathon orchestration. This 2026 modernization completely rebuilds the platform on:
+
+- **Managed Kubernetes** (EKS, GKE, AKS, DOKS, LKE) — replacing manual Mesos clusters
+- **CNCF Graduated & Incubating Projects** — 9 graduated, 3 incubating
+- **GitOps with ArgoCD** — replacing Ansible configuration management
+- **Declarative Infrastructure** — Crossplane for Day 2 operations
+- **Production-Ready Observability** — Prometheus, Tempo, Loki, OpenTelemetry
+
+The core philosophy remains: provide a **batteries-included, production-ready platform** that teams can deploy in minutes, not months.
 
 ---
 
