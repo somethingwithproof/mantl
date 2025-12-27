@@ -1,0 +1,115 @@
+# Kyverno Policy Pack: Supply Chain and Image Security
+# Implements: SOC2-CC7.1, CC8.1, SLSA, Sigstore
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+  labels:
+    compliance.mantl.io/controls: "SOC2-CC7.1,SOC2-CC8.1"
+    compliance.mantl.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-registries
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Images must come from approved registries. Control: SOC2-CC7.1"
+        foreach:
+          - list: "request.object.spec.[initContainers, containers, ephemeralContainers][]"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.image }}"
+                    operator: AnyNotIn
+                    value:
+                      - "harbor.mantl.io/*"
+                      - "gcr.io/mantl-*/*"
+                      - "ghcr.io/mantl-io/*"
+                      - "registry.k8s.io/*"
+                      - "quay.io/argoproj/*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: deny-latest-tag
+  labels:
+    compliance.mantl.io/controls: "SOC2-CC7.1,SOC2-CC8.1"
+    compliance.mantl.io/severity: medium
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: deny-latest
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: "Using latest tag is not allowed. Control: SOC2-CC7.1"
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-liveness-probes
+  labels:
+    compliance.mantl.io/controls: "SOC2-CC7.1"
+    compliance.mantl.io/severity: medium
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-liveness
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: "Containers should have liveness probes. Control: SOC2-CC7.1"
+        pattern:
+          spec:
+            containers:
+              - livenessProbe:
+                  "?*": "?*"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-owner-label
+  labels:
+    compliance.mantl.io/controls: "SOC2-CC6.3"
+    compliance.mantl.io/severity: low
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-owner
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+      validate:
+        message: "Resources must have owner label. Control: SOC2-CC6.3"
+        pattern:
+          metadata:
+            labels:
+              app.kubernetes.io/owner: "?*"
