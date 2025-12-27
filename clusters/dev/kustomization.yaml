@@ -1,3 +1,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-resources: []
+resources:
+  - apps/cert-manager.yaml
+  - apps/cert-manager-clusterissuers.yaml
+  - apps/kyverno.yaml
+  - apps/kyverno-policies.yaml
+  - apps/prometheus.yaml
