@@ -1,0 +1,89 @@
+# Kyverno Policy: Require Pod Security Context
+# SOC2 CC6.1 - Logical Access Controls
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: soc2-require-pod-security-context
+  labels:
+    compliance.mantl.io/framework: soc2
+    compliance.mantl.io/control: CC6.1
+    compliance.mantl.io/severity: critical
+  annotations:
+    policies.kyverno.io/title: Require Pod Security Context
+    policies.kyverno.io/category: SOC2 Compliance
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: |
+      SOC2 CC6.1 requires logical access security. This policy enforces
+      that pods run as non-root with read-only root filesystem and
+      dropped capabilities.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-run-as-non-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-node-lease
+      validate:
+        message: |
+          SOC2 CC6.1 Violation: Pods must run as non-root.
+          Set spec.securityContext.runAsNonRoot: true
+          
+          Remediation: Add securityContext with runAsNonRoot: true
+          Documentation: https://mantl.io/docs/compliance/soc2/cc6.1
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+
+    - name: require-read-only-root
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: |
+          SOC2 CC6.1 Violation: Containers must use read-only root filesystem.
+          Set spec.containers[*].securityContext.readOnlyRootFilesystem: true
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  readOnlyRootFilesystem: true
+
+    - name: drop-all-capabilities
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: |
+          SOC2 CC6.1 Violation: Containers must drop all capabilities.
+          Set spec.containers[*].securityContext.capabilities.drop: ["ALL"]
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL

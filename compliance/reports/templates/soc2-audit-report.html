@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOC2 Type II Compliance Audit Report</title>
+    <style>
+        :root {
+            --color-pass: #22c55e;
+            --color-fail: #ef4444;
+            --color-warn: #f59e0b;
+            --color-info: #3b82f6;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .header {
+            border-bottom: 3px solid #1f2937;
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+        
+        .header .subtitle {
+            color: #6b7280;
+            font-size: 1.1rem;
+        }
+        
+        .meta-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+        
+        .meta-item {
+            text-align: center;
+        }
+        
+        .meta-item .label {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .meta-item .value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .score-card {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .score-value {
+            font-size: 4rem;
+            font-weight: 700;
+        }
+        
+        .score-breakdown {
+            text-align: right;
+        }
+        
+        .category {
+            margin-bottom: 2rem;
+        }
+        
+        .category h2 {
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+        }
+        
+        .control {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: #f9fafb;
+        }
+        
+        .control-id {
+            font-weight: 600;
+            font-family: monospace;
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .status-pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .control-body {
+            padding: 1rem;
+        }
+        
+        .control-description {
+            margin-bottom: 1rem;
+        }
+        
+        .evidence-list {
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 4px;
+        }
+        
+        .evidence-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .finding {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .finding-critical { border-left-color: #dc2626; }
+        .finding-high { border-left-color: #ea580c; }
+        .finding-medium { border-left-color: #ca8a04; }
+        .finding-low { border-left-color: #2563eb; }
+        
+        .footer {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        
+        @media print {
+            body { padding: 0; }
+            .control { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>SOC2 Type II Compliance Audit Report</h1>
+        <p class="subtitle">{{ .Organization }} | Generated {{ .GeneratedAt }}</p>
+    </div>
+    
+    <div class="meta-info">
+        <div class="meta-item">
+            <div class="label">Audit Period</div>
+            <div class="value">{{ .AuditPeriod }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="label">Controls Assessed</div>
+            <div class="value">{{ .ControlsAssessed }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="label">Evidence Items</div>
+            <div class="value">{{ .EvidenceCount }}</div>
+        </div>
+    </div>
+    
+    <div class="score-card">
+        <div>
+            <div style="font-size: 1.25rem; opacity: 0.8;">Compliance Score</div>
+            <div class="score-value">{{ .ComplianceScore }}%</div>
+        </div>
+        <div class="score-breakdown">
+            <div>✓ {{ .ControlsPassed }} controls passing</div>
+            <div>✗ {{ .ControlsFailed }} controls failing</div>
+            <div>⚠ {{ .FindingsCount }} findings</div>
+        </div>
+    </div>
+    
+    <h2>Executive Summary</h2>
+    <p>{{ .ExecutiveSummary }}</p>
+    
+    {{ range .Categories }}
+    <div class="category">
+        <h2>{{ .Name }} ({{ .ID }})</h2>
+        <p>{{ .Description }}</p>
+        
+        {{ range .Controls }}
+        <div class="control">
+            <div class="control-header">
+                <div>
+                    <span class="control-id">{{ .ID }}</span>
+                    <span>{{ .Name }}</span>
+                </div>
+                <span class="status-badge {{ if .Passed }}status-pass{{ else }}status-fail{{ end }}">
+                    {{ if .Passed }}PASSED{{ else }}FAILED{{ end }}
+                </span>
+            </div>
+            <div class="control-body">
+                <div class="control-description">{{ .Description }}</div>
+                
+                {{ if .Evidence }}
+                <div class="evidence-list">
+                    <strong>Evidence Collected:</strong>
+                    {{ range .Evidence }}
+                    <div class="evidence-item">
+                        <span>📎</span>
+                        <span>{{ .Description }} ({{ .CollectedAt }})</span>
+                    </div>
+                    {{ end }}
+                </div>
+                {{ end }}
+                
+                {{ range .Findings }}
+                <div class="finding finding-{{ .Severity }}">
+                    <strong>{{ .Severity | upper }}: {{ .Title }}</strong>
+                    <p>{{ .Description }}</p>
+                    <p><strong>Remediation:</strong> {{ .Remediation }}</p>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+        {{ end }}
+    </div>
+    {{ end }}
+    
+    <div class="footer">
+        <p>This report was automatically generated by Mantl Compliance.</p>
+        <p>Report ID: {{ .ReportID }} | Hash: {{ .ContentHash }}</p>
+    </div>
+</body>
+</html>

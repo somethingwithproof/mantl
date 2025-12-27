@@ -1,0 +1,433 @@
+# SOC2 Type II Compliance Framework
+# Based on AICPA Trust Services Criteria 2017
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceFramework
+metadata:
+  name: soc2-type2
+  labels:
+    compliance.mantl.io/authority: aicpa
+    compliance.mantl.io/version: "2017"
+spec:
+  displayName: "SOC2 Type II"
+  description: |
+    Service Organization Control 2 Type II report based on AICPA
+    Trust Services Criteria. Evaluates controls over a period of time
+    for Security, Availability, Processing Integrity, Confidentiality,
+    and Privacy.
+  version: "2017"
+  authority: "AICPA"
+
+  categories:
+    - id: CC1
+      name: "Control Environment"
+      description: "Foundational controls for the control environment"
+    - id: CC2
+      name: "Communication and Information"
+      description: "Controls for communication and information quality"
+    - id: CC3
+      name: "Risk Assessment"
+      description: "Controls for risk identification and assessment"
+    - id: CC4
+      name: "Monitoring Activities"
+      description: "Controls for ongoing monitoring"
+    - id: CC5
+      name: "Control Activities"
+      description: "Control activities and policies"
+    - id: CC6
+      name: "Logical and Physical Access"
+      description: "Access control mechanisms"
+    - id: CC7
+      name: "System Operations"
+      description: "System operational controls"
+    - id: CC8
+      name: "Change Management"
+      description: "Change control processes"
+    - id: CC9
+      name: "Risk Mitigation"
+      description: "Risk mitigation activities"
+    - id: A1
+      name: "Availability"
+      description: "System availability controls"
+    - id: C1
+      name: "Confidentiality"
+      description: "Data confidentiality controls"
+    - id: PI1
+      name: "Processing Integrity"
+      description: "Processing integrity controls"
+    - id: P1
+      name: "Privacy"
+      description: "Privacy controls"
+
+  controls:
+    # ==========================================================================
+    # CC6 - Logical and Physical Access Controls
+    # ==========================================================================
+    - id: CC6.1
+      categoryId: CC6
+      name: "Logical Access Security Software"
+      description: |
+        The entity implements logical access security software, infrastructure,
+        and architectures over protected information assets to protect them
+        from security events.
+      severity: critical
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-network-policy
+            mode: enforce
+        - type: policy
+          policyRef:
+            template: require-pod-security-context
+            mode: enforce
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 * * *"  # Daily
+            resources:
+              - networkpolicies
+              - clusterroles
+              - clusterrolebindings
+            retentionDays: 365
+
+    - id: CC6.2
+      categoryId: CC6
+      name: "User Registration and Authorization"
+      description: |
+        Prior to issuing system credentials and granting system access,
+        the entity registers and authorizes new internal and external users.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-rbac-least-privilege
+            mode: enforce
+        - type: policy
+          policyRef:
+            template: disallow-default-serviceaccount
+            mode: enforce
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 * * *"
+            resources:
+              - serviceaccounts
+              - rolebindings
+            retentionDays: 365
+
+    - id: CC6.3
+      categoryId: CC6
+      name: "User Access Removal"
+      description: |
+        The entity removes access to protected information assets when
+        an internal or external user no longer requires access.
+      severity: high
+      automated: false
+      mappings:
+        - type: attestation
+          attestationRequired: true
+        - type: evidence
+          evidenceCollector:
+            type: log-query
+            schedule: "0 0 * * 0"  # Weekly
+            query: |
+              {namespace="kube-system"} |= "delete" |= "rolebinding"
+            retentionDays: 365
+
+    - id: CC6.6
+      categoryId: CC6
+      name: "Boundary Protection"
+      description: |
+        The entity implements logical access security measures to protect
+        against threats from sources outside its system boundaries.
+      severity: critical
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-ingress-tls
+            mode: enforce
+        - type: policy
+          policyRef:
+            template: restrict-external-ips
+            mode: enforce
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 */6 * * *"  # Every 6 hours
+            resources:
+              - ingresses
+              - services
+              - networkpolicies
+            retentionDays: 365
+
+    - id: CC6.7
+      categoryId: CC6
+      name: "Information Transmission Protection"
+      description: |
+        The entity restricts the transmission, movement, and removal of
+        information to authorized internal and external users and processes.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-encryption-in-transit
+            mode: enforce
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 * * *"
+            resources:
+              - certificates
+              - secrets
+            retentionDays: 365
+
+    - id: CC6.8
+      categoryId: CC6
+      name: "Malicious Software Prevention"
+      description: |
+        The entity implements controls to prevent or detect and act upon
+        the introduction of unauthorized or malicious software.
+      severity: critical
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-image-signatures
+            mode: enforce
+        - type: policy
+          policyRef:
+            template: restrict-registries
+            mode: enforce
+        - type: evidence
+          evidenceCollector:
+            type: scan-result
+            schedule: "0 */4 * * *"
+            retentionDays: 365
+
+    # ==========================================================================
+    # CC7 - System Operations
+    # ==========================================================================
+    - id: CC7.1
+      categoryId: CC7
+      name: "Security Event Detection"
+      description: |
+        To meet its objectives, the entity uses detection and monitoring
+        procedures to identify anomalies that could indicate attacks.
+      severity: critical
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-falco-rules
+            mode: audit
+        - type: evidence
+          evidenceCollector:
+            type: metric-query
+            schedule: "0 * * * *"  # Hourly
+            query: |
+              sum(increase(falco_events_total[1h])) by (rule, priority)
+            retentionDays: 365
+
+    - id: CC7.2
+      categoryId: CC7
+      name: "Security Incident Response"
+      description: |
+        The entity monitors system components and the operation of those
+        components for anomalies and investigates detected anomalies.
+      severity: high
+      automated: true
+      mappings:
+        - type: evidence
+          evidenceCollector:
+            type: log-query
+            schedule: "0 0 * * *"
+            query: |
+              {namespace=~".+"} |= "error" or |= "critical" or |= "security"
+            retentionDays: 365
+
+    - id: CC7.3
+      categoryId: CC7
+      name: "Change Detection"
+      description: |
+        The entity evaluates security events to determine whether they
+        could or have resulted in a failure to meet objectives.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: audit-resource-changes
+            mode: audit
+        - type: evidence
+          evidenceCollector:
+            type: log-query
+            schedule: "0 0 * * *"
+            query: |
+              {source="kubernetes-audit"}
+            retentionDays: 365
+
+    # ==========================================================================
+    # CC8 - Change Management
+    # ==========================================================================
+    - id: CC8.1
+      categoryId: CC8
+      name: "Change Authorization"
+      description: |
+        The entity authorizes, designs, develops or acquires, configures,
+        documents, tests, approves, and implements changes to meet objectives.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-change-annotations
+            mode: audit
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 * * *"
+            resources:
+              - deployments
+              - statefulsets
+              - daemonsets
+            retentionDays: 365
+
+    # ==========================================================================
+    # A1 - Availability
+    # ==========================================================================
+    - id: A1.1
+      categoryId: A1
+      name: "Capacity Management"
+      description: |
+        The entity maintains, monitors, and evaluates current processing
+        capacity and use of system components to manage capacity demand.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-resource-limits
+            mode: enforce
+        - type: evidence
+          evidenceCollector:
+            type: metric-query
+            schedule: "0 * * * *"
+            query: |
+              sum(container_memory_usage_bytes) by (namespace) /
+              sum(kube_resourcequota{type="hard",resource="memory"}) by (namespace)
+            retentionDays: 180
+
+    - id: A1.2
+      categoryId: A1
+      name: "Environmental Protection"
+      description: |
+        The entity authorizes, designs, develops, implements, operates,
+        maintains, and monitors environmental protections.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-pod-disruption-budget
+            mode: audit
+        - type: policy
+          policyRef:
+            template: require-replicas
+            mode: audit
+
+    - id: A1.3
+      categoryId: A1
+      name: "Recovery Testing"
+      description: |
+        The entity tests recovery plan procedures supporting system
+        recovery to meet its objectives.
+      severity: high
+      automated: false
+      mappings:
+        - type: attestation
+          attestationRequired: true
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 1 * *"  # Monthly
+            resources:
+              - backups
+              - volumesnapshots
+            retentionDays: 365
+
+    # ==========================================================================
+    # C1 - Confidentiality
+    # ==========================================================================
+    - id: C1.1
+      categoryId: C1
+      name: "Confidential Information Identification"
+      description: |
+        The entity identifies and maintains confidential information to
+        meet the entity's objectives related to confidentiality.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-secret-encryption
+            mode: enforce
+        - type: policy
+          policyRef:
+            template: restrict-secret-access
+            mode: enforce
+
+    - id: C1.2
+      categoryId: C1
+      name: "Confidential Information Disposal"
+      description: |
+        The entity disposes of confidential information to meet the
+        entity's objectives related to confidentiality.
+      severity: medium
+      automated: false
+      mappings:
+        - type: attestation
+          attestationRequired: true
+
+    # ==========================================================================
+    # CC4 - Monitoring
+    # ==========================================================================
+    - id: CC4.1
+      categoryId: CC4
+      name: "Ongoing Monitoring"
+      description: |
+        The entity selects, develops, and performs ongoing evaluations
+        to ascertain whether the components of internal control are present.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-prometheus-rules
+            mode: audit
+        - type: evidence
+          evidenceCollector:
+            type: metric-query
+            schedule: "0 0 * * *"
+            query: |
+              count(up == 1) / count(up)
+            retentionDays: 365
+
+    - id: CC4.2
+      categoryId: CC4
+      name: "Deficiency Communication"
+      description: |
+        The entity evaluates and communicates internal control deficiencies
+        in a timely manner to those parties responsible.
+      severity: medium
+      automated: true
+      mappings:
+        - type: evidence
+          evidenceCollector:
+            type: log-query
+            schedule: "0 0 * * *"
+            query: |
+              {app="alertmanager"} |= "firing"
+            retentionDays: 365

@@ -1,0 +1,92 @@
+# Kyverno Policy Template: Require NetworkPolicy
+# Generated from SOC2 CC6.1 control mapping
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: soc2-require-network-policy
+  labels:
+    compliance.mantl.io/framework: soc2
+    compliance.mantl.io/control: CC6.1
+    compliance.mantl.io/severity: critical
+  annotations:
+    policies.kyverno.io/title: Require NetworkPolicy for Namespaces
+    policies.kyverno.io/category: SOC2 Compliance
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Namespace
+    policies.kyverno.io/description: |
+      SOC2 CC6.1 requires logical access security controls. This policy
+      ensures every namespace has at least one NetworkPolicy defined,
+      providing network segmentation between workloads.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-networkpolicy-exists
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      context:
+        - name: netpols
+          apiCall:
+            urlPath: "/apis/networking.k8s.io/v1/namespaces/{{request.namespace}}/networkpolicies"
+            jmesPath: "items | length(@)"
+      preconditions:
+        all:
+          - key: "{{request.namespace}}"
+            operator: NotIn
+            value:
+              - kube-system
+              - kube-public
+              - kube-node-lease
+      validate:
+        message: |
+          SOC2 CC6.1 Violation: Namespace '{{request.namespace}}' has no NetworkPolicy.
+          Network segmentation is required for logical access control.
+          
+          Remediation: Create a NetworkPolicy for this namespace.
+          Documentation: https://mantl.io/docs/compliance/soc2/cc6.1
+        deny:
+          conditions:
+            any:
+              - key: "{{netpols}}"
+                operator: LessThan
+                value: 1
+---
+# Default deny policy to apply when namespace created
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: soc2-generate-default-deny
+  labels:
+    compliance.mantl.io/framework: soc2
+    compliance.mantl.io/control: CC6.1
+    compliance.mantl.io/auto-remediation: "true"
+spec:
+  rules:
+    - name: generate-default-deny
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+      generate:
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        name: default-deny-all
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            podSelector: {}
+            policyTypes:
+              - Ingress
+              - Egress
