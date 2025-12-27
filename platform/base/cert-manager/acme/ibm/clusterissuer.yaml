@@ -1,0 +1,20 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-dns-ibm
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ops@example.com
+    privateKeySecretRef:
+      name: letsencrypt-dns-ibm
+    solvers:
+      - dns01:
+          webhook:
+            groupName: acme.mycompany.com
+            solverName: ibmcloud
+            config:
+              apiKeySecretRef:
+                name: ibmcloud-credentials
+                key: api-key
+              instanceCRN: crn:v1:bluemix:public:internet-svcs:global:a/...

@@ -213,6 +213,8 @@ graph TB
         Azure[☁️ Azure AKS<br/>Managed Identity]
         DO[☁️ DigitalOcean DOKS<br/>Token Auth]
         Linode[☁️ Linode LKE<br/>Token Auth]
+        OCI[☁️ Oracle Cloud OKE<br/>Instance Principal]
+        IBM[☁️ IBM Cloud IKS<br/>IAM Auth]
     end
 
     subgraph "Terraform Blueprints"
@@ -239,12 +241,16 @@ graph TB
     TF -->|Creates| Azure
     TF -->|Creates| DO
     TF -->|Creates| Linode
+    TF -->|Creates| OCI
+    TF -->|Creates| IBM
 
     AWS -->|Deploys| Platform
     GCP -->|Deploys| Platform
     Azure -->|Deploys| Platform
     DO -->|Deploys| Platform
     Linode -->|Deploys| Platform
+    OCI -->|Deploys| Platform
+    IBM -->|Deploys| Platform
 
     Platform -->|Provisions via| CP
     CP -->|Creates| RDS

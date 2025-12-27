@@ -43,7 +43,7 @@ cd mantl
 
 # 2. Create Kubernetes cluster (pick one)
 terraform -chdir=terraform/blueprints/aws-eks init && terraform -chdir=terraform/blueprints/aws-eks apply
-# OR: gcp-gke, azure-aks, do-doks, linode-lke
+# OR: gcp-gke, azure-aks, do-doks, linode-lke, oci-oke, ibm-iks
 
 # 3. Bootstrap platform via GitOps
 kubectl create namespace argocd
@@ -226,7 +226,8 @@ domainFilters:
 | Azure | `azure-aks` | ✅ Managed Identity | Azure DNS | ✅ Ready |
 | DigitalOcean | `do-doks` | API Token | DO DNS | ✅ Ready |
 | Linode | `linode-lke` | API Token | Linode DNS | ✅ Ready |
-| Oracle Cloud | — | Instance Principal | OCI DNS | 🚧 Planned |
+| Oracle Cloud | `oci-oke` | ✅ Instance Principal | OCI DNS | ✅ Ready |
+| IBM Cloud | `ibm-iks` | ✅ IAM | IBM Cloud DNS | ✅ Ready |
 | OpenStack | — | — | Designate | 🚧 Planned |
 | Bare Metal | k3s | — | RFC2136 | 🚧 Planned |
 

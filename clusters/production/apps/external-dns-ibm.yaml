@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns-ibm
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes-sigs.github.io/external-dns/
+    chart: external-dns
+    targetRevision: 1.19.0
+    helm:
+      values: |
+        provider: ibmcloud
+        policy: upsert-only
+        registry: txt
+        txtOwnerId: mantl-prod
+        domainFilters:
+          - example.com  # Replace with your IBM Cloud DNS zone
+        env:
+          - name: IBMCLOUD_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: ibmcloud-credentials
+                key: api-key
+          - name: IBMCLOUD_INSTANCE_ID
+            value: "your-dns-instance-id"  # IBM Cloud Internet Services instance ID
+        # For IBM Cloud DNS (not CIS), use:
+        # extraArgs:
+        #   - --ibmcloud-proxied=false
+        #   - --ibmcloud-config-file=/etc/kubernetes/ibmcloud.json
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

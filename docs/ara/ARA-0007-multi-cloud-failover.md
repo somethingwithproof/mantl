@@ -12,7 +12,9 @@ Decision
 - **Azure AKS**: With Managed Identity
 - **DigitalOcean DOKS**: With API token authentication
 - **Linode LKE**: With API token authentication
-- **Bare Metal/On-Prem**: k3s or kubeadm (future)
+- **Oracle Cloud OKE**: With Instance Principal for workload identity
+- **IBM Cloud IKS**: With IAM for authentication
+- **Bare Metal/On-Prem**: k3s or kubeadm (planned)
 
 **Infrastructure Management**:
 - **Day 0 (Bootstrap)**: Terraform creates Kubernetes clusters
