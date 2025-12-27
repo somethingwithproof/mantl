@@ -22,7 +22,6 @@ jobs:
         run: |
           mkdir -p dist
           kustomize build clusters/production > dist/cluster-production.yaml
-          kustomize build addons/spinnaker/base > dist/spinnaker-base.yaml
       - name: Install ORAS
         uses: oras-project/setup-oras@v1
       - name: Push bundles to GHCR
@@ -32,8 +31,7 @@ jobs:
         run: |
           oras push ghcr.io/${REPO_OWNER}/mantl-bundles:${TAG} \
             --artifact-type application/vnd.cncf.kustomize+yaml \
-            dist/cluster-production.yaml:application/yaml \
-            dist/spinnaker-base.yaml:application/yaml
+            dist/cluster-production.yaml:application/yaml
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.5.0
       - name: Sign bundles (keyless)

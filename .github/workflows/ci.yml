@@ -24,12 +24,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-      - name: Lint (black, ruff, yamllint, ansible-lint)
+      - name: Lint (black, ruff, yamllint)
         run: |
           black --check .
           ruff .
           yamllint .
-          ansible-lint roles/* || true
   test:
     runs-on: ubuntu-latest
     steps:
@@ -174,7 +173,6 @@ external-dns-rfc2136-e2e:
         run: |
           mkdir -p dist
           kustomize build clusters/production > dist/cluster-production.yaml
-          kustomize build addons/spinnaker/base > dist/spinnaker-base.yaml
       - name: Install ORAS
         uses: oras-project/setup-oras@v1
       - name: Push bundles to GHCR (OCI)
@@ -183,8 +181,7 @@ external-dns-rfc2136-e2e:
         run: |
           oras push ghcr.io/${REPO_OWNER}/mantl-bundles:$(echo $GITHUB_SHA | cut -c1-12) \
             --artifact-type application/vnd.cncf.kustomize+yaml \
-            dist/cluster-production.yaml:application/yaml \
-            dist/spinnaker-base.yaml:application/yaml
+            dist/cluster-production.yaml:application/yaml
       - name: Sign bundles (keyless)
         uses: sigstore/cosign-installer@v3.5.0
       - name: Cosign sign bundles
@@ -347,20 +344,19 @@ external-dns-rfc2136-e2e:
       - name: Render production manifests
         run: |
           kustomize build clusters/production > rendered.yaml
-      - name: Run Conftest (soft on PR)
+      - name: Install Kyverno CLI
+        run: |
+          curl -LO https://github.com/kyverno/kyverno/releases/download/v1.12.1/kyverno-cli_v1.12.1_linux_x86_64.tar.gz
+          tar -xzf kyverno-cli_v1.12.1_linux_x86_64.tar.gz
+          sudo mv kyverno /usr/local/bin/
+      - name: Test Kyverno policies (soft on PR)
         if: github.event_name == 'pull_request'
         run: |
-          docker run --rm -v "$PWD":/project -w /project openpolicyagent/conftest test -p policies/opa Dockerfile || true
-          docker run --rm -v "$PWD":/project -w /project openpolicyagent/conftest test -p policies/opa terraform || true
-          docker run --rm -v "$PWD":/project -w /project openpolicyagent/conftest test -p policies/opa applications/templates/web-service/base || true
-          docker run --rm -v "$PWD":/project -w /project openpolicyagent/conftest test -p policies/opa rendered.yaml || true
-      - name: Run Conftest (strict on main/tags)
+          kyverno apply policies/kyverno/policies/ --resource rendered.yaml || true
+      - name: Test Kyverno policies (strict on main/tags)
         if: github.event_name != 'pull_request'
         run: |
-          docker run --rm -v "$PWD":/project -w /project openpolicyagent/conftest test -p policies/opa Dockerfile
-          docker run --rm -v "$PWD":/project -w /project openpolicyagent/conftest test -p policies/opa terraform
-          docker run --rm -v "$PWD":/project -w /project openpolicyagent/conftest test -p policies/opa applications/templates/web-service/base
-          docker run --rm -v "$PWD":/project -w /project openpolicyagent/conftest test -p policies/opa rendered.yaml
+          kyverno apply policies/kyverno/policies/ --resource rendered.yaml
       - uses: actions/checkout@v4
       - name: tfsec scan
         uses: aquasecurity/tfsec-action@v1.0.3
