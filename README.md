@@ -23,6 +23,10 @@ Mantl provides everything you need to build, deploy, and operate production Kube
 
 ### Infrastructure as Code
 - **Terraform Blueprints**: Production-ready infrastructure modules for all major cloud providers
+- **Crossplane**: Declarative infrastructure management using Kubernetes APIs
+  - Manage cloud resources (compute, storage, networking, databases) as Kubernetes CRs
+  - Support for AWS, GCP, Azure, and 100+ providers
+  - GitOps-native with ArgoCD integration
 - **Hardened Defaults**: IMDSv2, encryption, least-privilege IAM, private networking
 - **Global DNS**: Route53 failover, health-checked multi-region routing
 - **Workload Identity**: Native cloud provider identity integration (AWS IRSA, GCP Workload Identity, Azure Managed Identity)

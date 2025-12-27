@@ -118,6 +118,31 @@ spec:
     syncOptions:
       - CreateNamespace=true
 ---
+# Crossplane
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/thomasvincent/mantl.git
+    targetRevision: main
+    path: platform/crossplane
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
 # Prometheus Stack (includes Grafana)
 apiVersion: argoproj.io/v1alpha1
 kind: Application

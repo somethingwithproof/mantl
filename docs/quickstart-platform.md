@@ -35,7 +35,7 @@ kubectl apply -f clusters/production/platform-apps.yaml
 This deploys in dependency order (sync waves):
 - **Wave 1**: Cilium (CNI + service mesh)
 - **Wave 2**: cert-manager (TLS automation)
-- **Wave 3**: External Secrets, Kyverno (secrets + policy)
+- **Wave 3**: External Secrets, Kyverno, Crossplane (secrets + policy + IaC)
 - **Wave 4**: Prometheus, Loki, Tempo (observability backends)
 - **Wave 5**: OTel Collector, Falco (telemetry + security)
 - **Wave 6**: Harbor, External DNS (registry + DNS)

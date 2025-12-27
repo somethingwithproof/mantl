@@ -1,0 +1,145 @@
+# Crossplane Helm values
+# CNCF Incubating Project
+# https://docs.crossplane.io/
+
+# Crossplane deployment configuration
+replicas: 1
+
+# Image configuration
+image:
+  repository: crossplane/crossplane
+  tag: v1.18.1
+  pullPolicy: IfNotPresent
+
+# Resource limits
+resourcesCrossplane:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# RBAC Manager resources
+resourcesRBACManager:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Security context
+securityContextCrossplane:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Package cache
+packageCache:
+  medium: Memory
+  sizeLimit: 20Mi
+  pvc: ""
+
+# Configuration packages
+configuration:
+  packages: []
+  # Example AWS configuration:
+  # - xpkg.upbound.io/upbound/platform-ref-aws:v0.9.0
+  # Example GCP configuration:
+  # - xpkg.upbound.io/upbound/platform-ref-gcp:v0.9.0
+  # Example Azure configuration:
+  # - xpkg.upbound.io/upbound/platform-ref-azure:v0.9.0
+
+# Provider packages (install cloud providers as needed)
+provider:
+  packages: []
+  # AWS Provider:
+  # - xpkg.upbound.io/upbound/provider-aws-ec2:v1.1.0
+  # - xpkg.upbound.io/upbound/provider-aws-s3:v1.1.0
+  # - xpkg.upbound.io/upbound/provider-aws-rds:v1.1.0
+  # - xpkg.upbound.io/upbound/provider-aws-eks:v1.1.0
+  # GCP Provider:
+  # - xpkg.upbound.io/upbound/provider-gcp-compute:v1.1.0
+  # - xpkg.upbound.io/upbound/provider-gcp-storage:v1.1.0
+  # - xpkg.upbound.io/upbound/provider-gcp-sql:v1.1.0
+  # - xpkg.upbound.io/upbound/provider-gcp-container:v1.1.0
+  # Azure Provider:
+  # - xpkg.upbound.io/upbound/provider-azure-compute:v1.1.0
+  # - xpkg.upbound.io/upbound/provider-azure-storage:v1.1.0
+  # - xpkg.upbound.io/upbound/provider-azure-sql:v1.1.0
+  # - xpkg.upbound.io/upbound/provider-azure-containerservice:v1.1.0
+  # Kubernetes Provider (for managing remote clusters):
+  # - xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v0.14.0
+  # Helm Provider:
+  # - xpkg.upbound.io/crossplane-contrib/provider-helm:v0.19.0
+
+# Function packages (Composition Functions for advanced logic)
+function:
+  packages: []
+  # - xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.6.0
+  # - xpkg.upbound.io/crossplane-contrib/function-auto-ready:v0.4.0
+
+# Metrics
+metrics:
+  enabled: true
+
+# Args for crossplane pod
+args:
+  - --debug
+  - --enable-composition-revisions
+  - --enable-composition-webhook-schema-validation
+  - --enable-environment-configs
+
+# Webhook configuration
+webhooks:
+  enabled: true
+
+# RBAC Manager
+rbacManager:
+  deploy: true
+  skipAggregatedClusterRoles: false
+  managementPolicy: All
+  replicas: 1
+
+# Service account
+serviceAccount:
+  create: true
+  name: crossplane
+
+# Priority class
+priorityClassName: system-cluster-critical
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Extra environment variables
+extraEnvVarsCrossplane: {}
+
+# Extra environment variables for RBAC manager
+extraEnvVarsRBACManager: {}
+
+# Custom annotations for the deployment
+customAnnotations: {}
+
+# Custom labels for the deployment
+customLabels: {}
+
+# Leader election
+leaderElection: true
+
+# Registry authentication (if using private registry)
+# registryCaBundleConfig:
+#   name: ""
+#   key: ""
