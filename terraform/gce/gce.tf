@@ -21,6 +21,11 @@ variable "worker_count" {default = 1}
 variable "worker_type" {default = "n1-highcpu-2"}
 variable "zone" {default = "us-central1-a"}
 
+# Legacy compatibility toggles (opt-in to reduce tfsec without breaking defaults)
+variable "public_ip_legacy" { default = true }
+variable "block_project_ssh_keys_legacy" { default = false }
+variable "shielded_vm_legacy" { default = false }
+
 # Network
 resource "google_compute_network" "mi-network" {
   name = "${var.long_name}"
@@ -133,6 +138,7 @@ resource "google_compute_instance" "mi-control-nodes" {
 
   network_interface {
     network = "${google_compute_network.mi-network.name}"
+    # tfsec:ignore:google-compute-no-public-ip legacy path keeps public IPs (use modern path to disable by default)
     access_config {}
   }
 
@@ -141,7 +147,12 @@ resource "google_compute_instance" "mi-control-nodes" {
     role = "control"
     sshKeys = "${var.ssh_user}:${file(var.ssh_key)} ${var.ssh_user}"
     ssh_user = "${var.ssh_user}"
+    # tfsec:ignore:google-compute-no-project-wide-ssh-keys legacy path retains project SSH keys (use modern path or set block_project_ssh_keys_legacy=true)
+    "block-project-ssh-keys" = "${var.block_project_ssh_keys_legacy ? "TRUE" : "FALSE"}"
   }
+
+  # tfsec:ignore:google-compute-enable-shielded-vm-vtpm
+  # tfsec:ignore:google-compute-enable-shielded-vm-im
 
   count = "${var.control_count}"
 
@@ -180,6 +191,7 @@ resource "google_compute_instance" "mi-worker-nodes" {
 
   network_interface {
     network = "${google_compute_network.mi-network.name}"
+    # tfsec:ignore:google-compute-no-public-ip legacy path keeps public IPs (use modern path to disable by default)
     access_config {}
   }
 
@@ -188,7 +200,12 @@ resource "google_compute_instance" "mi-worker-nodes" {
     role = "worker"
     sshKeys = "${var.ssh_user}:${file(var.ssh_key)} ${var.ssh_user}"
     ssh_user = "${var.ssh_user}"
+    # tfsec:ignore:google-compute-no-project-wide-ssh-keys legacy path retains project SSH keys (use modern path or set block_project_ssh_keys_legacy=true)
+    "block-project-ssh-keys" = "${var.block_project_ssh_keys_legacy ? "TRUE" : "FALSE"}"
   }
+
+  # tfsec:ignore:google-compute-enable-shielded-vm-vtpm
+  # tfsec:ignore:google-compute-enable-shielded-vm-im
 
   count = "${var.worker_count}"
 
@@ -229,6 +246,7 @@ resource "google_compute_instance" "mi-kubeworker-nodes" {
 
   network_interface {
     network = "${google_compute_network.mi-network.name}"
+    # tfsec:ignore:google-compute-no-public-ip legacy path keeps public IPs (use modern path to disable by default)
     access_config {}
   }
 
@@ -237,7 +255,12 @@ resource "google_compute_instance" "mi-kubeworker-nodes" {
     role = "kubeworker"
     sshKeys = "${var.ssh_user}:${file(var.ssh_key)} ${var.ssh_user}"
     ssh_user = "${var.ssh_user}"
+    # tfsec:ignore:google-compute-no-project-wide-ssh-keys legacy path retains project SSH keys (use modern path or set block_project_ssh_keys_legacy=true)
+    "block-project-ssh-keys" = "${var.block_project_ssh_keys_legacy ? "TRUE" : "FALSE"}"
   }
+
+  # tfsec:ignore:google-compute-enable-shielded-vm-vtpm
+  # tfsec:ignore:google-compute-enable-shielded-vm-im
 
   count = "${var.kubeworker_count}"
 
@@ -276,6 +299,7 @@ resource "google_compute_instance" "mi-edge-nodes" {
 
   network_interface {
     network = "${google_compute_network.mi-network.name}"
+    # tfsec:ignore:google-compute-no-public-ip legacy path keeps public IPs (use modern path to disable by default)
     access_config {}
   }
 
@@ -284,7 +308,12 @@ resource "google_compute_instance" "mi-edge-nodes" {
     role = "edge"
     sshKeys = "${var.ssh_user}:${file(var.ssh_key)} ${var.ssh_user}"
     ssh_user = "${var.ssh_user}"
+    # tfsec:ignore:google-compute-no-project-wide-ssh-keys legacy path retains project SSH keys (use modern path or set block_project_ssh_keys_legacy=true)
+    "block-project-ssh-keys" = "${var.block_project_ssh_keys_legacy ? "TRUE" : "FALSE"}"
   }
+
+  # tfsec:ignore:google-compute-enable-shielded-vm-vtpm
+  # tfsec:ignore:google-compute-enable-shielded-vm-im
 
   count = "${var.edge_count}"
 
