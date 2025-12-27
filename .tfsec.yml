@@ -1,0 +1,10 @@
+# tfsec configuration for this repository
+# Keep the signal high: scan blueprints strictly, relax on examples.
+# Docs: https://aquasecurity.github.io/tfsec/latest/configuration/config/
+severity: HIGH
+exclude-path:
+  - terraform/examples
+
+# Uncomment to exclude specific noisy rules once triaged
+# exclude:
+#   - AWS012 # Example: S3 bucket missing encryption (not applicable)
