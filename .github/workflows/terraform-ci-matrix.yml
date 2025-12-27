@@ -1,4 +1,4 @@
-name: Terraform CI (matrix)
+name: Terraform CI
 
 on:
   pull_request:
@@ -6,38 +6,50 @@ on:
       - 'terraform/**'
       - '.github/workflows/terraform-ci-matrix.yml'
   push:
-    branches: [ rollup/** ]
+    branches: [ main, rollup/** ]
     paths:
       - 'terraform/**'
       - '.github/workflows/terraform-ci-matrix.yml'
 
 jobs:
-  terraform-aws:
+  fmt:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: terraform/aws
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '~1.9'
-      - name: Fmt (check)
+      - name: Terraform fmt (repo)
         run: terraform fmt -check -recursive
-        working-directory: .
-      - name: Init
-        run: terraform init -backend=false -input=false
-      - name: Validate
-        run: terraform validate
 
-  terraform-gce:
+  terraform:
+    name: Terraform validate (${{ matrix.path }})
     runs-on: ubuntu-latest
-    continue-on-error: true
+    if: ${{ hashFiles(format('{0}/**/*.tf', matrix.path)) != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        path:
+          - terraform/blueprints/aws-eks
+          - terraform/blueprints/azure-aks
+          - terraform/blueprints/do-doks
+          - terraform/blueprints/gcp-gke
+          - terraform/blueprints/ibm-iks
+          - terraform/blueprints/linode-lke
+          - terraform/blueprints/oci-oke
+          - terraform/examples/aks-external-dns-wi
+          - terraform/examples/gke-external-dns-wi
     defaults:
       run:
-        working-directory: terraform/gce
+        working-directory: ${{ matrix.path }}
     steps:
       - uses: actions/checkout@v4
+      - name: Terraform plugin cache
+        run: echo "plugin_cache_dir=$HOME/.terraform.d/plugin-cache" >> $GITHUB_ENV
+      - uses: actions/cache@v4
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: ${{ runner.os }}-tf-${{ hashFiles(format('{0}/**/*.tf', matrix.path)) }}
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '~1.9'
@@ -45,19 +57,8 @@ jobs:
         run: terraform init -backend=false -input=false
       - name: Validate
         run: terraform validate
-
-  terraform-vsphere:
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    defaults:
-      run:
-        working-directory: terraform/vsphere
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '~1.9'
-      - name: Init
-        run: terraform init -backend=false -input=false
-      - name: Validate
-        run: terraform validate
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+      - name: TFLint (non-blocking)
+        run: tflint -f compact
+        continue-on-error: true
