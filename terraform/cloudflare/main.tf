@@ -55,13 +55,13 @@ data "cloudflare_zone" "this" {
 }
 
 locals {
-  zone_id   = data.cloudflare_zone.this.id
-  suffix    = var.subdomain
+  zone_id = data.cloudflare_zone.this.id
+  suffix  = var.subdomain
   # indexed maps to preserve order for formatted indices
-  control   = { for idx, ip in var.control_ips    : idx => ip }
-  workers   = { for idx, ip in var.worker_ips     : idx => ip }
+  control   = { for idx, ip in var.control_ips : idx => ip }
+  workers   = { for idx, ip in var.worker_ips : idx => ip }
   kubeworks = { for idx, ip in var.kubeworker_ips : idx => ip }
-  edges     = { for idx, ip in var.edge_ips       : idx => ip }
+  edges     = { for idx, ip in var.edge_ips : idx => ip }
 }
 
 # Individual records (A)
