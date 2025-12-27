@@ -67,8 +67,8 @@ resource "google_compute_instance" "control_modern" {
 
   # Network
   network_interface {
-    network    = var.modern_subnetwork_self_link != "" ? null : google_compute_network.mi-network.name
-    subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : null
+    network    = (var.use_modern_gce_network || var.modern_subnetwork_self_link != "") ? null : google_compute_network.mi-network.name
+    subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : (var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : null)
     dynamic "access_config" {
       for_each = var.gce_public_ip ? [1] : []
       content {}
@@ -122,8 +122,8 @@ resource "google_compute_instance" "worker_modern" {
   }
 
   network_interface {
-    network    = var.modern_subnetwork_self_link != "" ? null : google_compute_network.mi-network.name
-    subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : null
+    network    = (var.use_modern_gce_network || var.modern_subnetwork_self_link != "") ? null : google_compute_network.mi-network.name
+    subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : (var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : null)
     dynamic "access_config" {
       for_each = var.gce_public_ip ? [1] : []
       content {}
@@ -175,8 +175,8 @@ resource "google_compute_instance" "kubeworker_modern" {
   }
 
   network_interface {
-    network    = var.modern_subnetwork_self_link != "" ? null : google_compute_network.mi-network.name
-    subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : null
+    network    = (var.use_modern_gce_network || var.modern_subnetwork_self_link != "") ? null : google_compute_network.mi-network.name
+    subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : (var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : null)
     dynamic "access_config" {
       for_each = var.gce_public_ip ? [1] : []
       content {}
