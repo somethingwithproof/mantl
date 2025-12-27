@@ -24,27 +24,15 @@ on:
           - standalone
           - docker
 
-# Cancel previous runs on the same PR
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
-
-
-# Minimal permissions by default
-permissions:
-  contents: read
-
 jobs:
   standalone-tests:
     name: Standalone Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # Prevent hung jobs
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
           
@@ -61,7 +49,7 @@ jobs:
           
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: standalone-test-results
           path: tests/integration/kubernetes-nomad/results/
@@ -71,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.inputs.test_type == 'docker' || github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -103,7 +91,7 @@ jobs:
           
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v4
         with:
           name: docker-test-results
           path: tests/integration/kubernetes-nomad/results/
