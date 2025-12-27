@@ -1,0 +1,72 @@
+# CIS Kubernetes Baseline Profile
+# Enables all Level 1 controls (basic hardening)
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceProfile
+metadata:
+  name: cis-kubernetes-baseline
+  labels:
+    compliance.mantl.io/framework: cis-kubernetes-v1.8
+    compliance.mantl.io/level: "1"
+spec:
+  frameworkRef: cis-kubernetes-v1.8
+  mode: enforce
+
+  # Include only Level 1 controls
+  includeControls:
+    - "5.1.5"   # Default service account
+    - "5.2.1"   # No privileged containers
+    - "5.2.2"   # No privilege escalation
+    - "5.2.3"   # Run as non-root
+    - "5.3.2"   # NetworkPolicy required
+    - "5.7.3"   # SecurityContext required
+
+  excludeNamespaces:
+    - kube-system
+    - kube-public
+    - kube-node-lease
+    - monitoring
+    - observability
+
+  evidenceStore:
+    type: s3
+    bucket: mantl-compliance-evidence
+    prefix: cis-kubernetes/
+
+  notificationChannels:
+    - type: slack
+      secretRef: compliance-slack-webhook
+      minSeverity: high
+---
+# CIS Kubernetes Hardened Profile
+# Enables all Level 1 and Level 2 controls (strict hardening)
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceProfile
+metadata:
+  name: cis-kubernetes-hardened
+  labels:
+    compliance.mantl.io/framework: cis-kubernetes-v1.8
+    compliance.mantl.io/level: "2"
+spec:
+  frameworkRef: cis-kubernetes-v1.8
+  mode: enforce
+
+  # Include all controls (Level 1 + Level 2)
+  # Excluding only those that require manual verification
+  excludeControls:
+    - "5.4.2"   # External secrets (attestation required)
+
+  excludeNamespaces:
+    - kube-system
+
+  evidenceStore:
+    type: s3
+    bucket: mantl-compliance-evidence
+    prefix: cis-kubernetes-hardened/
+
+  notificationChannels:
+    - type: slack
+      secretRef: compliance-slack-webhook
+      minSeverity: medium
+    - type: pagerduty
+      secretRef: compliance-pagerduty-key
+      minSeverity: critical

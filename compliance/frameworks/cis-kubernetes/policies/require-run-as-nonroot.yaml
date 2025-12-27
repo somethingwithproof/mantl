@@ -1,0 +1,41 @@
+# CIS Kubernetes 5.2.3 - Require Run As Non-Root
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-require-run-as-nonroot
+  labels:
+    compliance.mantl.io/framework: cis-kubernetes
+    compliance.mantl.io/control: "5.2.3"
+    compliance.mantl.io/severity: high
+  annotations:
+    policies.kyverno.io/title: Require Run As Non-Root
+    policies.kyverno.io/category: CIS Kubernetes Benchmark
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-run-as-nonroot
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: |
+          CIS 5.2.3 Violation: Containers must run as non-root.
+          Set spec.securityContext.runAsNonRoot to true OR
+          set spec.containers[*].securityContext.runAsNonRoot to true.
+        anyPattern:
+          - spec:
+              securityContext:
+                runAsNonRoot: true
+          - spec:
+              containers:
+                - securityContext:
+                    runAsNonRoot: true

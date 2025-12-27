@@ -1,0 +1,352 @@
+# CIS Kubernetes Benchmark v1.8
+# Center for Internet Security Kubernetes Hardening Guide
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceFramework
+metadata:
+  name: cis-kubernetes-v1.8
+  labels:
+    compliance.mantl.io/authority: cis
+    compliance.mantl.io/version: "1.8"
+spec:
+  displayName: "CIS Kubernetes Benchmark v1.8"
+  description: |
+    The CIS Kubernetes Benchmark provides prescriptive guidance for
+    establishing a secure configuration posture for Kubernetes.
+  version: "1.8"
+  authority: "Center for Internet Security"
+
+  categories:
+    - id: "1"
+      name: "Control Plane Components"
+      description: "API Server, Controller Manager, Scheduler security"
+    - id: "2"
+      name: "etcd"
+      description: "etcd database security"
+    - id: "3"
+      name: "Control Plane Configuration"
+      description: "Authentication, authorization, admission control"
+    - id: "4"
+      name: "Worker Nodes"
+      description: "Kubelet and worker node security"
+    - id: "5"
+      name: "Policies"
+      description: "RBAC, Pod Security, Network Policies"
+
+  controls:
+    # ==========================================================================
+    # Section 5.1 - RBAC and Service Accounts
+    # ==========================================================================
+    - id: "5.1.1"
+      categoryId: "5"
+      name: "Ensure cluster-admin role is only used where required"
+      description: |
+        The RBAC role cluster-admin provides wide-ranging powers over the
+        environment and should be used only where and when needed.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: restrict-cluster-admin-binding
+            mode: audit
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 * * *"
+            resources:
+              - clusterrolebindings
+            retentionDays: 365
+
+    - id: "5.1.2"
+      categoryId: "5"
+      name: "Minimize access to secrets"
+      description: |
+        The Kubernetes API stores secrets, which may contain sensitive
+        information. Ensure that access to secrets is appropriately restricted.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: restrict-secret-access
+            mode: audit
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 * * *"
+            resources:
+              - roles
+              - clusterroles
+            retentionDays: 365
+
+    - id: "5.1.3"
+      categoryId: "5"
+      name: "Minimize wildcard use in Roles and ClusterRoles"
+      description: |
+        Kubernetes Roles and ClusterRoles provide access to resources based on
+        sets of objects and actions. Wildcards should be avoided.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: disallow-wildcard-verbs
+            mode: audit
+
+    - id: "5.1.5"
+      categoryId: "5"
+      name: "Ensure default service accounts are not actively used"
+      description: |
+        The default service account should not be used to ensure workloads
+        are run with specific, limited permissions.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: disallow-default-serviceaccount
+            mode: enforce
+
+    - id: "5.1.6"
+      categoryId: "5"
+      name: "Ensure Service Account tokens are not mounted when not needed"
+      description: |
+        Service account tokens should only be mounted when required.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: disallow-auto-mount-token
+            mode: audit
+
+    # ==========================================================================
+    # Section 5.2 - Pod Security Standards
+    # ==========================================================================
+    - id: "5.2.1"
+      categoryId: "5"
+      name: "Ensure privileged containers are not used"
+      description: |
+        Privileged containers have access to host resources and should be avoided.
+      severity: critical
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: disallow-privileged-containers
+            mode: enforce
+
+    - id: "5.2.2"
+      categoryId: "5"
+      name: "Minimize containers with allowPrivilegeEscalation"
+      description: |
+        Containers should not be allowed to escalate privileges.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: disallow-privilege-escalation
+            mode: enforce
+
+    - id: "5.2.3"
+      categoryId: "5"
+      name: "Minimize root container usage"
+      description: |
+        Containers should run as a non-root user.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-run-as-nonroot
+            mode: enforce
+
+    - id: "5.2.4"
+      categoryId: "5"
+      name: "Minimize containers with NET_RAW capability"
+      description: |
+        Containers should drop NET_RAW capability.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: drop-net-raw-capability
+            mode: enforce
+
+    - id: "5.2.5"
+      categoryId: "5"
+      name: "Minimize containers with added capabilities"
+      description: |
+        Containers should not add additional capabilities beyond those needed.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: restrict-capabilities
+            mode: audit
+
+    - id: "5.2.6"
+      categoryId: "5"
+      name: "Ensure seccomp profile is set to docker/default or runtime/default"
+      description: |
+        Seccomp profiles restrict system calls available to containers.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-seccomp-profile
+            mode: audit
+
+    - id: "5.2.7"
+      categoryId: "5"
+      name: "Ensure Seccomp profile allows necessary syscalls"
+      description: |
+        Seccomp should be enabled to restrict syscalls.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-seccomp-strict
+            mode: audit
+
+    - id: "5.2.8"
+      categoryId: "5"
+      name: "Ensure AppArmor or Seccomp is configured"
+      description: |
+        Linux security modules should be enabled.
+      severity: medium
+      automated: true
+      mappings:
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 * * *"
+            resources:
+              - pods
+            retentionDays: 90
+
+    # ==========================================================================
+    # Section 5.3 - Network Policies and CNI
+    # ==========================================================================
+    - id: "5.3.1"
+      categoryId: "5"
+      name: "Ensure CNI supports NetworkPolicies"
+      description: |
+        The Container Network Interface (CNI) plugin must support NetworkPolicies.
+      severity: high
+      automated: true
+      mappings:
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 * * 0"
+            resources:
+              - pods
+            retentionDays: 365
+
+    - id: "5.3.2"
+      categoryId: "5"
+      name: "Ensure NetworkPolicy is defined for every namespace"
+      description: |
+        Every namespace should have a NetworkPolicy defined.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-network-policy
+            mode: enforce
+
+    # ==========================================================================
+    # Section 5.4 - Secrets Management
+    # ==========================================================================
+    - id: "5.4.1"
+      categoryId: "5"
+      name: "Prefer using Secrets as files over environment variables"
+      description: |
+        Secrets should be mounted as files rather than environment variables.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: prefer-secrets-as-files
+            mode: audit
+
+    - id: "5.4.2"
+      categoryId: "5"
+      name: "Consider external secret storage"
+      description: |
+        Use external secret storage solutions for sensitive data.
+      severity: medium
+      automated: false
+      mappings:
+        - type: attestation
+          attestationRequired: true
+
+    # ==========================================================================
+    # Section 5.7 - General Policies
+    # ==========================================================================
+    - id: "5.7.1"
+      categoryId: "5"
+      name: "Create administrative boundaries using namespaces"
+      description: |
+        Use namespaces to create administrative boundaries.
+      severity: medium
+      automated: true
+      mappings:
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 * * *"
+            resources:
+              - namespaces
+            retentionDays: 365
+
+    - id: "5.7.2"
+      categoryId: "5"
+      name: "Ensure Seccomp profile is applied to workloads"
+      description: |
+        Apply seccomp profiles to restrict container syscalls.
+      severity: medium
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-seccomp-profile
+            mode: audit
+
+    - id: "5.7.3"
+      categoryId: "5"
+      name: "Apply SecurityContext to pods and containers"
+      description: |
+        Apply security context settings to all pods.
+      severity: high
+      automated: true
+      mappings:
+        - type: policy
+          policyRef:
+            template: require-security-context
+            mode: enforce
+
+    - id: "5.7.4"
+      categoryId: "5"
+      name: "Use namespace-scoped defaults"
+      description: |
+        Set namespace-scoped defaults using admission controllers.
+      severity: medium
+      automated: true
+      mappings:
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: "0 0 * * 0"
+            resources:
+              - limitranges
+              - resourcequotas
+            retentionDays: 365

@@ -1,0 +1,49 @@
+# CIS Kubernetes 5.2.1 - Disallow Privileged Containers
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-disallow-privileged-containers
+  labels:
+    compliance.mantl.io/framework: cis-kubernetes
+    compliance.mantl.io/control: "5.2.1"
+    compliance.mantl.io/severity: critical
+  annotations:
+    policies.kyverno.io/title: Disallow Privileged Containers
+    policies.kyverno.io/category: CIS Kubernetes Benchmark
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: |
+      CIS 5.2.1: Privileged mode pods are equivalent to root on the node.
+      This policy ensures containers cannot run in privileged mode.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: deny-privileged-containers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: |
+          CIS 5.2.1 Violation: Privileged containers are not allowed.
+          Remove securityContext.privileged or set it to false.
+          
+          Resource: {{request.object.metadata.namespace}}/{{request.object.metadata.name}}
+          Documentation: https://mantl.io/docs/compliance/cis/5.2.1
+        pattern:
+          spec:
+            =(ephemeralContainers):
+              - =(securityContext):
+                  =(privileged): false
+            =(initContainers):
+              - =(securityContext):
+                  =(privileged): false
+            containers:
+              - =(securityContext):
+                  =(privileged): false

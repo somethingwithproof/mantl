@@ -1,0 +1,43 @@
+# CIS Kubernetes 5.2.2 - Disallow Privilege Escalation
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cis-disallow-privilege-escalation
+  labels:
+    compliance.mantl.io/framework: cis-kubernetes
+    compliance.mantl.io/control: "5.2.2"
+    compliance.mantl.io/severity: high
+  annotations:
+    policies.kyverno.io/title: Disallow Privilege Escalation
+    policies.kyverno.io/category: CIS Kubernetes Benchmark
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: deny-privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: |
+          CIS 5.2.2 Violation: Privilege escalation is not allowed.
+          Set securityContext.allowPrivilegeEscalation to false.
+        pattern:
+          spec:
+            =(ephemeralContainers):
+              - securityContext:
+                  allowPrivilegeEscalation: false
+            =(initContainers):
+              - securityContext:
+                  allowPrivilegeEscalation: false
+            containers:
+              - securityContext:
+                  allowPrivilegeEscalation: false

@@ -1,0 +1,40 @@
+# ServiceMonitor for Compliance Operator
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: compliance-operator
+  namespace: compliance-system
+  labels:
+    app.kubernetes.io/name: compliance-operator
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: compliance-operator
+  namespaceSelector:
+    matchNames:
+      - compliance-system
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+      scheme: http
+---
+# ServiceMonitor for Evidence Collectors
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: compliance-collectors
+  namespace: compliance-system
+  labels:
+    app.kubernetes.io/name: compliance-collectors
+spec:
+  selector:
+    matchLabels:
+      compliance.mantl.io/collector: "true"
+  namespaceSelector:
+    matchNames:
+      - compliance-system
+  endpoints:
+    - port: metrics
+      interval: 60s
+      path: /metrics

@@ -1,0 +1,35 @@
+# Grafana DataSource for Compliance Metrics
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasource-compliance
+  namespace: monitoring
+  labels:
+    grafana_datasource: "true"
+data:
+  compliance-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Compliance-Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-prometheus.monitoring.svc.cluster.local:9090
+        isDefault: false
+        jsonData:
+          timeInterval: "30s"
+          queryTimeout: "60s"
+          httpMethod: POST
+          customQueryParameters: "compliance=true"
+        editable: false
+---
+# Grafana Dashboard ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-compliance
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "true"
+data:
+  compliance-dashboard.json: |
+    ${file("../dashboards/compliance-overview.json")}
