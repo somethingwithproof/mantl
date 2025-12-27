@@ -198,13 +198,7 @@ config:
       const_labels:
         cluster: mantl
     
-    # OTLP exporter for traces -> Jaeger
-    otlp/jaeger:
-      endpoint: jaeger-collector.observability.svc.cluster.local:4317
-      tls:
-        insecure: true
-    
-    # OTLP exporter for traces -> Tempo (alternative)
+    # OTLP exporter for traces -> Tempo
     otlp/tempo:
       endpoint: tempo.observability.svc.cluster.local:4317
       tls:
@@ -212,7 +206,7 @@ config:
     
     # Loki exporter for logs
     loki:
-      endpoint: http://loki.observability.svc.cluster.local:3100/loki/api/v1/push
+      endpoint: http://loki-gateway.observability.svc.cluster.local:80/loki/api/v1/push
       labels:
         attributes:
           k8s.namespace.name: namespace
@@ -248,7 +242,7 @@ config:
           - tail_sampling
           - batch
         exporters:
-          - otlp/jaeger
+          - otlp/tempo
           - spanmetrics
       
       metrics:

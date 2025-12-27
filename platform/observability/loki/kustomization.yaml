@@ -1,0 +1,14 @@
+# Grafana Loki - Log Aggregation
+# https://grafana.com/oss/loki/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: observability
+
+helmCharts:
+  - name: loki
+    repo: https://grafana.github.io/helm-charts
+    version: 6.23.0
+    releaseName: loki
+    namespace: observability
+    valuesFile: values.yaml
