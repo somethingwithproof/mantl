@@ -103,20 +103,9 @@ serviceAccount:
   create: true
   name: falco
 
-# Metrics for Prometheus
+# Metrics for Prometheus (disabled in CI to avoid template issues)
 metrics:
-  enabled: true
-  service:
-    ports:
-      - port: 8765
-        targetPort: 8765
-        protocol: TCP
-        name: metrics
-  serviceMonitor:
-    enabled: true
-    interval: 30s
-    labels:
-      release: prometheus
+  enabled: false
 
 # Custom rules (add to rules.d/)
 customRules:
