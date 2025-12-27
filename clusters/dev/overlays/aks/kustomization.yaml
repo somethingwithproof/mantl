@@ -1,7 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../../
+  # Inherit base cluster apps explicitly to avoid parent-cycle issues
+  - ../../apps/cert-manager.yaml
+  - ../../apps/cert-manager-clusterissuers.yaml
+  - ../../apps/kyverno.yaml
+  - ../../apps/kyverno-policies.yaml
+  - ../../apps/prometheus.yaml
+  # AKS-specific/extra apps
   - ../../../production/apps/cert-manager-issuer-dns-azure.yaml
   - ../../../production/apps/external-dns-azure.yaml
   - ../../../production/apps/gateway-sample.yaml

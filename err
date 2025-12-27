@@ -1,0 +1,8 @@
+Error: trouble configuring builtin HelmChartInflationGenerator with config: `
+name: external-dns
+namespace: external-dns
+releaseName: external-dns
+repo: https://kubernetes-sigs.github.io/external-dns/
+valuesFile: values.yaml
+version: 1.15.0
+`: must specify --enable-helm

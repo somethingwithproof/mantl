@@ -2,7 +2,7 @@
 # Log aggregation for Kubernetes
 # https://grafana.com/docs/loki/latest/
 
-deploymentMode: SimpleScalable
+deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false
@@ -57,7 +57,7 @@ loki:
     enable_api: true
 
 read:
-  replicas: 2
+  replicas: 0
   resources:
     requests:
       cpu: 100m
@@ -67,7 +67,7 @@ read:
       memory: 512Mi
 
 write:
-  replicas: 2
+  replicas: 0
   resources:
     requests:
       cpu: 100m
@@ -80,7 +80,7 @@ write:
     size: 10Gi
 
 backend:
-  replicas: 1
+  replicas: 0
   resources:
     requests:
       cpu: 100m
@@ -104,7 +104,7 @@ gateway:
       memory: 128Mi
 
 singleBinary:
-  replicas: 0
+  replicas: 1
 
 monitoring:
   serviceMonitor:

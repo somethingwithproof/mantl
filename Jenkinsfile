@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         PYTHONPATH = "${WORKSPACE}"
-        TERRAFORM_VERSION = "1.10.5"
-        KYVERNO_VERSION = "3.3.2"
+        TERRAFORM_VERSION = "1.14.3"
+        KYVERNO_VERSION = "1.12.1"
         KUBECTL_VERSION = "1.31.0"
     }
 
@@ -287,7 +287,7 @@ spec:
                         container('kind') {
                             sh '''
                                 # Deploy example app
-                                kubectl apply -k applications/examples/hello || true
+                                kubectl apply -k apps/examples/hello || true
                                 kubectl rollout status deploy/app -n default --timeout=120s || true
 
                                 # Test connectivity
