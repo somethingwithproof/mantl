@@ -14,21 +14,45 @@ Mantl isn't just another Kubernetes platform. It's the first to provide **Compli
 - 🔄 **GitOps Native** - Everything is code, everything is versioned, everything is auditable
 - ☁️ **Multi-Cloud** - AWS, GCP, Azure, DigitalOcean, Oracle, IBM, OpenStack, bare metal
 
-## Quick Start
+## ⚡ Quick Start (3 Commands)
+
+Get a complete production-ready platform running in **under 5 minutes**:
 
 ```bash
-# 1. Provision infrastructure (choose your cloud)
-cd terraform/blueprints/aws-eks
+git clone https://github.com/thomasvincent/mantl.git
+cd mantl
+make install-dev
+```
+
+That's it! This command:
+- ✅ Creates a local kind cluster
+- ✅ Installs ArgoCD and all platform components
+- ✅ Deploys example applications
+- ✅ Sets up observability stack
+
+### Alternative Installation Methods
+
+**Interactive Wizard** (for configuration):
+```bash
+make wizard
+```
+
+**CLI Tool** (for advanced users):
+```bash
+./scripts/mantl init
+```
+
+**Production Deployment** (cloud providers):
+```bash
+# 1. Provision infrastructure
+cd terraform/blueprints/aws-eks  # or gcp-gke, azure-aks, etc.
 tofu init && tofu apply
 
-# 2. Bootstrap the platform
-./scripts/bootstrap-cluster.sh
+# 2. Bootstrap platform
+./scripts/bootstrap-platform.sh --environment production --cloud aws
 
 # 3. Enable compliance
 kubectl apply -f compliance/frameworks/soc2/profile-standard.yaml
-
-# 4. Check status
-mantl compliance status
 ```
 
 ## Architecture
@@ -162,6 +186,50 @@ All components are CNCF projects (Graduated or Incubating):
 | TLS | cert-manager | Graduated |
 | DNS | External DNS | Incubating |
 
+## Developer Experience
+
+Mantl provides multiple ways to get started, from zero to production in minutes:
+
+| Tool | Use Case | Command |
+|------|----------|---------|
+| **Makefile** | Quick commands | `make install-dev`, `make dashboards` |
+| **Setup Wizard** | Interactive configuration | `make wizard` |
+| **CLI Tool** | Advanced operations | `./scripts/mantl <command>` |
+| **Bootstrap Script** | Automated deployment | `./scripts/bootstrap-platform.sh` |
+
+### Example Applications
+
+Production-ready examples demonstrating best practices:
+
+- **api-service** - Backend API with OpenTelemetry tracing and Prometheus metrics
+- **frontend** - Nginx frontend with Gateway API ingress
+- **database-app** - Stateful application with PostgreSQL StatefulSet
+- **hello** - Simple hello-world example
+
+Deploy examples:
+```bash
+make deploy-examples
+# or
+kubectl apply -k applications/examples/<app-name>/base
+```
+
+## Environments
+
+Mantl supports multiple environments with progressive complexity:
+
+| Environment | Purpose | Components |
+|-------------|---------|------------|
+| **dev** | Local development (kind) | Core services only, minimal resources |
+| **staging** | Pre-production testing | Production-like, full stack |
+| **production** | Production workloads | Full stack, HA, multi-region ready |
+
+Switch environments:
+```bash
+kubectl apply -f clusters/dev/app-of-apps.yaml
+kubectl apply -f clusters/staging/app-of-apps.yaml
+kubectl apply -f clusters/production/platform-apps.yaml
+```
+
 ## Repository Structure
 
 ```
@@ -179,8 +247,9 @@ mantl/
 ├── policies/            # Kyverno policies
 ├── terraform/           # OpenTofu blueprints
 │   └── blueprints/      # AWS, GCP, Azure, etc.
-├── clusters/            # Cluster configurations
+├── clusters/            # Cluster configurations (dev, staging, production)
 ├── applications/        # Example applications
+├── scripts/             # CLI, bootstrap, wizard, validation
 └── docs/                # Documentation
 ```
 
