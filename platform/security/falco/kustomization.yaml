@@ -1,0 +1,18 @@
+# CNCF Graduated: Falco
+# Runtime security and threat detection
+# https://falco.org/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: falco-system
+
+resources:
+  - namespace.yaml
+
+helmCharts:
+  - name: falco
+    repo: https://falcosecurity.github.io/charts
+    version: 4.15.0
+    releaseName: falco
+    namespace: falco-system
+    valuesFile: values.yaml

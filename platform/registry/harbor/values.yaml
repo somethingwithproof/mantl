@@ -1,0 +1,270 @@
+# Harbor Helm values
+# CNCF Graduated Project - Container Registry
+# https://goharbor.io/docs/
+
+# Expose configuration
+expose:
+  type: ingress
+  tls:
+    enabled: true
+    certSource: secret
+    secret:
+      secretName: harbor-tls
+  ingress:
+    hosts:
+      core: harbor.example.com        # CHANGE THIS
+      notary: notary.example.com      # CHANGE THIS
+    className: cilium                  # Or your ingress class
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+
+# External URL (must match ingress host)
+externalURL: https://harbor.example.com  # CHANGE THIS
+
+# Internal TLS between components
+internalTLS:
+  enabled: true
+  certSource: auto
+
+# Persistence
+persistence:
+  enabled: true
+  resourcePolicy: keep
+  persistentVolumeClaim:
+    registry:
+      storageClass: ""  # Use default or specify
+      size: 100Gi
+    jobservice:
+      storageClass: ""
+      size: 10Gi
+    database:
+      storageClass: ""
+      size: 10Gi
+    redis:
+      storageClass: ""
+      size: 5Gi
+    trivy:
+      storageClass: ""
+      size: 10Gi
+
+# Image source (use your own mirror if needed)
+imageSource:
+  repository: goharbor
+
+# Update strategy
+updateStrategy:
+  type: RollingUpdate
+
+# Log level
+logLevel: info
+
+# Harbor admin password (use external secret in production)
+harborAdminPassword: ""  # Generate with: openssl rand -base64 32
+existingSecretAdminPassword: harbor-admin-secret
+existingSecretAdminPasswordKey: password
+
+# Secret key for encryption (32 chars)
+secretKey: ""  # Generate with: openssl rand -base64 32 | head -c 32
+existingSecretSecretKey: harbor-secret-key
+
+# Core component
+core:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  
+  # CSRF protection
+  xsrfKey: ""  # Generate with: openssl rand -base64 32
+
+# Job Service
+jobservice:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Registry
+registry:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  
+  # Garbage collection
+  relativeurls: true
+  
+  # Storage backend (filesystem by default, S3/GCS for cloud)
+  # For S3:
+  # storage:
+  #   s3:
+  #     region: us-east-1
+  #     bucket: harbor-registry
+  #     accesskey: ""
+  #     secretkey: ""
+
+# Trivy scanner (built-in vulnerability scanning)
+trivy:
+  enabled: true
+  replicas: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  
+  # Vulnerability database update
+  gitHubToken: ""  # Optional: for faster DB downloads
+  skipUpdate: false
+  
+  # Offline mode (pre-download DB)
+  offlineScan: false
+
+# Notary (image signing) - optional
+notary:
+  enabled: true
+  server:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  signer:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# Database (internal PostgreSQL)
+database:
+  type: internal
+  internal:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+  
+  # For external database:
+  # type: external
+  # external:
+  #   host: "postgresql.example.com"
+  #   port: "5432"
+  #   username: "harbor"
+  #   password: ""
+  #   coreDatabase: "registry"
+  #   sslmode: "require"
+
+# Redis (internal)
+redis:
+  type: internal
+  internal:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  
+  # For external Redis:
+  # type: external
+  # external:
+  #   addr: "redis.example.com:6379"
+  #   password: ""
+
+# Portal (web UI)
+portal:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+# Exporter (Prometheus metrics)
+exporter:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Metrics
+metrics:
+  enabled: true
+  core:
+    path: /metrics
+    port: 8001
+  registry:
+    path: /metrics
+    port: 8001
+  exporter:
+    path: /metrics
+    port: 8001
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    labels:
+      release: prometheus
+
+# Cache
+cache:
+  enabled: true
+  expireHours: 24
+
+# GC (garbage collection)
+gc:
+  enabled: true
+  cron: "0 2 * * *"  # 2 AM daily
+  timeWindowHours: 4
+  workers: 1
+
+# Pod disruption budget
+core:
+  podDisruptionBudget:
+    minAvailable: 1
+registry:
+  podDisruptionBudget:
+    minAvailable: 1
+portal:
+  podDisruptionBudget:
+    minAvailable: 1
+
+# Security context
+containerSecurityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+      - ALL

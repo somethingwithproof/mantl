@@ -1,0 +1,51 @@
+# Cilium L2 Announcement Policy
+# For on-prem environments without cloud load balancers
+# https://docs.cilium.io/en/stable/network/lb-ipam/
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: default-l2-policy
+  namespace: kube-system
+spec:
+  # Match services with specific labels or all LoadBalancer services
+  serviceSelector:
+    matchExpressions:
+      - key: io.cilium/l2-announce
+        operator: DoesNotExist
+  
+  # Which nodes can announce (all by default)
+  nodeSelector:
+    matchLabels: {}
+  
+  # Network interfaces to use for announcements
+  interfaces:
+    - ^eth[0-9]+$
+    - ^ens[0-9]+$
+    - ^enp[0-9]+s[0-9]+$
+  
+  # External IPs (optional, for specific announcements)
+  externalIPs: true
+  
+  # Load balancer IPs
+  loadBalancerIPs: true
+---
+# IP Pool for LoadBalancer services
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: default-pool
+  namespace: kube-system
+spec:
+  # Define your IP range for on-prem LoadBalancer services
+  # CHANGE THESE TO MATCH YOUR NETWORK
+  blocks:
+    - start: 192.168.100.100
+      stop: 192.168.100.200
+  
+  # Service selector (optional)
+  serviceSelector:
+    matchLabels: {}
+  
+  # Allow first-come-first-served allocation
+  allowFirstLastIPs: "No"
