@@ -1,3 +1,8 @@
+##
+## Mantl • GCE modern network
+## We finally stopped pretending auto networks were a good idea.
+## Serious note: this is custom-mode on purpose; your auditors will high-five you.
+##
 variable "use_modern_gce_network" {
   description = "If true, create a custom-mode VPC network + subnetwork and modern firewalls."
   default     = false
@@ -22,6 +27,7 @@ resource "google_compute_firewall" "external_modern" {
   count         = var.use_modern_gce_network ? 1 : 0
   name          = "${var.short_name}-firewall-external-modern"
   network       = google_compute_network.mi_network_modern[0].name
+  # Yes, we love guardrails: allowed_cidrs keeps future-you from opening the barn door.
   source_ranges = var.allowed_cidrs
 
   allow {

@@ -1,3 +1,4 @@
+# This CI keeps us honest. Also keeps us from shipping Friday-night typos on Monday morning.
 name: terraform-ci-matrix
 
 on:
