@@ -1,3 +1,7 @@
+##
+## Mantl • AWS IAM (keep least-privilege close and wildcards far away)
+## If you catch a wildcard sneaking back in, blame past us and open a PR.
+##
 variable "short_name" {default = "mantl"}
 
 resource "aws_iam_instance_profile" "control_profile" {
