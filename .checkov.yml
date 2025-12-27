@@ -1,0 +1,8 @@
+# Checkov configuration
+# Docs: https://www.checkov.io/3.Walkthrough/2.Scanning/CLI.html#configuration-file
+quiet: true
+framework: terraform
+soft_fail: false
+skip_checks: []
+skip_paths:
+  - terraform/examples
