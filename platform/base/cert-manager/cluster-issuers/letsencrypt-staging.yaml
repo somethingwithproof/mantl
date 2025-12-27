@@ -1,0 +1,41 @@
+# Let's Encrypt Staging ClusterIssuer
+# Use for testing ACME integration before production
+# Certificates are NOT trusted by browsers but have higher rate limits
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+spec:
+  acme:
+    # Staging endpoint (not trusted, higher rate limits)
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    
+    # Email for certificate expiration notifications
+    # IMPORTANT: Replace with your email
+    email: admin@example.com
+    
+    # Secret to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    
+    # Enable HTTP-01 challenge solver
+    solvers:
+      # HTTP-01 solver using Ingress
+      - http01:
+          ingress:
+            ingressClassName: cilium
+        selector: {}
+      
+      # DNS-01 solver for wildcard certificates
+      # Uncomment and configure for your DNS provider
+      # - dns01:
+      #     route53:
+      #       region: us-east-1
+      #       # Use IRSA - no credentials needed if IAM role is configured
+      #     selector:
+      #       dnsZones:
+      #         - "example.com"

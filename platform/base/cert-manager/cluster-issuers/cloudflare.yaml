@@ -1,0 +1,60 @@
+# Cloudflare DNS Solver ClusterIssuers
+# Supports wildcard certificates via DNS validation
+# Requires Cloudflare API token with Zone:DNS:Edit permissions
+#
+# Usage:
+# 1. Create Cloudflare API token with Zone:DNS:Edit permission
+# 2. Create secret: kubectl create secret generic cloudflare-api-token \
+#      --from-literal=api-token=YOUR_TOKEN -n cert-manager
+# 3. Apply this file
+# 4. Update email and zone
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging-dns
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+    cert-manager.io/solver: dns01
+    dns-provider: cloudflare
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@example.com  # CHANGE THIS
+    privateKeySecretRef:
+      name: letsencrypt-staging-dns-account-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - "example.com"  # CHANGE THIS
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production-dns
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+    cert-manager.io/solver: dns01
+    dns-provider: cloudflare
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com  # CHANGE THIS
+    privateKeySecretRef:
+      name: letsencrypt-production-dns-account-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - "example.com"  # CHANGE THIS

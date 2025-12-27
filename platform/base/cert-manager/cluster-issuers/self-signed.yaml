@@ -1,0 +1,48 @@
+# Self-Signed ClusterIssuer
+# Use for development, testing, and internal services
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+spec:
+  selfSigned: {}
+---
+# CA Issuer backed by a self-signed root
+# Useful for issuing internal certificates with a consistent CA
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-ca-issuer
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+spec:
+  ca:
+    secretName: selfsigned-ca-key-pair
+---
+# Bootstrap Certificate for the CA
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: selfsigned-ca
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: ca-certificate
+spec:
+  isCA: true
+  commonName: mantl-selfsigned-ca
+  secretName: selfsigned-ca-key-pair
+  duration: 87600h  # 10 years
+  renewBefore: 8760h  # 1 year
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io

@@ -1,0 +1,56 @@
+# GCP Cloud DNS Solver ClusterIssuers
+# Supports wildcard certificates via DNS validation
+# Requires GKE Workload Identity with Cloud DNS permissions
+#
+# Usage:
+# 1. Deploy GKE with Workload Identity
+# 2. Configure cert-manager ServiceAccount with IAM binding
+# 3. Uncomment and apply this file
+# 4. Update the project and zone
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging-dns
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+    cert-manager.io/solver: dns01
+    cloud-provider: gcp
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@example.com  # CHANGE THIS
+    privateKeySecretRef:
+      name: letsencrypt-staging-dns-account-key
+    solvers:
+      - dns01:
+          cloudDNS:
+            project: my-gcp-project  # CHANGE THIS
+            # Uses Workload Identity - no service account key needed
+        selector:
+          dnsZones:
+            - "example.com"  # CHANGE THIS
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production-dns
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+    cert-manager.io/solver: dns01
+    cloud-provider: gcp
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com  # CHANGE THIS
+    privateKeySecretRef:
+      name: letsencrypt-production-dns-account-key
+    solvers:
+      - dns01:
+          cloudDNS:
+            project: my-gcp-project  # CHANGE THIS
+        selector:
+          dnsZones:
+            - "example.com"  # CHANGE THIS
