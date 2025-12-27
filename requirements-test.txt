@@ -1,5 +1,5 @@
 # Test-only dependencies. Aligned with requirements.txt
-pytest==8.4.2
+pytest==9.0.2
 pytest-cov==7.0.0
 pytest-xdist==3.5.0
 mock==5.1.0
