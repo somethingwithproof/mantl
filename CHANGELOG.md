@@ -6,6 +6,7 @@
   - Shielded VM enabled; project SSH keys blocked; optional external IP via `gce_public_ip` (default false).
   - Boot disk from `gce_boot_image_family`/`gce_boot_image_project`; optional CMEK via `gce_boot_kms_key`.
   - Legacy resources remain as default path unless the flag is set.
+- vSphere: Add feature-flagged modern control VM schema (vsphere_virtual_machine clone) with optional `customization_spec_name`; legacy resources remain by default.
 
 ## 1.2 (July 07, 2016)
 
