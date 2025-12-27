@@ -1,0 +1,59 @@
+# AWS Route53 DNS-01 Solver ClusterIssuers
+# Supports wildcard certificates via DNS validation
+# Requires IRSA role with Route53 permissions
+#
+# Usage:
+# 1. Deploy EKS with cert-manager IRSA role (terraform/blueprints/aws-eks)
+# 2. Annotate cert-manager ServiceAccount with the role ARN
+# 3. Uncomment and apply this file
+# 4. Update the hosted zone and email
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging-dns
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+    cert-manager.io/solver: dns01
+    cloud-provider: aws
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@example.com  # CHANGE THIS
+    privateKeySecretRef:
+      name: letsencrypt-staging-dns-account-key
+    solvers:
+      - dns01:
+          route53:
+            region: us-east-1  # CHANGE THIS
+            # hostedZoneID is optional but recommended for performance
+            # hostedZoneID: Z1234567890ABC
+        selector:
+          dnsZones:
+            - "example.com"  # CHANGE THIS
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production-dns
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+    cert-manager.io/solver: dns01
+    cloud-provider: aws
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com  # CHANGE THIS
+    privateKeySecretRef:
+      name: letsencrypt-production-dns-account-key
+    solvers:
+      - dns01:
+          route53:
+            region: us-east-1  # CHANGE THIS
+            # hostedZoneID is optional but recommended for performance
+            # hostedZoneID: Z1234567890ABC
+        selector:
+          dnsZones:
+            - "example.com"  # CHANGE THIS

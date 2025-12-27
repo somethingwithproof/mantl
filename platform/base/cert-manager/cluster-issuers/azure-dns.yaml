@@ -1,0 +1,66 @@
+# Azure DNS Solver ClusterIssuers
+# Supports wildcard certificates via DNS validation
+# Requires AKS Workload Identity with Azure DNS permissions
+#
+# Usage:
+# 1. Deploy AKS with Workload Identity
+# 2. Configure cert-manager with federated identity
+# 3. Uncomment and apply this file
+# 4. Update subscription, resource group, and zone
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging-dns
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+    cert-manager.io/solver: dns01
+    cloud-provider: azure
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@example.com  # CHANGE THIS
+    privateKeySecretRef:
+      name: letsencrypt-staging-dns-account-key
+    solvers:
+      - dns01:
+          azureDNS:
+            subscriptionID: 00000000-0000-0000-0000-000000000000  # CHANGE THIS
+            resourceGroupName: my-resource-group  # CHANGE THIS
+            hostedZoneName: example.com  # CHANGE THIS
+            environment: AzurePublicCloud
+            # Uses Workload Identity - configure managedIdentity
+            managedIdentity:
+              clientID: 00000000-0000-0000-0000-000000000000  # CHANGE THIS
+        selector:
+          dnsZones:
+            - "example.com"  # CHANGE THIS
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-production-dns
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/component: cluster-issuer
+    cert-manager.io/solver: dns01
+    cloud-provider: azure
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com  # CHANGE THIS
+    privateKeySecretRef:
+      name: letsencrypt-production-dns-account-key
+    solvers:
+      - dns01:
+          azureDNS:
+            subscriptionID: 00000000-0000-0000-0000-000000000000  # CHANGE THIS
+            resourceGroupName: my-resource-group  # CHANGE THIS
+            hostedZoneName: example.com  # CHANGE THIS
+            environment: AzurePublicCloud
+            managedIdentity:
+              clientID: 00000000-0000-0000-0000-000000000000  # CHANGE THIS
+        selector:
+          dnsZones:
+            - "example.com"  # CHANGE THIS
