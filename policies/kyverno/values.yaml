@@ -1,0 +1,114 @@
+# Kyverno Helm values
+# CNCF Graduated Policy Engine
+# https://kyverno.io/docs/installation/
+
+# Admission controller
+admissionController:
+  replicas: 3
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+
+# Background controller
+backgroundController:
+  replicas: 2
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Cleanup controller
+cleanupController:
+  replicas: 2
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Reports controller
+reportsController:
+  replicas: 2
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# CRDs
+crds:
+  install: true
+
+# Config
+config:
+  webhookTimeout: 10
+  resourceFilters:
+    - "[Event,*,*]"
+    - "[*,kube-system,*]"
+    - "[*,kube-public,*]"
+    - "[*,kube-node-lease,*]"
+    - "[*,kyverno,*]"
+    - "[Node,*,*]"
+    - "[APIService,*,*]"
+    - "[TokenReview,*,*]"
+    - "[SubjectAccessReview,*,*]"
+    - "[SelfSubjectAccessReview,*,*]"
+    - "[Binding,*,*]"
+    - "[ReplicaSet,*,*]"
+    - "[AdmissionReport,*,*]"
+    - "[ClusterAdmissionReport,*,*]"
+    - "[BackgroundScanReport,*,*]"
+    - "[ClusterBackgroundScanReport,*,*]"
+
+# Metrics
+metricsService:
+  create: true
+
+serviceMonitor:
+  enabled: true
+  labels:
+    release: prometheus
+
+grafana:
+  enabled: true
+
+webhooksCleanup:
+  enabled: true
+
+failurePolicy: Fail
+
+logging:
+  level: 2
+  format: json
+
+securityContext:
+  runAsNonRoot: true
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  seccompProfile:
+    type: RuntimeDefault

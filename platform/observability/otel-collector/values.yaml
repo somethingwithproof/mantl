@@ -4,16 +4,13 @@
 
 mode: deployment
 
-# Replicas for high availability
 replicaCount: 2
 
-# Image
 image:
   repository: otel/opentelemetry-collector-contrib
   tag: 0.115.0
   pullPolicy: IfNotPresent
 
-# Resources
 resources:
   requests:
     cpu: 200m
@@ -22,11 +19,9 @@ resources:
     cpu: 1000m
     memory: 1Gi
 
-# Service configuration
 service:
   type: ClusterIP
 
-# Ports
 ports:
   otlp:
     enabled: true
@@ -69,7 +64,6 @@ ports:
     servicePort: 8888
     protocol: TCP
 
-# Collector configuration
 config:
   receivers:
     otlp:
@@ -78,7 +72,6 @@ config:
           endpoint: 0.0.0.0:4317
         http:
           endpoint: 0.0.0.0:4318
-    
     jaeger:
       protocols:
         grpc:
@@ -87,10 +80,8 @@ config:
           endpoint: 0.0.0.0:14268
         thrift_compact:
           endpoint: 0.0.0.0:6831
-    
     zipkin:
       endpoint: 0.0.0.0:9411
-    
     prometheus:
       config:
         scrape_configs:
@@ -98,8 +89,6 @@ config:
             scrape_interval: 30s
             static_configs:
               - targets: ['localhost:8888']
-    
-    # Kubernetes cluster metrics
     k8s_cluster:
       collection_interval: 30s
       node_conditions_to_report:
@@ -107,8 +96,6 @@ config:
         - MemoryPressure
         - DiskPressure
         - PIDPressure
-    
-    # Kubernetes events
     k8s_events:
       namespaces: []
 
@@ -117,13 +104,10 @@ config:
       timeout: 10s
       send_batch_size: 1024
       send_batch_max_size: 2048
-    
     memory_limiter:
       check_interval: 1s
       limit_percentage: 80
       spike_limit_percentage: 25
-    
-    # Add Kubernetes metadata
     k8sattributes:
       extract:
         metadata:
@@ -146,8 +130,6 @@ config:
               name: k8s.pod.uid
         - sources:
             - from: connection
-    
-    # Resource detection
     resourcedetection:
       detectors:
         - env
@@ -155,8 +137,6 @@ config:
         - k8snode
       timeout: 5s
       override: false
-    
-    # Span metrics
     spanmetrics:
       metrics_exporter: prometheus
       dimensions:
@@ -166,8 +146,6 @@ config:
       histogram:
         explicit:
           buckets: [5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s]
-    
-    # Tail sampling (reduce trace volume)
     tail_sampling:
       decision_wait: 10s
       num_traces: 100000
@@ -187,24 +165,17 @@ config:
             sampling_percentage: 10
 
   exporters:
-    # Debug exporter (for development)
     debug:
       verbosity: basic
-    
-    # Prometheus exporter for metrics
     prometheus:
       endpoint: 0.0.0.0:8889
       namespace: otel
       const_labels:
         cluster: mantl
-    
-    # OTLP exporter for traces -> Tempo
     otlp/tempo:
       endpoint: tempo.observability.svc.cluster.local:4317
       tls:
         insecure: true
-    
-    # Loki exporter for logs
     loki:
       endpoint: http://loki-gateway.observability.svc.cluster.local:80/loki/api/v1/push
       labels:
@@ -228,7 +199,6 @@ config:
       - health_check
       - pprof
       - zpages
-    
     pipelines:
       traces:
         receivers:
@@ -244,7 +214,6 @@ config:
         exporters:
           - otlp/tempo
           - spanmetrics
-      
       metrics:
         receivers:
           - otlp
@@ -257,7 +226,6 @@ config:
           - batch
         exporters:
           - prometheus
-      
       logs:
         receivers:
           - otlp
@@ -268,21 +236,18 @@ config:
           - batch
         exporters:
           - loki
-
     telemetry:
       logs:
         level: info
       metrics:
         address: 0.0.0.0:8888
 
-# Pod security context
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 65534
   runAsGroup: 65534
   fsGroup: 65534
 
-# Container security context
 securityContext:
   allowPrivilegeEscalation: false
   readOnlyRootFilesystem: true
@@ -290,12 +255,10 @@ securityContext:
     drop:
       - ALL
 
-# Service account
 serviceAccount:
   create: true
   name: otel-collector
 
-# RBAC for Kubernetes receivers
 clusterRole:
   create: true
   rules:
@@ -321,12 +284,10 @@ clusterRole:
         - jobs
       verbs: ["get", "list", "watch"]
 
-# Pod disruption budget
 podDisruptionBudget:
   enabled: true
   minAvailable: 1
 
-# Horizontal pod autoscaler
 autoscaling:
   enabled: true
   minReplicas: 2
