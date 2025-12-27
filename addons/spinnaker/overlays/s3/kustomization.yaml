@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: spinnaker
+resources:
+  - ../../base
+patches:
+  - path: patch-s3.yaml
+
+# Generate a Secret named front50-s3 from a local env file (excluded from VCS)
+# Create addons/spinnaker/overlays/s3/s3.env with lines:
+#   accessKeyId=AKIA...
+#   secretAccessKey=...
+# Do NOT commit s3.env.
+secretGenerator:
+  - name: front50-s3
+    namespace: spinnaker
+    envs:
+      - s3.env
+  - name: github-artifacts
+    namespace: spinnaker
+    envs:
+      - github.env
+generatorOptions:
+  disableNameSuffixHash: true

@@ -1,3 +1,6 @@
+# Dependabot configuration
+# - Groups GitHub Actions updates to reduce PR noise
+# - Tracks pip and Docker updates weekly. We will extend this to Terraform providers and Helm.
 version: 2
 updates:
   # GitHub Actions
@@ -34,3 +37,12 @@ updates:
     open-pull-requests-limit: 10
     allow:
       - dependency-type: "all"
+
+  # Terraform providers & modules
+  - package-ecosystem: "terraform"
+    directory: "/terraform"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 10

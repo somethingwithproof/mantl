@@ -1,0 +1,15 @@
+apiVersion: spinnaker.io/v1alpha2
+kind: SpinnakerService
+metadata:
+  name: spinnaker
+spec:
+  spinnakerConfig:
+    config:
+      artifacts:
+        dockerRegistry:
+          enabled: true
+          accounts:
+            - name: primary-registry
+              address: ${REGISTRY}
+              username: ${USERNAME}
+              password: ${PASSWORD}

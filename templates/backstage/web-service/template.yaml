@@ -1,0 +1,32 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: mantl-web-service
+  title: Mantl Web Service
+  description: Create a new Kubernetes web service using Mantl's production-ready template
+spec:
+  owner: platform
+  type: service
+  parameters:
+    - title: Service metadata
+      required: [name, owner]
+      properties:
+        name:
+          title: Name
+          type: string
+        owner:
+          title: Owner
+          type: string
+          default: team-example
+  steps:
+    - id: fetch
+      name: Fetch Base
+      action: fetch:template
+      input:
+        url: ../../applications/templates/web-service/base
+        values:
+          name: "{{ parameters.name }}"
+  output:
+    links:
+      - title: Repository
+        url: "{{ steps.publish.output.remoteUrl }}"

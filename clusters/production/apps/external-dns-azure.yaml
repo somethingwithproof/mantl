@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns-azure
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes-sigs.github.io/external-dns/
+    chart: external-dns
+    targetRevision: 1.15.0
+    helm:
+      values: |
+        # For Workload Identity, set client-id via helm.parameters below and omit credential env vars.
+        provider: azure
+        policy: upsert-only
+        registry: txt
+        txtOwnerId: mantl-prod
+      parameters:
+        - name: serviceAccount.annotations.azure\.workload\.identity/client-id
+          value: "REPLACE_WITH_UAMI_CLIENT_ID"
+        
+        # Remove extraEnv entries below if using Workload Identity only.
+        extraEnv:
+          - name: AZURE_TENANT_ID
+            valueFrom:
+              secretKeyRef: {name: azuredns-credentials, key: tenantId}
+          - name: AZURE_CLIENT_ID
+            valueFrom:
+              secretKeyRef: {name: azuredns-credentials, key: clientId}
+          - name: AZURE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef: {name: azuredns-credentials, key: clientSecret}
+          - name: AZURE_SUBSCRIPTION_ID
+            valueFrom:
+              secretKeyRef: {name: azuredns-credentials, key: subscriptionId}
+          - name: AZURE_RESOURCE_GROUP
+            valueFrom:
+              secretKeyRef: {name: azuredns-credentials, key: resourceGroupName}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

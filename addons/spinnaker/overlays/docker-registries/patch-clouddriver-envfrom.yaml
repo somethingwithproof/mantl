@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spin-clouddriver
+  namespace: spinnaker
+spec:
+  template:
+    spec:
+      containers:
+        - name: clouddriver
+          envFrom:
+            - secretRef:
+                name: spinnaker-docker-registry
+                optional: true
+              prefix: DOCKER_
+            - secretRef:
+                name: spinnaker-ecr-registry
+                optional: true
+              prefix: ECR_
+            - secretRef:
+                name: spinnaker-gcr-registry
+                optional: true
+              prefix: GCR_
+            - secretRef:
+                name: spinnaker-ghcr-registry
+                optional: true
+              prefix: GHCR_

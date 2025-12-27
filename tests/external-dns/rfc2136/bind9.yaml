@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dns
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bind9
+  namespace: dns
+spec:
+  selector:
+    matchLabels: {app: bind9}
+  replicas: 1
+  template:
+    metadata:
+      labels: {app: bind9}
+    spec:
+      containers:
+        - name: bind9
+          image: internetsystemsconsortium/bind9:9.18
+          ports:
+            - name: dns-udp
+              containerPort: 53
+              protocol: UDP
+            - name: dns-tcp
+              containerPort: 53
+              protocol: TCP
+          volumeMounts:
+            - name: conf
+              mountPath: /etc/bind
+      volumes:
+        - name: conf
+          configMap:
+            name: bind9-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bind9
+  namespace: dns
+spec:
+  selector: {app: bind9}
+  ports:
+    - name: dns-udp
+      port: 53
+      protocol: UDP
+      targetPort: 53
+    - name: dns-tcp
+      port: 53
+      protocol: TCP
+      targetPort: 53
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bind9-conf
+  namespace: dns
+data:
+  named.conf.options: |
+    options {
+      directory "/var/cache/bind";
+      allow-query { any; };
+      recursion yes;
+      auth-nxdomain no;
+      listen-on-v6 { any; };
+    };
+  named.conf.local: |
+    key "externaldns-key" {
+      algorithm hmac-sha256;
+      secret "dGVzdGtleQ=="; // base64("testkey")
+    };
+    zone "test.local" {
+      type master;
+      file "/var/cache/bind/db.test.local";
+      update-policy {
+        grant externaldns-key name test.local. A AAAA TXT;
+      };
+    };
+  db.test.local: |
+    $TTL 1
+    @   IN  SOA test.local. hostmaster.test.local. (
+        1 ; serial
+        60 ; refresh
+        60 ; retry
+        60 ; expire
+        60 ) ; minimum
+    @   IN  NS  ns.test.local.
+    ns  IN  A   127.0.0.1

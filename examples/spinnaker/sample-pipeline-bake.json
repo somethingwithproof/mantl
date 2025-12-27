@@ -1,0 +1,42 @@
+{
+  "application": "sample-app",
+  "name": "bake-and-deploy-to-dev",
+  "stages": [
+    {
+      "type": "bakeManifest",
+      "name": "Bake Kustomize",
+      "templateRenderer": "KUSTOMIZE",
+      "inputArtifacts": [
+        {
+          "account": "github-repo",
+          "id": "app-source",
+          "artifact": {
+            "type": "git/repo",
+            "reference": "https://github.com/TODO_ORG/TODO_REPO.git",
+            "version": "main"
+          }
+        }
+      ],
+      "overrides": {},
+      "namespace": "apps-dev",
+      "kustomizeFilePath": "examples/spinnaker/apps/sample-app"
+    },
+    {
+      "type": "deployManifest",
+      "name": "Deploy",
+      "account": "default-account",
+      "cloudProvider": "kubernetes",
+      "source": "artifact",
+      "manifestArtifactAccount": "github-repo",
+      "manifestArtifactId": "app-source"
+    }
+  ],
+  "triggers": [
+    {
+      "type": "webhook",
+      "enabled": true,
+      "source": "mantl",
+      "payloadConstraints": {}
+    }
+  ]
+}
