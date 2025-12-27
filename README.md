@@ -6,6 +6,41 @@
 
 Mantl is a **Kubernetes-native, GitOps-driven, secure-by-default** platform engineering toolkit for building production-ready, multi-cloud infrastructure. Built entirely on CNCF Graduated and Incubating projects.
 
+## ⚡ Quick Start (3 Commands)
+
+Get a complete production-ready platform running in **under 5 minutes**:
+
+```bash
+# Clone the repository
+git clone https://github.com/thomasvincent/mantl.git
+cd mantl
+
+# Option 1: One-command install (recommended)
+make install-dev
+
+# Option 2: Interactive wizard
+make wizard
+
+# Option 3: Use CLI tool
+./scripts/mantl init
+```
+
+**That's it!** 🎉 You now have:
+- ✅ Local Kubernetes cluster (kind)
+- ✅ ArgoCD for GitOps
+- ✅ cert-manager for TLS
+- ✅ Kyverno for policies
+- ✅ Prometheus + Grafana for observability
+- ✅ Example applications
+
+**Access dashboards:**
+```bash
+make dashboards
+# Or use CLI: ./scripts/mantl dashboard
+```
+
+---
+
 ## 🌟 What You Get
 
 Deploy a complete, production-ready Kubernetes platform in minutes:
