@@ -13,6 +13,24 @@ variable "kms_key_id" {
   default     = null
 }
 
+variable "enable_vpc_flow_logs" {
+  description = "Enable VPC Flow Logs to CloudWatch Logs"
+  type        = bool
+  default     = false
+}
+
+variable "flow_logs_retention_in_days" {
+  description = "Retention in days for the CloudWatch Log Group used by VPC Flow Logs"
+  type        = number
+  default     = 14
+}
+
+variable "flow_logs_traffic_type" {
+  description = "Traffic type to capture for VPC Flow Logs (ACCEPT, REJECT, or ALL)"
+  type        = string
+  default     = "ALL"
+}
+
 variable "control_count" {default = "3"}
 variable "count_format" {default = "%02d"}
 variable "worker_count_format" {default = "%03d"}
@@ -479,28 +497,28 @@ resource "aws_security_group" "worker" {
     from_port = 5050
     to_port = 5050
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Marathon
     from_port = 8080
     to_port = 8080
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Consul
     from_port = 8500
     to_port = 8500
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # ICMP
     from_port = -1
     to_port = -1
     protocol = "icmp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 }
 
@@ -524,14 +542,14 @@ resource "aws_security_group" "ui" {
     from_port = 443
     to_port = 443
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Consul
     from_port = 8500
     to_port = 8500
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 }
 
@@ -548,27 +566,83 @@ resource "aws_security_group" "edge" {
     from_port = 22
     to_port = 22
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # HTTP
     from_port = 80
     to_port = 80
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # HTTPS
     from_port = 443
     to_port = 443
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 }
 
 resource "aws_key_pair" "deployer" {
   key_name = "key-${var.short_name}"
   public_key = "${file(var.ssh_key)}"
+}
+
+# VPC Flow Logs (optional)
+resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
+  count             = var.enable_vpc_flow_logs ? 1 : 0
+  name              = "/aws/vpc/${var.short_name}-flow-logs"
+  retention_in_days = var.flow_logs_retention_in_days
+}
+
+resource "aws_iam_role" "vpc_flow_logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+  name  = "${var.short_name}-vpc-flow-logs"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {"Service": "vpc-flow-logs.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "vpc_flow_logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+  name  = "${var.short_name}-vpc-flow-logs-policy"
+  role  = aws_iam_role.vpc_flow_logs[0].id
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "${aws_cloudwatch_log_group.vpc_flow_logs[0].arn}:*"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_flow_log" "vpc" {
+  count                = var.enable_vpc_flow_logs ? 1 : 0
+  log_destination      = aws_cloudwatch_log_group.vpc_flow_logs[0].arn
+  log_destination_type = "cloud-watch-logs"
+  traffic_type         = var.flow_logs_traffic_type
+  vpc_id               = aws_vpc.main.id
+  iam_role_arn         = aws_iam_role.vpc_flow_logs[0].arn
 }
 
 output "vpc_subnet" {
