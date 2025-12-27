@@ -1,0 +1,97 @@
+# ArgoCD Application for Compliance Module
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: compliance
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: mantl
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/mantl-io/mantl.git
+    targetRevision: HEAD
+    path: compliance/operator
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: compliance-system
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jsonPointers:
+        - /webhooks/0/clientConfig/caBundle
+---
+# ArgoCD Application for SOC2 Framework
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: compliance-soc2
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: mantl
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/mantl-io/mantl.git
+    targetRevision: HEAD
+    path: compliance/frameworks/soc2
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: compliance-system
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+# ArgoCD Application for CIS Kubernetes Framework  
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: compliance-cis-kubernetes
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: mantl
+spec:
+  project: default
+  
+  source:
+    repoURL: https://github.com/mantl-io/mantl.git
+    targetRevision: HEAD
+    path: compliance/frameworks/cis-kubernetes
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: compliance-system
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

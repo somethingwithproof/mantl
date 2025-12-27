@@ -1,0 +1,123 @@
+# Prometheus Rules for Compliance Metrics
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: compliance-rules
+  namespace: compliance-system
+  labels:
+    app.kubernetes.io/name: compliance
+    prometheus: main
+spec:
+  groups:
+    - name: compliance.rules
+      interval: 30s
+      rules:
+        # Compliance Score Calculation
+        - record: compliance_score
+          expr: |
+            (
+              sum(compliance_control_status{status="passing"}) by (framework)
+              /
+              sum(compliance_control_status) by (framework)
+            ) * 100
+          labels:
+            type: calculated
+
+        # Controls by status
+        - record: compliance_controls_passing
+          expr: sum(compliance_control_status{status="passing"}) by (framework)
+
+        - record: compliance_controls_failing
+          expr: sum(compliance_control_status{status="failing"}) by (framework)
+
+        # Findings aggregation
+        - record: compliance_findings_total
+          expr: sum(compliance_finding_info) by (framework, severity)
+
+        # Evidence freshness
+        - record: compliance_evidence_age_hours
+          expr: |
+            (time() - compliance_evidence_last_collected_timestamp) / 3600
+
+    - name: compliance.alerts
+      rules:
+        # Critical finding alert
+        - alert: ComplianceCriticalFinding
+          expr: compliance_findings_total{severity="critical"} > 0
+          for: 5m
+          labels:
+            severity: critical
+            category: compliance
+          annotations:
+            summary: "Critical compliance finding detected"
+            description: "{{ $labels.framework }} has {{ $value }} critical findings"
+            runbook_url: "https://mantl.io/docs/compliance/runbooks/critical-finding"
+
+        # High severity findings
+        - alert: ComplianceHighFinding
+          expr: compliance_findings_total{severity="high"} > 3
+          for: 15m
+          labels:
+            severity: warning
+            category: compliance
+          annotations:
+            summary: "Multiple high severity compliance findings"
+            description: "{{ $labels.framework }} has {{ $value }} high severity findings"
+
+        # Compliance score drop
+        - alert: ComplianceScoreDrop
+          expr: |
+            compliance_score < 80
+          for: 30m
+          labels:
+            severity: warning
+            category: compliance
+          annotations:
+            summary: "Compliance score below threshold"
+            description: "{{ $labels.framework }} compliance score is {{ $value }}%"
+
+        # Compliance score critical
+        - alert: ComplianceScoreCritical
+          expr: compliance_score < 60
+          for: 15m
+          labels:
+            severity: critical
+            category: compliance
+          annotations:
+            summary: "Compliance score critically low"
+            description: "{{ $labels.framework }} compliance score is {{ $value }}%"
+
+        # Evidence collection failure
+        - alert: ComplianceEvidenceStale
+          expr: compliance_evidence_age_hours > 48
+          for: 1h
+          labels:
+            severity: warning
+            category: compliance
+          annotations:
+            summary: "Compliance evidence is stale"
+            description: "Evidence for {{ $labels.control_id }} is {{ $value }} hours old"
+
+        # Audit not run
+        - alert: ComplianceAuditOverdue
+          expr: |
+            (time() - compliance_audit_last_run_timestamp) / 86400 > 7
+          for: 1h
+          labels:
+            severity: warning
+            category: compliance
+          annotations:
+            summary: "Compliance audit overdue"
+            description: "Last audit was {{ $value }} days ago"
+
+        # Policy violations trending up
+        - alert: CompliancePolicyViolationsTrending
+          expr: |
+            increase(kyverno_policy_results_total{rule_result="fail"}[1h]) > 50
+          for: 30m
+          labels:
+            severity: warning
+            category: compliance
+          annotations:
+            summary: "Policy violations increasing"
+            description: "{{ $value }} policy violations in the last hour"
