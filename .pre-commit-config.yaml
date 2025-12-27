@@ -35,3 +35,8 @@ repos:
     hooks:
       - id: terraform_fmt
       - id: terraform_validate
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.30.0
+    hooks:
+      - id: commitizen
+        stages: [commit-msg]

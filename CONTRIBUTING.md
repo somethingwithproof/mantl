@@ -56,7 +56,13 @@ See docs/security.md.
 ## Pull requests
 - Keep PRs focused; include motivation and testing notes
 - Ensure pre-commit and all CI checks pass
+- Use Conventional Commits for messages (feat:, fix:, chore:, docs:, refactor:, perf:, test:, build:, ci:). Messages are linted via pre-commit (Commitizen).
 - Link issues where applicable
+
+## Releases and versioning
+- We follow Semantic Versioning (MAJOR.MINOR.PATCH) and Conventional Commits.
+- Release automation uses release-please. It opens a release PR from commits; merging that PR tags vX.Y.Z and updates CHANGELOG.md.
+- Our release workflow reacts to the published release to render/sign bundles and push OCI artifacts; no manual release creation is needed.
 
 ## Code of Conduct
 Please respect our [Code of Conduct](code-of-conduct.md).
