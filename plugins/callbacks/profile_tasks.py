@@ -19,53 +19,121 @@
 # IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+"""
+Ansible callback plugin for timing task execution.
+
+This module follows SOLID principles with clear separation of concerns.
+"""
+from __future__ import annotations
+
 import time
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
 
 
-class CallbackModule(object):
+@dataclass
+class TaskTiming:
+    """Value object representing a task's timing information."""
+
+    name: str
+    start_time: float
+    end_time: Optional[float] = None
+
+    @property
+    def elapsed_time(self) -> float:
+        """Calculate elapsed time for the task."""
+        if self.end_time is None:
+            return 0.0
+        return self.end_time - self.start_time
+
+    @property
+    def is_complete(self) -> bool:
+        """Check if the task timing is complete."""
+        return self.end_time is not None
+
+
+@dataclass
+class TimingStatistics:
+    """Domain service for managing task timing statistics."""
+
+    timings: Dict[str, TaskTiming] = field(default_factory=dict)
+    max_results: int = 10
+
+    def start_task(self, name: str) -> None:
+        """Record the start time of a task."""
+        self.timings[name] = TaskTiming(name=name, start_time=time.time())
+
+    def end_task(self, name: str) -> None:
+        """Record the end time of a task."""
+        if name in self.timings:
+            self.timings[name].end_time = time.time()
+
+    def get_slowest_tasks(self) -> List[Tuple[str, float]]:
+        """
+        Get the slowest tasks.
+
+        Returns:
+            List of (task_name, elapsed_time) tuples, sorted by elapsed time descending.
+        """
+        completed_tasks = [
+            (timing.name, timing.elapsed_time)
+            for timing in self.timings.values()
+            if timing.is_complete
+        ]
+
+        return sorted(completed_tasks, key=lambda x: x[1], reverse=True)[: self.max_results]
+
+    def format_results(self) -> str:
+        """Format timing results for display."""
+        results = self.get_slowest_tasks()
+
+        lines = []
+        for name, elapsed in results:
+            line = f"{name:-<70}{elapsed:->9.02f}s"
+            lines.append(line)
+
+        return "\n".join(lines)
+
+
+class CallbackModule:
     """
-    A plugin for timing tasks
+    Ansible callback plugin for profiling task execution times.
+
+    This implementation follows the Single Responsibility Principle by
+    delegating statistics management to TimingStatistics.
     """
 
     def __init__(self):
-        self.stats = {}
-        self.current = None
+        """Initialize the callback module."""
+        self.stats = TimingStatistics()
+        self.current_task: Optional[str] = None
 
-    def playbook_on_task_start(self, name, is_conditional):
+    def playbook_on_task_start(self, name: str, is_conditional: bool) -> None:
         """
-        Logs the start of each task
+        Handle task start event.
+
+        Args:
+            name: The task name
+            is_conditional: Whether the task is conditional
         """
-        if self.current is not None:
-            # Record the running time of the last executed task
-            self.stats[self.current] = time.time() - self.stats[self.current]
+        # End the previous task if one is running
+        if self.current_task is not None:
+            self.stats.end_task(self.current_task)
 
-        # Record the start time of the current task
-        self.current = name
-        self.stats[self.current] = time.time()
+        # Start the new task
+        self.current_task = name
+        self.stats.start_task(name)
 
-    def playbook_on_stats(self, stats):
+    def playbook_on_stats(self, stats) -> None:
         """
-        Prints the timings
+        Handle playbook completion and print timing statistics.
+
+        Args:
+            stats: Ansible statistics object
         """
-        # Record the timing of the very last task
-        if self.current is not None:
-            self.stats[self.current] = time.time() - self.stats[self.current]
+        # End the last task
+        if self.current_task is not None:
+            self.stats.end_task(self.current_task)
 
-        # Sort the tasks by their running time
-        results = sorted(
-            self.stats.items(),
-            key=lambda value: value[1],
-            reverse=True,
-        )
-
-        # Just keep the top 10
-        results = results[:10]
-
-        # Print the timings
-        for name, elapsed in results:
-            print(
-                "{0:-<70}{1:->9}".format(
-                    '{0} '.format(name),
-                    ' {0:.02f}s'.format(elapsed),
-                )
-            )
+        # Print the results
+        print(self.stats.format_results())
