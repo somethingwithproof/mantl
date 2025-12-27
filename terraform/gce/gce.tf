@@ -21,17 +21,24 @@ variable "worker_count" {default = 1}
 variable "worker_type" {default = "n1-highcpu-2"}
 variable "zone" {default = "us-central1-a"}
 
-# Network
+# Allowed CIDRs for public ingress (override to restrict). Default preserves legacy behavior.
+variable "allowed_cidrs" {
+  description = "List of CIDR blocks allowed for public ingress (SSH/HTTP/HTTPS and service ports)"
+  type        = list(string)
+  default     = ["*******/0"]
+}
+
+# Network (legacy-compatible): provider v7+ requires auto_create_subnetworks
 resource "google_compute_network" "mi-network" {
-  name = "${var.long_name}"
-  ipv4_range = "${var.network_ipv4}"
+  name                    = "${var.long_name}"
+  auto_create_subnetworks = true
 }
 
 # Firewall
 resource "google_compute_firewall" "mi-firewall-external" {
   name = "${var.short_name}-firewall-external"
   network = "${google_compute_network.mi-network.name}"
-  source_ranges = ["0.0.0.0/0"]
+  source_ranges = var.allowed_cidrs
 
   allow {
     protocol = "icmp"
@@ -54,7 +61,7 @@ resource "google_compute_firewall" "mi-firewall-external" {
 resource "google_compute_firewall" "mi-firewall-internal" {
   name = "${var.short_name}-firewall-internal"
   network = "${google_compute_network.mi-network.name}"
-  source_ranges = ["${google_compute_network.mi-network.ipv4_range}"]
+  source_ranges = ["${var.network_ipv4}"]
 
   allow {
     protocol = "4"
