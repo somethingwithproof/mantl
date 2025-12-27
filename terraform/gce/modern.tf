@@ -144,3 +144,56 @@ resource "google_compute_instance" "worker_modern" {
     "ssh_user"               = var.ssh_user
   }
 }
+
+# Modern kubeworker instances (opt-in). When enabling, set kubeworker_count = 0 on legacy path to avoid duplicates.
+resource "google_compute_instance" "kubeworker_modern" {
+  count        = var.use_modern_gce_schema ? var.kubeworker_count : 0
+  name         = "${var.short_name}-kubeworker-${format("%03d", count.index+1)}"
+  description  = "${var.long_name} kube worker node (modern) #${format("%03d", count.index+1)}"
+  machine_type = var.worker_type
+  zone         = var.zone
+  tags         = [var.short_name, "kubeworker"]
+
+  boot_disk {
+    initialize_params {
+      image = data.google_compute_image.boot.self_link
+      size  = var.worker_volume_size
+      type  = "pd-balanced"
+    }
+    dynamic "disk_encryption_key" {
+      for_each = var.gce_boot_kms_key != "" ? [1] : []
+      content {
+        kms_key_self_link = var.gce_boot_kms_key
+      }
+    }
+  }
+
+  attached_disk {
+    source      = element(google_compute_disk.mi-kubeworker-lvm.*.self_link, count.index)
+    device_name = "lvm"
+    mode        = "READ_WRITE"
+  }
+
+  network_interface {
+    network    = var.modern_subnetwork_self_link != "" ? null : google_compute_network.mi-network.name
+    subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : null
+    dynamic "access_config" {
+      for_each = var.gce_public_ip ? [1] : []
+      content {}
+    }
+  }
+
+  shielded_instance_config {
+    enable_secure_boot          = true
+    enable_vtpm                 = true
+    enable_integrity_monitoring = true
+  }
+
+  metadata = {
+    "block-project-ssh-keys" = "TRUE"
+    "ssh-keys"               = "${var.ssh_user}:${file(var.ssh_key)} ${var.ssh_user}"
+    "dc"                     = var.datacenter
+    "role"                   = "kubeworker"
+    "ssh_user"               = var.ssh_user
+  }
+}
