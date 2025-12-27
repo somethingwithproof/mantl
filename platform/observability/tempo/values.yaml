@@ -1,0 +1,102 @@
+# Grafana Tempo Helm values
+# Distributed tracing backend
+# https://grafana.com/docs/tempo/latest/
+
+# Tempo configuration
+tempo:
+  # Receivers - accept traces from various sources
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: "0.0.0.0:4317"
+        http:
+          endpoint: "0.0.0.0:4318"
+    jaeger:
+      protocols:
+        thrift_http:
+          endpoint: "0.0.0.0:14268"
+        grpc:
+          endpoint: "0.0.0.0:14250"
+        thrift_compact:
+          endpoint: "0.0.0.0:6831"
+        thrift_binary:
+          endpoint: "0.0.0.0:6832"
+    zipkin:
+      endpoint: "0.0.0.0:9411"
+  
+  # Storage configuration
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+      # Uncomment for S3:
+      # backend: s3
+      # s3:
+      #   bucket: tempo-traces
+      #   endpoint: s3.amazonaws.com
+      #   region: us-east-1
+      #   access_key: ${AWS_ACCESS_KEY_ID}
+      #   secret_key: ${AWS_SECRET_ACCESS_KEY}
+  
+  # Retention
+  retention: 168h  # 7 days
+  
+  # Query settings
+  query_frontend:
+    search:
+      duration_slo: 5s
+      throughput_bytes_slo: 1.073741824e+09
+    trace_by_id:
+      duration_slo: 5s
+  
+  # Metrics generator (creates metrics from traces)
+  metricsGenerator:
+    enabled: true
+    remoteWriteUrl: "http://prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
+
+# Resources
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+# Persistence
+persistence:
+  enabled: true
+  size: 50Gi
+
+# Service
+service:
+  type: ClusterIP
+
+# Tempo Query (Jaeger-compatible UI)
+tempoQuery:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Service Monitor for Prometheus
+serviceMonitor:
+  enabled: true
+  labels:
+    release: prometheus
+  interval: 30s
+
+# Pod security
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001

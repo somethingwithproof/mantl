@@ -143,6 +143,54 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 ---
+# Loki (log aggregation)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/thomasvincent/mantl.git
+    targetRevision: main
+    path: platform/observability/loki
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+# Tempo (distributed tracing)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tempo
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/thomasvincent/mantl.git
+    targetRevision: main
+    path: platform/observability/tempo
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
 # OpenTelemetry Collector
 apiVersion: argoproj.io/v1alpha1
 kind: Application
