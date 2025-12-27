@@ -13,6 +13,8 @@ Key flags and secure defaults
 
 Examples
 
+Important: When enabling modern resources for a role, set the corresponding legacy count to 0 in the monolithic gce.tf to avoid creating duplicate nodes (e.g., set control_count = 0 or worker_count = 0 as appropriate).
+
 Minimal (legacy-compatible):
 ```hcl
 allowed_cidrs = ["203.0.113.0/24"]
