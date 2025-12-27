@@ -17,6 +17,7 @@ distributed services
         - [Addons](#addons)
         - [Goals](#goals)
         - [Architecture](#architecture)
+            - [Architecture Diagram](#architecture-diagram)
             - [Control Nodes](#control-nodes)
             - [Agent Nodes](#agent-nodes)
             - [Edge Nodes](#edge-nodes)
@@ -79,6 +80,10 @@ See the `addons/` directory for the most up-to-date information.
 * Rapid immutable deployment (with Terraform + Packer)
 
 ### Architecture
+
+#### Architecture Diagram
+
+![Architecture Diagram](architecture.png)
 
 The base platform contains control nodes that manage the cluster and any number
 of agent nodes. Containers automatically register themselves into DNS so
