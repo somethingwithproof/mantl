@@ -4,13 +4,59 @@
 
 Deploy a production-ready Kubernetes platform with observability, security, and GitOps in minutes.
 
-## Prerequisites
+## Quick Start (Recommended)
+
+The fastest way to get started is using the built-in automation:
+
+### Local Development (kind cluster)
+
+```bash
+git clone https://github.com/thomasvincent/mantl.git
+cd mantl
+make install-dev
+```
+
+This single command:
+- Creates a kind cluster with proper configuration
+- Installs ArgoCD and all platform components
+- Deploys example applications
+- Sets up the observability stack
+
+### Interactive Setup (Custom Configuration)
+
+For more control over the installation:
+
+```bash
+make wizard
+```
+
+The wizard guides you through:
+- Environment selection (dev, staging, production)
+- Cloud provider choice
+- Resource profile (small, medium, full)
+- Component selection
+- Domain configuration
+
+### CLI Tool (Advanced Users)
+
+```bash
+./scripts/mantl init           # Initialize configuration
+./scripts/mantl status         # Check platform health
+./scripts/mantl dashboards     # Open dashboards
+./scripts/mantl deploy <app>   # Deploy applications
+```
+
+## Manual Deployment
+
+If you prefer manual control or need to customize the deployment:
+
+### Prerequisites
 
 - Kubernetes cluster 1.27+ (EKS, GKE, AKS, DOKS, LKE, or kind for local)
 - `kubectl` configured for your cluster
 - Git repository access (GitHub, GitLab, etc.)
 
-## Quick Deploy
+### Manual Setup Steps
 
 ### 1. Install ArgoCD
 
