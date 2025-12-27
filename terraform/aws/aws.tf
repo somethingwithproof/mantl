@@ -1,3 +1,8 @@
+##
+## Mantl • AWS Terraform (legacy-modern hybrid)
+## If this file looks like it’s been through a few Terraform eras… it has. We keep it compatible while we modernize.
+## Serious bit: defaults are secure where we can be; flags/migration notes cover the rest.
+##
 variable "availability_zone" {}
 variable "control_count" {default = "3"}
 variable "count_format" {default = "%02d"}
