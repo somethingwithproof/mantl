@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         PYTHONPATH = "${WORKSPACE}"
-        TERRAFORM_VERSION = "1.10.3"
+        TERRAFORM_VERSION = "1.14.3"
         // Toggle to enable Spinnaker trigger stage
         SPIN_TRIGGER_ENABLED = "false" // set to "true" to enable
         // Gate base URL, e.g., https://spinnaker.example.com/gate
