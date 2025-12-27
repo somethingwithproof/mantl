@@ -1,4 +1,4 @@
-variable "short_name" {default = "mantl"}
+variable "short_name" { default = "mantl" }
 
 # Build scoped ARNs for use in policies (for ECR repository resources)
 # These data sources require only standard AWS credentials during plan/apply.
@@ -12,12 +12,12 @@ locals {
 
 resource "aws_iam_instance_profile" "control_profile" {
   name = "${var.short_name}-control-profile"
-  role = "${aws_iam_role.control_role.name}"
+  role = aws_iam_role.control_role.name
 }
 
 resource "aws_iam_role_policy" "control_policy" {
-  name = "${var.short_name}-control-policy"
-  role = "${aws_iam_role.control_role.id}"
+  name   = "${var.short_name}-control-policy"
+  role   = aws_iam_role.control_role.id
   policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -52,7 +52,7 @@ EOF
 }
 
 resource "aws_iam_role" "control_role" {
-  name = "${var.short_name}-control-role"
+  name               = "${var.short_name}-control-role"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -68,17 +68,17 @@ EOF
 }
 
 output "control_iam_instance_profile" {
-  value = "${aws_iam_instance_profile.control_profile.name}"
+  value = aws_iam_instance_profile.control_profile.name
 }
 
 resource "aws_iam_instance_profile" "worker_profile" {
   name = "${var.short_name}-worker-profile"
-  role = "${aws_iam_role.worker_role.name}"
+  role = aws_iam_role.worker_role.name
 }
 
 resource "aws_iam_role_policy" "worker_policy" {
-  name = "${var.short_name}-worker-policy"
-  role = "${aws_iam_role.worker_role.id}"
+  name   = "${var.short_name}-worker-policy"
+  role   = aws_iam_role.worker_role.id
   policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -121,7 +121,7 @@ EOF
 }
 
 resource "aws_iam_role" "worker_role" {
-  name = "${var.short_name}-worker-role"
+  name               = "${var.short_name}-worker-role"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -137,5 +137,5 @@ EOF
 }
 
 output "worker_iam_instance_profile" {
-  value = "${aws_iam_instance_profile.worker_profile.name}"
+  value = aws_iam_instance_profile.worker_profile.name
 }

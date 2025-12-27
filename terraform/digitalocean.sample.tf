@@ -7,46 +7,46 @@ provider "digitalocean" {
 }
 
 module "do-keypair" {
-  name = "${var.name}"
-  source = "./terraform/digitalocean/keypair"
+  name                = var.name
+  source              = "./terraform/digitalocean/keypair"
   public_key_filename = "~/.ssh/id_rsa.pub"
 }
 
 module "control-nodes" {
-  source = "./terraform/digitalocean/instance"
-  name = "${var.name}"
-  region = "${var.region}"
-  keypair_id = "${module.do-keypair.keypair_id}"
+  source     = "./terraform/digitalocean/instance"
+  name       = var.name
+  region     = var.region
+  keypair_id = module.do-keypair.keypair_id
 
-  role = "control"
+  role  = "control"
   count = "3"
 }
 
 module "worker-nodes" {
-  source = "./terraform/digitalocean/instance"
-  name = "${var.name}"
-  region = "${var.region}"
-  keypair_id = "${module.do-keypair.keypair_id}"
+  source     = "./terraform/digitalocean/instance"
+  name       = var.name
+  region     = var.region
+  keypair_id = module.do-keypair.keypair_id
 
   role = "worker"
 }
 
 module "kubeworker-nodes" {
-  source = "./terraform/digitalocean/instance"
-  name = "${var.name}"
-  region = "${var.region}"
-  keypair_id = "${module.do-keypair.keypair_id}"
+  source     = "./terraform/digitalocean/instance"
+  name       = var.name
+  region     = var.region
+  keypair_id = module.do-keypair.keypair_id
 
   role = "kubeworker"
 }
 
 module "edge-nodes" {
-  source = "./terraform/digitalocean/instance"
-  name = "${var.name}"
-  region = "${var.region}"
-  keypair_id = "${module.do-keypair.keypair_id}"
+  source     = "./terraform/digitalocean/instance"
+  name       = var.name
+  region     = var.region
+  keypair_id = module.do-keypair.keypair_id
 
-  role = "edge"
+  role  = "edge"
   count = "1"
-  size = "2gb"
+  size  = "2gb"
 }

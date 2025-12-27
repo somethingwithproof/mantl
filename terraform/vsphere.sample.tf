@@ -1,33 +1,33 @@
 provider "vsphere" {
-  vsphere_server = ""
-  user = ""
-  password = ""
+  vsphere_server       = ""
+  user                 = ""
+  password             = ""
   allow_unverified_ssl = "false"
 }
 
 module "vsphere-dc" {
-  source = "./terraform/vsphere"
-  long_name = ""
-  short_name = ""
-  datacenter = ""
-  cluster = ""
-  pool = "" # format is cluster_name/Resources/pool_name
-  template = ""
-  network_label = ""
-  domain = ""
-  dns_server1 = ""
-  dns_server2 = ""
-  datastore = ""
-  control_count = 3
-  worker_count = 4
-  edge_count = 2
-  kubeworker_count = 0
+  source              = "./terraform/vsphere"
+  long_name           = ""
+  short_name          = ""
+  datacenter          = ""
+  cluster             = ""
+  pool                = "" # format is cluster_name/Resources/pool_name
+  template            = ""
+  network_label       = ""
+  domain              = ""
+  dns_server1         = ""
+  dns_server2         = ""
+  datastore           = ""
+  control_count       = 3
+  worker_count        = 4
+  edge_count          = 2
+  kubeworker_count    = 0
   control_volume_size = 20 # size in gigabytes
-  worker_volume_size = 20
-  edge_volume_size = 20
-  ssh_user = ""
-  ssh_key = ""
-  consul_dc = ""
+  worker_volume_size  = 20
+  edge_volume_size    = 20
+  ssh_user            = ""
+  ssh_key             = ""
+  consul_dc           = ""
 
   #Optional Parameters
   #folder = ""  
