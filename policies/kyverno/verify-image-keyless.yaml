@@ -18,7 +18,6 @@ spec:
             - kube-node-lease
             - cert-manager
             - external-dns
-            - spinnaker
             - argocd
             - kyverno
   rules:

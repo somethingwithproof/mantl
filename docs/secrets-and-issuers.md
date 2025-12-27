@@ -4,25 +4,8 @@ This repo expects External Secrets Operator (ESO) to sync secrets from Vault.
 
 ## Vault paths and keys (KV v2)
 
-- spinnaker/gate/oidc
-  - client_id
-  - client_secret
-- spinnaker/docker-registry
-  - registry
-  - username
-  - password
-- spinnaker/ecr
-  - registry
-  - username
-  - password
-- spinnaker/gcr
-  - registry
-  - username
-  - json_key
-- spinnaker/ghcr
-  - registry
-  - username
-  - token
+Example secret paths for External Secrets Operator:
+
 - cert-manager/route53
   - aws_access_key_id
   - aws_secret_access_key
