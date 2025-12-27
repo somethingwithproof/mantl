@@ -7,6 +7,8 @@
   - Boot disk from `gce_boot_image_family`/`gce_boot_image_project`; optional CMEK via `gce_boot_kms_key`.
   - Legacy resources remain as default path unless the flag is set.
 - vSphere: Add feature-flagged modern control VM schema (vsphere_virtual_machine clone) with optional `customization_spec_name`; legacy resources remain by default.
+- GCE: Add modern worker and kubeworker instances under the same flag; reminder to set legacy counts to 0 when enabling.
+- vSphere: Add modern worker and edge VM resources under the same flag; reminder to set legacy counts to 0 when enabling.
 
 ## 1.2 (July 07, 2016)
 

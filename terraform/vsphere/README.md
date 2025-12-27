@@ -1,7 +1,7 @@
 # vSphere Terraform (mantl/terraform/vsphere)
 
 Modernization (feature-flagged)
-- use_modern_vsphere_schema (bool, default false): create control VMs using the modern vsphere_virtual_machine resource with template clone.
+- use_modern_vsphere_schema (bool, default false): create control/worker/edge VMs using the modern vsphere_virtual_machine resource with template clone.
 - customization_spec_name (string, optional): apply an existing vSphere customization spec during clone.
 
 Inventory lookups
