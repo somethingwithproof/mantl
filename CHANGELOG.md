@@ -4,7 +4,7 @@
 
 Terraform modernization and hardening across cloud modules:
 - Cloudflare: rewrite to Terraform 1.x using cloudflare_dns_record and data.cloudflare_zone; add providers/versions; add CI workflow scoped to module.
-- AWS: add provider/version constraints; enforce IMDSv2; convert legacy tags blocks to maps; introduce allowed_cidrs variable (replaces *******/0); enable EBS encryption by default on root and data volumes with optional `kms_key_id`; optional worker Launch Template + Auto Scaling Group behind use_autoscaling; CI workflow for aws subtree.
+- AWS: add provider/version constraints; enforce IMDSv2; convert legacy tags blocks to maps; introduce allowed_cidrs variable (replaces *******/0); enable EBS encryption by default with optional `kms_key_id`; optional VPC Flow Logs to CloudWatch (behind `enable_vpc_flow_logs`); optional worker Launch Template + Auto Scaling Group behind `use_autoscaling`; CI workflow for aws subtree.
 - GCE: introduce allowed_cidrs; harden external firewall; remove legacy remote-exec provisioners; CI workflow for gce subtree. Further schema updates planned.
 - vSphere: remove remote-exec provisioners; add versions; CI workflow for vsphere subtree. Follow-up to add customization specs.
 
