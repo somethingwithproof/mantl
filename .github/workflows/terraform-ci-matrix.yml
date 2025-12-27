@@ -110,6 +110,7 @@ jobs:
           output_format: sarif
           output_file_path: checkov.sarif
           config_file: .checkov.yml
+          severity: MEDIUM,HIGH,CRITICAL
       - name: Upload Checkov SARIF to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3
         with:
