@@ -4,7 +4,31 @@ variable "availability_zone" {}
 variable "allowed_cidrs" {
   description = "List of CIDR blocks allowed for public ingress (SSH/HTTP/HTTPS and service ports)"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = ["*******/0"]
+}
+
+variable "kms_key_id" {
+  description = "Optional KMS key ID or ARN for EBS encryption. If null, the AWS-managed key is used."
+  type        = string
+  default     = null
+}
+
+variable "enable_vpc_flow_logs" {
+  description = "Enable VPC Flow Logs to CloudWatch Logs"
+  type        = bool
+  default     = false
+}
+
+variable "flow_logs_retention_in_days" {
+  description = "Retention in days for the CloudWatch Log Group used by VPC Flow Logs"
+  type        = number
+  default     = 14
+}
+
+variable "flow_logs_traffic_type" {
+  description = "Traffic type to capture for VPC Flow Logs (ACCEPT, REJECT, or ALL)"
+  type        = string
+  default     = "ALL"
 }
 
 variable "control_count" {default = "3"}
@@ -94,6 +118,8 @@ resource "aws_ebs_volume" "mi-control-lvm" {
   count = "${var.control_count}"
   size = "${var.control_data_volume_size}"
   type = "gp2"
+  encrypted = true
+  kms_key_id = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
 
   tags = {
     Name              = "${var.short_name}-control-lvm-${format("%02d", count.index+1)}"
@@ -118,9 +144,11 @@ resource "aws_instance" "mi-control-nodes" {
 
   iam_instance_profile = "${module.iam-profiles.control_iam_instance_profile}"
 
-  root_block_device {
+root_block_device {
     delete_on_termination = true
     volume_size           = "${var.control_volume_size}"
+    encrypted             = true
+    kms_key_id            = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
   }
 
   metadata_options {
@@ -150,6 +178,8 @@ resource "aws_ebs_volume" "mi-worker-lvm" {
   count = "${var.worker_count}"
   size = "${var.worker_data_volume_size}"
   type = "gp2"
+  encrypted = true
+  kms_key_id = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
 
   tags = {
     Name              = "${var.short_name}-worker-lvm-${format("%02d", count.index+1)}"
@@ -175,9 +205,11 @@ resource "aws_instance" "mi-worker-nodes" {
 
   iam_instance_profile = "${module.iam-profiles.worker_iam_instance_profile}"
 
-  root_block_device {
+root_block_device {
     delete_on_termination = true
     volume_size           = "${var.worker_volume_size}"
+    encrypted             = true
+    kms_key_id            = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
   }
 
   metadata_options {
@@ -262,6 +294,8 @@ resource "aws_ebs_volume" "mi-kubeworker-lvm" {
   count = "${var.kubeworker_count}"
   size = "${var.worker_data_volume_size}"
   type = "gp2"
+  encrypted = true
+  kms_key_id = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
 
   tags = {
     Name              = "${var.short_name}-kubeworker-lvm-${format("%02d", count.index+1)}"
@@ -287,9 +321,11 @@ resource "aws_instance" "mi-kubeworker-nodes" {
 
   iam_instance_profile = "${module.iam-profiles.worker_iam_instance_profile}"
 
-  root_block_device {
+root_block_device {
     delete_on_termination = true
     volume_size           = "${var.worker_volume_size}"
+    encrypted             = true
+    kms_key_id            = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
   }
 
   metadata_options {
@@ -319,6 +355,8 @@ resource "aws_ebs_volume" "mi-edge-lvm" {
   count = "${var.edge_count}"
   size = "${var.edge_data_volume_size}"
   type = "gp2"
+  encrypted = true
+  kms_key_id = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
 
   tags = {
     Name              = "${var.short_name}-edge-lvm-${format("%02d", count.index+1)}"
@@ -343,9 +381,11 @@ resource "aws_instance" "mi-edge-nodes" {
 
   iam_instance_profile = "${var.edge_iam_profile}"
 
-  root_block_device {
+root_block_device {
     delete_on_termination = true
     volume_size           = "${var.edge_volume_size}"
+    encrypted             = true
+    kms_key_id            = var.kms_key_id != null && var.kms_key_id != "" ? var.kms_key_id : null
   }
 
   metadata_options {
@@ -390,35 +430,35 @@ resource "aws_security_group" "control" {
     from_port = 5050
     to_port = 5050
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Marathon
     from_port = 8080
     to_port = 8080
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Chronos
     from_port = 4400
     to_port = 4400
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Consul
     from_port = 8500
     to_port = 8500
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # ICMP
     from_port = -1
     to_port = -1
     protocol = "icmp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
 }
@@ -443,42 +483,42 @@ resource "aws_security_group" "worker" {
     from_port = 80
     to_port = 80
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # HTTPS
     from_port = 443
     to_port = 443
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Mesos
     from_port = 5050
     to_port = 5050
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Marathon
     from_port = 8080
     to_port = 8080
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Consul
     from_port = 8500
     to_port = 8500
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # ICMP
     from_port = -1
     to_port = -1
     protocol = "icmp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 }
 
@@ -502,14 +542,14 @@ resource "aws_security_group" "ui" {
     from_port = 443
     to_port = 443
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Consul
     from_port = 8500
     to_port = 8500
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 }
 
@@ -526,27 +566,83 @@ resource "aws_security_group" "edge" {
     from_port = 22
     to_port = 22
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # HTTP
     from_port = 80
     to_port = 80
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # HTTPS
     from_port = 443
     to_port = 443
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 }
 
 resource "aws_key_pair" "deployer" {
   key_name = "key-${var.short_name}"
   public_key = "${file(var.ssh_key)}"
+}
+
+# VPC Flow Logs (optional)
+resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
+  count             = var.enable_vpc_flow_logs ? 1 : 0
+  name              = "/aws/vpc/${var.short_name}-flow-logs"
+  retention_in_days = var.flow_logs_retention_in_days
+}
+
+resource "aws_iam_role" "vpc_flow_logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+  name  = "${var.short_name}-vpc-flow-logs"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {"Service": "vpc-flow-logs.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "vpc_flow_logs" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
+  name  = "${var.short_name}-vpc-flow-logs-policy"
+  role  = aws_iam_role.vpc_flow_logs[0].id
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ],
+      "Resource": "${aws_cloudwatch_log_group.vpc_flow_logs[0].arn}:*"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_flow_log" "vpc" {
+  count                = var.enable_vpc_flow_logs ? 1 : 0
+  log_destination      = aws_cloudwatch_log_group.vpc_flow_logs[0].arn
+  log_destination_type = "cloud-watch-logs"
+  traffic_type         = var.flow_logs_traffic_type
+  vpc_id               = aws_vpc.main.id
+  iam_role_arn         = aws_iam_role.vpc_flow_logs[0].arn
 }
 
 output "vpc_subnet" {
