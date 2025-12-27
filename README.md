@@ -11,7 +11,7 @@ Mantl is a **Kubernetes-first, GitOps-driven, secure-by-default** platform engin
 
 Mantl provides everything you need to build, deploy, and operate production Kubernetes platforms across multiple cloud providers:
 
-- **Multi-Cloud Native**: Pre-configured blueprints for AWS (EKS), GCP (GKE), Azure (AKS), DigitalOcean (DOKS), and Linode (LKE)
+- **Multi-Cloud Native**: Pre-configured blueprints for AWS (EKS), GCP (GKE), Azure (AKS), Oracle Cloud (OKE), DigitalOcean (DOKS), and Linode (LKE)
 - **GitOps-First**: ArgoCD-based continuous delivery with app-of-apps pattern
 - **Security Built-In**: SBOM generation, image signing (Cosign), policy enforcement (Kyverno/OPA)
 - **Modern Networking**: Gateway API support with Cilium or Envoy Gateway
@@ -255,6 +255,33 @@ az aks get-credentials --resource-group mantl --name mantl-aks
 kubectl apply -k clusters/production/overlays/aks-wi
 ```
 
+### Option 4: Oracle Cloud (OKE)
+
+```bash
+# Navigate to OKE blueprint
+cd terraform/blueprints/oci/oke
+
+# Configure OCI CLI (if not already done)
+oci setup config
+
+# Configure Terraform variables
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your tenancy OCID, user OCID, region
+
+# Deploy infrastructure
+terraform init && terraform apply
+
+# Configure kubectl
+oci ce cluster create-kubeconfig \
+  --cluster-id <cluster-ocid> \
+  --file $HOME/.kube/config \
+  --region us-ashburn-1 \
+  --token-version 2.0.0
+
+# Deploy platform
+kubectl apply -k clusters/production/overlays/oci
+```
+
 ## 📁 Project Structure
 
 ```
@@ -264,6 +291,7 @@ mantl/
 │   │   ├── aws/             # EKS, VPC, IAM
 │   │   ├── gcp/             # GKE, VPC, Service Accounts
 │   │   ├── azure/           # AKS, VNet, Managed Identity
+│   │   ├── oci/             # OKE, VCN, IAM
 │   │   ├── digitalocean/    # DOKS clusters
 │   │   └── linode/          # LKE clusters
 │   └── modules/             # Reusable Terraform modules
@@ -321,6 +349,7 @@ mantl/
 | AWS | ✅ EKS | ✅ IRSA | ✅ Route53 | ✅ ACM |
 | GCP | ✅ GKE | ✅ Workload Identity | ✅ Cloud DNS | ✅ Google CA |
 | Azure | ✅ AKS | ✅ Managed Identity | ✅ Azure DNS | ✅ Azure CA |
+| Oracle Cloud | ✅ OKE | ✅ Instance Principal | ✅ OCI DNS | ✅ ACME |
 | DigitalOcean | ✅ DOKS | ⚠️ API Token | ✅ DO DNS | ✅ ACME |
 | Linode | ✅ LKE | ⚠️ API Token | ✅ Linode DNS | ✅ ACME Webhook |
 | **Local Development** |
