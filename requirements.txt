@@ -7,7 +7,7 @@ ansible==9.3.0
 pytest==8.4.2
 pytest-cov==7.0.0
 PyYAML==6.0.3
-Sphinx==7.4.7
+Sphinx==9.0.4
 ansible-lint==24.12.2
 netaddr==1.3.0
 flake8==7.3.0
