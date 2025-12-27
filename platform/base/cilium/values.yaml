@@ -115,6 +115,8 @@ prometheus:
   enabled: true
   serviceMonitor:
     enabled: true
+    # Avoid requiring CRDs at template time in CI builds
+    trustCRDsExist: true
     labels:
       release: prometheus
 

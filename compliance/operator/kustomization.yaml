@@ -6,11 +6,18 @@ namespace: compliance-system
 
 resources:
   - namespace.yaml
-  - crds/
-  - rbac/
+  # CRDs (list explicitly to avoid needing nested kustomization)
+  - crds/complianceaudit-crd.yaml
+  - crds/compliancecontrol-crd.yaml
+  - crds/complianceevidence-crd.yaml
+  - crds/compliancefinding-crd.yaml
+  - crds/complianceframework-crd.yaml
+  # Core manifests
   - deployment.yaml
   - service.yaml
-  - configmap.yaml
+  # Metrics (optional)
+  - metrics/servicemonitor.yaml
+  - metrics/prometheus-rules.yaml
 
 images:
   - name: compliance-operator

@@ -1,0 +1,27 @@
+name: CI (container)
+
+on:
+  pull_request:
+  push:
+    branches: [ main, "reorg/*", "feature/**" ]
+
+jobs:
+  container-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build dev image
+        run: docker build -t mantl-dev:ci .
+
+      - name: Pytest
+        run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci pytest -v tests
+
+      - name: Validate Kustomize (dev scope)
+        run: |
+          chmod +x ci/validate-kustomize-dev.sh
+          docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-kustomize-dev.sh
+
+      - name: Validate Terraform
+        run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-terraform.sh

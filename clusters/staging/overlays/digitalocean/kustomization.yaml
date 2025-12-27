@@ -1,7 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../../
+  # Inherit base cluster apps explicitly to avoid parent-cycle issues
+  - ../../apps/cert-manager.yaml
+  - ../../apps/cert-manager-clusterissuers.yaml
+  - ../../apps/kyverno.yaml
+  - ../../apps/kyverno-policies.yaml
+  - ../../apps/prometheus.yaml
+  # DigitalOcean-specific for staging
   - ../../../production/apps/cert-manager-issuer-dns-digitalocean.yaml
   - ../../../production/apps/external-dns-digitalocean.yaml
   - ../../../production/apps/gateway-sample.yaml

@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: kyverno-no-placeholders
         name: kyverno-no-placeholders
-        entry: scripts/check-placeholders.sh
+        entry: ci/check-placeholders.sh
         language: system
         pass_filenames: false
   - repo: https://github.com/psf/black
@@ -40,3 +40,15 @@ repos:
     hooks:
       - id: commitizen
         stages: [commit-msg]
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: ["--severity=warning"]
+        files: ^scripts/.*\.sh$
+  - repo: https://github.com/terraform-docs/terraform-docs
+    rev: v0.19.0
+    hooks:
+      - id: terraform-docs-go
+        args: ["markdown", "table", "--output-file", "README.md", "."]
+        files: ^terraform/.*

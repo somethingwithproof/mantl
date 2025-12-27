@@ -2,22 +2,16 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../
-  - ../../apps/external-dns-azure-wi.yaml
-
-configMapGenerator:
-  - name: wi-config
-    literals:
-      - uamiClientId=REPLACE_WITH_UAMI_CLIENT_ID
-
-replacements:
-  - source:
-      kind: ConfigMap
-      name: wi-config
-      fieldPath: data.uamiClientId
-    targets:
-      - select:
-          kind: Application
-          name: external-dns-azure-wi
-        fieldPaths:
-          - spec.source.helm.parameters.0.value
+  # Inherit base cluster apps explicitly to avoid parent-cycle issues
+  - ../../apps/cert-manager.yaml
+  - ../../apps/cert-manager-issuer.yaml
+  - ../../apps/cert-manager-clusterissuers.yaml
+  - ../../apps/external-secrets.yaml
+  - ../../apps/kyverno.yaml
+  - ../../apps/kyverno-policies.yaml
+  - ../../apps/gateway-api-crds.yaml
+  - ../../apps/cilium.yaml
+  - ../../apps/gateway-sample.yaml
+  - ../../apps/example-hello.yaml
+  # AKS WI: use standard Azure ExternalDNS for now (no separate WI manifest present)
+  - ../../apps/external-dns-azure.yaml

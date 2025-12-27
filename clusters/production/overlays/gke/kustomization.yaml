@@ -1,6 +1,17 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ../../
+  # Inherit base cluster apps explicitly to avoid parent-cycle issues
+  - ../../apps/cert-manager.yaml
+  - ../../apps/cert-manager-issuer.yaml
+  - ../../apps/cert-manager-clusterissuers.yaml
+  - ../../apps/external-secrets.yaml
+  - ../../apps/kyverno.yaml
+  - ../../apps/kyverno-policies.yaml
+  - ../../apps/gateway-api-crds.yaml
+  - ../../apps/cilium.yaml
+  - ../../apps/gateway-sample.yaml
+  - ../../apps/example-hello.yaml
+  # GKE-specific
   - ../../apps/cert-manager-issuer-dns-gcp.yaml
   - ../../apps/external-dns-gcp.yaml
