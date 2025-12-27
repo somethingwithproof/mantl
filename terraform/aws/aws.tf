@@ -1,4 +1,12 @@
 variable "availability_zone" {}
+
+# Allowed CIDRs for public ingress (override to restrict). Default preserves legacy behavior.
+variable "allowed_cidrs" {
+  description = "List of CIDR blocks allowed for public ingress (SSH/HTTP/HTTPS and service ports)"
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 variable "control_count" {default = "3"}
 variable "count_format" {default = "%02d"}
 variable "worker_count_format" {default = "%03d"}
@@ -32,9 +40,9 @@ module "iam-profiles" {
 resource "aws_vpc" "main" {
   cidr_block = "${var.network_ipv4}"
   enable_dns_hostnames = true
-  tags {
-    Name = "${var.long_name}"
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    Name               = var.long_name
+    KubernetesCluster  = var.short_name
   }
 }
 
@@ -42,17 +50,17 @@ resource "aws_subnet" "main" {
   vpc_id = "${aws_vpc.main.id}"
   cidr_block = "${var.network_subnet_ip4}"
   availability_zone = "${var.availability_zone}"
-  tags {
-    Name = "${var.long_name}"
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    Name               = var.long_name
+    KubernetesCluster  = var.short_name
   }
 }
 
 resource "aws_internet_gateway" "main" {
   vpc_id = "${aws_vpc.main.id}"
-  tags {
-    Name = "${var.long_name}"
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    Name               = var.long_name
+    KubernetesCluster  = var.short_name
   }
 }
 
@@ -64,9 +72,9 @@ resource "aws_route_table" "main" {
     gateway_id = "${aws_internet_gateway.main.id}"
   }
 
-  tags {
-    Name = "${var.long_name}"
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    Name               = var.long_name
+    KubernetesCluster  = var.short_name
   }
 }
 
@@ -81,9 +89,9 @@ resource "aws_ebs_volume" "mi-control-lvm" {
   size = "${var.control_data_volume_size}"
   type = "gp2"
 
-  tags {
-    Name = "${var.short_name}-control-lvm-${format("%02d", count.index+1)}"
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    Name              = "${var.short_name}-control-lvm-${format("%02d", count.index+1)}"
+    KubernetesCluster = var.short_name
   }
 }
 
@@ -106,15 +114,20 @@ resource "aws_instance" "mi-control-nodes" {
 
   root_block_device {
     delete_on_termination = true
-    volume_size = "${var.control_volume_size}"
+    volume_size           = "${var.control_volume_size}"
   }
 
-  tags {
-    Name = "${var.short_name}-control-${format("%02d", count.index+1)}"
-    sshUser = "${var.ssh_username}"
-    role = "control"
-    dc = "${var.datacenter}"
-    KubernetesCluster = "${var.short_name}"
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
+  tags = {
+    Name               = "${var.short_name}-control-${format("%02d", count.index+1)}"
+    sshUser            = var.ssh_username
+    role               = "control"
+    dc                 = var.datacenter
+    KubernetesCluster  = var.short_name
   }
 }
 
@@ -132,9 +145,9 @@ resource "aws_ebs_volume" "mi-worker-lvm" {
   size = "${var.worker_data_volume_size}"
   type = "gp2"
 
-  tags {
-    Name = "${var.short_name}-worker-lvm-${format("%02d", count.index+1)}"
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    Name              = "${var.short_name}-worker-lvm-${format("%02d", count.index+1)}"
+    KubernetesCluster = var.short_name
   }
 }
 
@@ -158,15 +171,20 @@ resource "aws_instance" "mi-worker-nodes" {
 
   root_block_device {
     delete_on_termination = true
-    volume_size = "${var.worker_volume_size}"
+    volume_size           = "${var.worker_volume_size}"
   }
 
-  tags {
-    Name = "${var.short_name}-worker-${format(var.worker_count_format, count.index+1)}"
-    sshUser = "${var.ssh_username}"
-    role = "worker"
-    dc = "${var.datacenter}"
-    KubernetesCluster = "${var.short_name}"
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
+  tags = {
+    Name               = "${var.short_name}-worker-${format(var.worker_count_format, count.index+1)}"
+    sshUser            = var.ssh_username
+    role               = "worker"
+    dc                 = var.datacenter
+    KubernetesCluster  = var.short_name
   }
 }
 
@@ -184,9 +202,9 @@ resource "aws_ebs_volume" "mi-kubeworker-lvm" {
   size = "${var.worker_data_volume_size}"
   type = "gp2"
 
-  tags {
-    Name = "${var.short_name}-kubeworker-lvm-${format("%02d", count.index+1)}"
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    Name              = "${var.short_name}-kubeworker-lvm-${format("%02d", count.index+1)}"
+    KubernetesCluster = var.short_name
   }
 }
 
@@ -210,15 +228,20 @@ resource "aws_instance" "mi-kubeworker-nodes" {
 
   root_block_device {
     delete_on_termination = true
-    volume_size = "${var.worker_volume_size}"
+    volume_size           = "${var.worker_volume_size}"
   }
 
-  tags {
-    Name = "${var.short_name}-kubeworker-${format("%03d", count.index+1)}"
-    sshUser = "${var.ssh_username}"
-    role = "kubeworker"
-    dc = "${var.datacenter}"
-    KubernetesCluster = "${var.short_name}"
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
+  tags = {
+    Name               = "${var.short_name}-kubeworker-${format("%03d", count.index+1)}"
+    sshUser            = var.ssh_username
+    role               = "kubeworker"
+    dc                 = var.datacenter
+    KubernetesCluster  = var.short_name
   }
 }
 
@@ -236,9 +259,9 @@ resource "aws_ebs_volume" "mi-edge-lvm" {
   size = "${var.edge_data_volume_size}"
   type = "gp2"
 
-  tags {
-    Name = "${var.short_name}-edge-lvm-${format("%02d", count.index+1)}"
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    Name              = "${var.short_name}-edge-lvm-${format("%02d", count.index+1)}"
+    KubernetesCluster = var.short_name
   }
 }
 
@@ -261,15 +284,20 @@ resource "aws_instance" "mi-edge-nodes" {
 
   root_block_device {
     delete_on_termination = true
-    volume_size = "${var.edge_volume_size}"
+    volume_size           = "${var.edge_volume_size}"
   }
 
-  tags {
-    Name = "${var.short_name}-edge-${format("%02d", count.index+1)}"
-    sshUser = "${var.ssh_username}"
-    role = "edge"
-    dc = "${var.datacenter}"
-    KubernetesCluster = "${var.short_name}"
+  metadata_options {
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+  }
+
+  tags = {
+    Name               = "${var.short_name}-edge-${format("%02d", count.index+1)}"
+    sshUser            = var.ssh_username
+    role               = "edge"
+    dc                 = var.datacenter
+    KubernetesCluster  = var.short_name
   }
 }
 
@@ -286,15 +314,15 @@ resource "aws_security_group" "control" {
   description = "Allow inbound traffic for control nodes"
   vpc_id = "${aws_vpc.main.id}"
 
-  tags {
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    KubernetesCluster = var.short_name
   }
 
   ingress { # SSH
     from_port = 22
     to_port = 22
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # Mesos
@@ -339,15 +367,15 @@ resource "aws_security_group" "worker" {
   description = "Allow inbound traffic for worker nodes"
   vpc_id = "${aws_vpc.main.id}"
 
-  tags {
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    KubernetesCluster = var.short_name
   }
 
   ingress { # SSH
     from_port = 22
     to_port = 22
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # HTTP
@@ -398,15 +426,15 @@ resource "aws_security_group" "ui" {
   description = "Allow inbound traffic for Mantl UI"
   vpc_id = "${aws_vpc.main.id}"
 
-  tags {
-    KubernetesCluster = "${var.short_name}"
+  tags = {
+    KubernetesCluster = var.short_name
   }
 
   ingress { # HTTP
     from_port = 80
     to_port = 80
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = var.allowed_cidrs
   }
 
   ingress { # HTTPS
