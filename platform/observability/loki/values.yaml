@@ -2,14 +2,11 @@
 # Log aggregation for Kubernetes
 # https://grafana.com/docs/loki/latest/
 
-# Deployment mode: single binary for simplicity, scalable for production
 deploymentMode: SimpleScalable
 
-# Loki configuration
 loki:
   auth_enabled: false
   
-  # Schema and storage
   schemaConfig:
     configs:
       - from: "2024-01-01"
@@ -20,26 +17,14 @@ loki:
           prefix: loki_index_
           period: 24h
   
-  # Storage configuration (filesystem for on-prem, S3/GCS for cloud)
   storage:
     type: filesystem
     filesystem:
       chunks_directory: /var/loki/chunks
       rules_directory: /var/loki/rules
   
-  # Uncomment for S3 storage:
-  # storage:
-  #   type: s3
-  #   s3:
-  #     endpoint: s3.amazonaws.com
-  #     region: us-east-1
-  #     bucketnames: loki-chunks
-  #     access_key_id: ${AWS_ACCESS_KEY_ID}
-  #     secret_access_key: ${AWS_SECRET_ACCESS_KEY}
-  
-  # Limits
   limits_config:
-    retention_period: 744h  # 31 days
+    retention_period: 744h
     ingestion_rate_mb: 10
     ingestion_burst_size_mb: 20
     max_query_series: 500
@@ -47,22 +32,18 @@ loki:
     max_streams_per_user: 10000
     max_line_size: 256kb
   
-  # Compactor for retention
   compactor:
     working_directory: /var/loki/compactor
     retention_enabled: true
     retention_delete_delay: 2h
     delete_request_store: filesystem
   
-  # Common config
   commonConfig:
-    replication_factor: 1  # Increase for HA
+    replication_factor: 1
   
-  # Query settings
   query_scheduler:
     max_outstanding_requests_per_tenant: 32768
   
-  # Ruler for alerting (optional)
   rulerConfig:
     storage:
       type: local
@@ -75,7 +56,6 @@ loki:
         store: inmemory
     enable_api: true
 
-# Simple Scalable deployment
 read:
   replicas: 2
   resources:
@@ -112,7 +92,6 @@ backend:
     enabled: true
     size: 10Gi
 
-# Gateway (nginx)
 gateway:
   enabled: true
   replicas: 1
@@ -124,11 +103,9 @@ gateway:
       cpu: 200m
       memory: 128Mi
 
-# Disable unused components
 singleBinary:
   replicas: 0
 
-# Monitoring
 monitoring:
   serviceMonitor:
     enabled: true
@@ -141,16 +118,13 @@ monitoring:
   lokiCanary:
     enabled: false
 
-# Test disabled
 test:
   enabled: false
 
-# Chunk cache (optional, improves query performance)
 chunksCache:
   enabled: true
   allocatedMemory: 1024
 
-# Results cache
 resultsCache:
   enabled: true
   allocatedMemory: 512

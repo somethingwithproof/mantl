@@ -1,0 +1,149 @@
+# Cilium Helm values
+# CNCF Graduated CNI with eBPF
+# https://docs.cilium.io/en/stable/helm-reference/
+
+# Cluster identification
+cluster:
+  name: mantl
+  id: 1
+
+# Routing mode
+routingMode: native
+ipam:
+  mode: kubernetes
+
+# Kube-proxy replacement (recommended for performance)
+kubeProxyReplacement: true
+k8sServiceHost: kubernetes.default.svc
+k8sServicePort: 443
+
+# Enable BPF masquerading
+bpf:
+  masquerade: true
+  clockProbe: true
+  tproxy: true
+
+# WireGuard encryption (node-to-node)
+encryption:
+  enabled: true
+  type: wireguard
+  nodeEncryption: true
+
+# Hubble observability
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+    replicas: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+  ui:
+    enabled: true
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
+    serviceMonitor:
+      enabled: true
+      labels:
+        release: prometheus
+
+# Gateway API support (replaces Ingress)
+gatewayAPI:
+  enabled: true
+
+# L2 announcements for on-prem LoadBalancer
+l2announcements:
+  enabled: true
+
+# Enable external IPs
+externalIPs:
+  enabled: true
+
+# Cluster mesh (multi-cluster)
+clustermesh:
+  useAPIServer: true
+  apiserver:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+
+# Operator settings
+operator:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Agent settings
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+
+# Enable Prometheus metrics
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: prometheus
+
+# Pod security
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+# Tolerations for control plane nodes
+tolerations:
+  - operator: Exists
+
+# Update strategy
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 2

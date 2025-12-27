@@ -1,0 +1,33 @@
+# Verify container image signatures using Sigstore/Cosign
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+  annotations:
+    policies.kyverno.io/title: Verify Image Signatures
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Verify that container images are signed using Sigstore Cosign
+      before allowing them to run in the cluster.
+spec:
+  validationFailureAction: Audit
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-keyless-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/your-org/*"
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/your-org/*"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev

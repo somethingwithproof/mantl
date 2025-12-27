@@ -1,4 +1,17 @@
+# cert-manager - CNCF Graduated
+# https://cert-manager.io/
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
+namespace: cert-manager
+
 resources:
-  - cluster-issuer.yaml
+  - namespace.yaml
+
+helmCharts:
+  - name: cert-manager
+    repo: https://charts.jetstack.io
+    version: v1.16.2
+    releaseName: cert-manager
+    namespace: cert-manager
+    valuesFile: values.yaml

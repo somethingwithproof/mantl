@@ -2,9 +2,7 @@
 # Distributed tracing backend
 # https://grafana.com/docs/tempo/latest/
 
-# Tempo configuration
 tempo:
-  # Receivers - accept traces from various sources
   receivers:
     otlp:
       protocols:
@@ -25,7 +23,6 @@ tempo:
     zipkin:
       endpoint: "0.0.0.0:9411"
   
-  # Storage configuration
   storage:
     trace:
       backend: local
@@ -33,19 +30,9 @@ tempo:
         path: /var/tempo/traces
       wal:
         path: /var/tempo/wal
-      # Uncomment for S3:
-      # backend: s3
-      # s3:
-      #   bucket: tempo-traces
-      #   endpoint: s3.amazonaws.com
-      #   region: us-east-1
-      #   access_key: ${AWS_ACCESS_KEY_ID}
-      #   secret_key: ${AWS_SECRET_ACCESS_KEY}
   
-  # Retention
-  retention: 168h  # 7 days
+  retention: 168h
   
-  # Query settings
   query_frontend:
     search:
       duration_slo: 5s
@@ -53,12 +40,10 @@ tempo:
     trace_by_id:
       duration_slo: 5s
   
-  # Metrics generator (creates metrics from traces)
   metricsGenerator:
     enabled: true
     remoteWriteUrl: "http://prometheus-prometheus.monitoring.svc.cluster.local:9090/api/v1/write"
 
-# Resources
 resources:
   requests:
     cpu: 200m
@@ -67,16 +52,13 @@ resources:
     cpu: 1000m
     memory: 2Gi
 
-# Persistence
 persistence:
   enabled: true
   size: 50Gi
 
-# Service
 service:
   type: ClusterIP
 
-# Tempo Query (Jaeger-compatible UI)
 tempoQuery:
   enabled: true
   resources:
@@ -87,14 +69,12 @@ tempoQuery:
       cpu: 200m
       memory: 256Mi
 
-# Service Monitor for Prometheus
 serviceMonitor:
   enabled: true
   labels:
     release: prometheus
   interval: 30s
 
-# Pod security
 securityContext:
   runAsNonRoot: true
   runAsUser: 10001

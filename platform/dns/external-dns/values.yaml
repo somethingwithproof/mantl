@@ -1,0 +1,83 @@
+# External DNS Helm values
+# Synchronizes K8s resources with DNS providers
+# https://github.com/kubernetes-sigs/external-dns
+
+# Provider configuration - UNCOMMENT ONE:
+# provider: aws
+# provider: google
+# provider: azure
+# provider: cloudflare
+# provider: digitalocean
+provider: cloudflare  # Default for demo
+
+# Domain filter - only manage these domains
+domainFilters:
+  - example.com  # Change to your domain
+
+# Text owner ID to identify managed records
+txtOwnerId: mantl-cluster
+
+# Policy: sync (create/update/delete) or upsert-only (no deletes)
+policy: sync
+
+# Sources to watch
+sources:
+  - service
+  - ingress
+  - gateway-httproute
+  - gateway-grpcroute
+  - gateway-tlsroute
+  - gateway-tcproute
+  - gateway-udproute
+
+# Registry type (txt records for ownership)
+registry: txt
+txtPrefix: external-dns-
+
+# Sync interval
+interval: 1m
+
+# Log level
+logLevel: info
+logFormat: json
+
+# Resources
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+# Replicas
+replicaCount: 1
+
+# Pod disruption budget
+podDisruptionBudget:
+  minAvailable: 1
+
+# Service account
+serviceAccount:
+  create: true
+  name: external-dns
+
+# Prometheus metrics
+serviceMonitor:
+  enabled: true
+  labels:
+    release: prometheus
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
