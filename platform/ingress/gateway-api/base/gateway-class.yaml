@@ -1,0 +1,13 @@
+# GatewayClass for Cilium Gateway API
+# This defines Cilium as the Gateway controller
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: cilium
+  labels:
+    app.kubernetes.io/name: cilium
+    app.kubernetes.io/component: gateway-class
+spec:
+  controllerName: io.cilium/gateway-controller
+  description: Cilium Gateway API implementation
