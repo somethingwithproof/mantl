@@ -16,19 +16,19 @@ pipeline {
     stage('Push Image') {
       steps { sh 'docker push ${IMAGE}' }
     }
-    stage('Publish artifacts for Spinnaker (Jenkins trigger)') {
+    stage('Update GitOps Manifests') {
       steps {
-        writeFile file: 'build/build.properties', text: "IMAGE=${IMAGE}\n"
-        archiveArtifacts artifacts: 'build/build.properties', fingerprint: true
-      }
-    }
-    stage('Trigger Spinnaker via Gate webhook (optional)') {
-      when { expression { return false } } // set to true to use webhook
-      steps {
-        sh 'curl -X POST -H "Content-Type: application/json" \
-        -d "{\\"artifacts\\":[{\\"type\\":\\"docker/image\\",\\"name\\":\\"${IMAGE}\\"}], \
-            \\\"parameters\\\":{\\\"deployEnv\\\":\\\"staging\\\"}}" \
-        https://GATE_URL_OR_INGRESS/webhooks/webhook/YOUR_WEBHOOK_NAME'
+        script {
+          // Update image tag in Git manifests for ArgoCD to sync
+          sh '''
+            git clone https://github.com/YOUR_ORG/YOUR_GITOPS_REPO.git
+            cd YOUR_GITOPS_REPO
+            sed -i "s|image:.*|image: ${IMAGE}|" overlays/staging/kustomization.yaml
+            git add overlays/staging/kustomization.yaml
+            git commit -m "Update staging image to ${IMAGE}"
+            git push
+          '''
+        }
       }
     }
   }

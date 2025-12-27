@@ -26,7 +26,7 @@
 ## CI/CD & Delivery
 
 - **[Required Checks](ci-required-checks.md)** - GitHub Actions CI configuration
-- **[Spinnaker Registries](spinnaker-registries.md)** - Multi-cloud deployment pipelines
+- **[CI/CD Strategy](ara/ARA-0006-ci-cd-strategy.md)** - ArgoCD-based GitOps deployment
 - **[ExternalDNS Identity](external-dns-identity.md)** - Cloud provider DNS automation
 
 ## Architecture
@@ -49,7 +49,6 @@
 ## Reference
 
 - **Multi-Cloud**: [multicloud.rst](multicloud.rst) - Cross-cloud deployment patterns
-- **OIDC/TLS/DNS**: [oidc-tls-dns.rst](oidc-tls-dns.rst) - Authentication and certificates
 - **Kyverno Policies**: `policies/kyverno/` - Policy enforcement rules
 
 ---

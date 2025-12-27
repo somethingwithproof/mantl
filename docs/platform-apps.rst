@@ -88,7 +88,6 @@ Individual ArgoCD applications for specific configurations are available in ``cl
 
 - **gateway-sample**: Sample Gateway API resources for testing
 - **envoy-gateway**: Alternative Gateway API implementation
-- **spinnaker-***: Spinnaker continuous delivery platform components
 
 Deployment
 ----------

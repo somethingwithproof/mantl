@@ -172,7 +172,7 @@ kubectl port-forward -n observability svc/otel-collector 4317:4317
 
 1. **Deploy your first application**: See `applications/templates/web-service/base/`
 2. **Configure ingress**: Deploy Gateway API resources in `platform/ingress/gateway-api/`
-3. **Set up Spinnaker**: Deploy continuous delivery pipelines (see `docs/spinnaker-registries.md`)
+3. **Set up CI/CD**: Configure ArgoCD webhooks or Image Updater for automated deployments
 4. **Review policies**: Check Kyverno policies in `policies/kyverno/`
 5. **Enable runtime security**: Review Falco alerts in Grafana
 
