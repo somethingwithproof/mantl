@@ -1,0 +1,79 @@
+# Falco Rules for SOC2 Compliance
+# Maps runtime detection to specific compliance controls
+customRules:
+  # CC6.1: Logical Access Security
+  - rule: SOC2 Privileged Container Started
+    desc: Detects privileged containers
+    condition: spawned_process and container and container.privileged=true
+    output: "Privileged container (user=%user.name container=%container.name image=%container.image.repository)"
+    priority: CRITICAL
+    tags: [SOC2-CC6.1, container, privileged]
+
+  - rule: SOC2 Container Escape Attempt
+    desc: Detects nsenter usage for container escape
+    condition: spawned_process and container and proc.name = nsenter
+    output: "Container escape attempt via nsenter (user=%user.name container=%container.id)"
+    priority: CRITICAL
+    tags: [SOC2-CC6.1, container_escape]
+
+  - rule: SOC2 RBAC ClusterRole Modified
+    desc: Detects ClusterRole modifications
+    condition: kevt and kcreate or kmodify and ka.target.resource = clusterroles
+    output: "ClusterRole modified (user=%ka.user.name role=%ka.target.name)"
+    priority: ALERT
+    tags: [SOC2-CC6.1, rbac]
+
+  # CC6.6: System Credentials
+  - rule: SOC2 Read Sensitive File
+    desc: Detects reading of sensitive files
+    condition: >
+      open_read and container and 
+      (fd.name startswith /etc/shadow or fd.name startswith /run/secrets)
+    output: "Sensitive file read (user=%user.name file=%fd.name container=%container.id)"
+    priority: WARNING
+    tags: [SOC2-CC6.6, secrets]
+
+  - rule: SOC2 Clear Log Activities
+    desc: Detects log clearing (evidence tampering)
+    condition: >
+      open_write and container and fd.name startswith /var/log and 
+      proc.name in (truncate, rm, shred)
+    output: "Log clearing activity (user=%user.name file=%fd.name)"
+    priority: ALERT
+    tags: [SOC2-CC6.6, SOC2-CC7.2, tampering]
+
+  # CC7.2: Security Event Detection
+  - rule: SOC2 Terminal Shell in Container
+    desc: Detects interactive shell access
+    condition: spawned_process and container and proc.tty != 0 and proc.name in (bash, sh, zsh)
+    output: "Terminal shell in container (user=%user.name shell=%proc.name container=%container.name)"
+    priority: WARNING
+    tags: [SOC2-CC6.1, SOC2-CC7.2, interactive_access]
+
+  - rule: SOC2 Crypto Miner Detected
+    desc: Detects crypto mining activity
+    condition: spawned_process and container and proc.cmdline contains stratum
+    output: "Crypto miner detected (user=%user.name command=%proc.cmdline)"
+    priority: CRITICAL
+    tags: [SOC2-CC7.2, cryptomining]
+
+  - rule: SOC2 Kernel Module Loaded
+    desc: Detects kernel module loading (rootkit)
+    condition: spawned_process and (proc.name = insmod or proc.name = modprobe)
+    output: "Kernel module loaded (user=%user.name module=%proc.args)"
+    priority: ALERT
+    tags: [SOC2-CC7.2, rootkit]
+
+  - rule: SOC2 Network Tool in Container
+    desc: Detects network scanning tools
+    condition: spawned_process and container and proc.name in (nmap, nc, netcat, tcpdump)
+    output: "Network tool executed (tool=%proc.name container=%container.id)"
+    priority: WARNING
+    tags: [SOC2-CC7.2, reconnaissance]
+
+# Macro Definitions
+- list: shell_binaries
+  items: [bash, sh, dash, ash, zsh, ksh]
+
+- list: network_tools
+  items: [nmap, nc, netcat, ncat, socat, tcpdump, tshark, masscan]

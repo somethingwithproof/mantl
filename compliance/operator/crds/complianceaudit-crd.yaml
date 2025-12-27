@@ -1,0 +1,132 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: complianceaudits.compliance.mantl.io
+  annotations:
+    description: "Point-in-time compliance assessment and audit trail"
+spec:
+  group: compliance.mantl.io
+  names:
+    kind: ComplianceAudit
+    listKind: ComplianceAuditList
+    plural: complianceaudits
+    singular: complianceaudit
+    shortNames:
+      - caudit
+      - audit
+  scope: Cluster
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              required:
+                - frameworkRef
+                - auditPeriod
+              properties:
+                frameworkRef:
+                  type: string
+                name:
+                  type: string
+                auditPeriod:
+                  type: object
+                  required:
+                    - start
+                    - end
+                  properties:
+                    start:
+                      type: string
+                      format: date-time
+                    end:
+                      type: string
+                      format: date-time
+                auditor:
+                  type: object
+                  properties:
+                    firm:
+                      type: string
+                    contact:
+                      type: string
+                    email:
+                      type: string
+                scope:
+                  type: object
+                  properties:
+                    controlIds:
+                      type: array
+                      items:
+                        type: string
+                    namespaces:
+                      type: array
+                      items:
+                        type: string
+                schedule:
+                  type: string
+                  description: "Cron schedule for recurring audits"
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum: [Scheduled, InProgress, Completed, Failed]
+                startedAt:
+                  type: string
+                  format: date-time
+                completedAt:
+                  type: string
+                  format: date-time
+                summary:
+                  type: object
+                  properties:
+                    totalControls:
+                      type: integer
+                    passingControls:
+                      type: integer
+                    failingControls:
+                      type: integer
+                    complianceScore:
+                      type: number
+                      format: float
+                findingsSummary:
+                  type: object
+                  properties:
+                    critical:
+                      type: integer
+                    high:
+                      type: integer
+                    medium:
+                      type: integer
+                    low:
+                      type: integer
+                reportRef:
+                  type: string
+                evidencePackageUrl:
+                  type: string
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Framework
+          type: string
+          jsonPath: .spec.frameworkRef
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Score
+          type: number
+          jsonPath: .status.summary.complianceScore
+        - name: Findings
+          type: integer
+          jsonPath: .status.findingsSummary.critical
