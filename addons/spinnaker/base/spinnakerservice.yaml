@@ -1,0 +1,63 @@
+apiVersion: spinnaker.io/v1alpha2
+kind: SpinnakerService
+metadata:
+  name: spinnaker
+  namespace: spinnaker
+spec:
+  spinnakerConfig:
+    # Pin a Spinnaker version after validation.
+    # Example: 1.32.0 or 2.x when available.
+    config:
+      version: "${SPIN_VERSION:-1.32.0}"
+      persistentStorage:
+        # Choose exactly one of s3 or gcs via overlay patch.
+        # s3:
+        #   bucket: TODO_S3_BUCKET
+        #   rootFolder: front50
+        #   region: TODO_AWS_REGION
+        #   accessKeyId: ${SPIN_S3_ACCESS_KEY_ID}
+        #   secretAccessKey: ${SPIN_S3_SECRET_ACCESS_KEY}
+        # gcs:
+        #   bucket: TODO_GCS_BUCKET
+        #   rootFolder: front50
+        #   project: TODO_GCP_PROJECT
+      providers:
+        kubernetes:
+          enabled: true
+          accounts:
+            # Add one entry per target env/cluster. Example using in-cluster SA:
+            - name: default-account
+              namespaces:
+                - TODO_TARGET_NAMESPACE
+              serviceAccount: spin-sa
+              # Or use kubeconfigSecretName if referencing external cluster creds.
+          primaryAccount: default-account
+      features:
+        artifacts: true
+      artifacts:
+        dockerRegistry:
+          enabled: true
+          accounts: [] # Fill with your registry accounts
+      # Kayenta canary analysis (disabled by default). Uncomment and configure when ready.
+      # canary:
+      #   enabled: true
+      #   serviceIntegrations:
+      #     - name: prometheus
+      #       enabled: true
+      #       accounts:
+      #         - name: prom-default
+      #           endpoint:
+      #             baseUrl: http://prometheus-server.monitoring.svc.cluster.local:9090
+    profiles:
+      # Optional: Gate/Deck authn/z, orca/clouddriver tuning, etc.
+      clouddriver: {}
+      orca: {}
+  expose:
+    type: service
+    service:
+      type: ClusterIP
+      overrides:
+        deck:
+          servicePort: 9000
+        gate:
+          servicePort: 8084

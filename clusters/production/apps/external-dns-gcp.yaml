@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns-gcp
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes-sigs.github.io/external-dns/
+    chart: external-dns
+    targetRevision: 1.15.0
+    helm:
+      values: |
+        provider: google
+        policy: upsert-only
+        registry: txt
+        txtOwnerId: mantl-prod
+        extraEnv:
+          - name: GOOGLE_APPLICATION_CREDENTIALS
+            value: /var/secrets/google/service-account.json
+        extraVolumeMounts:
+          - name: gcp-credentials
+            mountPath: /var/secrets/google
+            readOnly: true
+        extraVolumes:
+          - name: gcp-credentials
+            secret:
+              secretName: gcp-dns-credentials
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

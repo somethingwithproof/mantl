@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../platform/ingress/gateway-api/sample
+
+configMapGenerator:
+  - name: gateway-domain
+    literals:
+      - domain=example.com
+
+replacements:
+  - source:
+      kind: ConfigMap
+      name: gateway-domain
+      fieldPath: data.domain
+    targets:
+      - select:
+          kind: HTTPRoute
+          name: app-route
+        fieldPaths:
+          - spec.hostnames.0
+        options:
+          create: false

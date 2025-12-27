@@ -8,6 +8,12 @@ pipeline {
     
     environment {
         PYTHONPATH = "${WORKSPACE}"
+        // Toggle to enable Spinnaker trigger stage
+        SPIN_TRIGGER_ENABLED = "false" // set to "true" to enable
+        // Gate base URL, e.g., https://spinnaker.example.com/gate
+        SPIN_GATE_URL = credentials('SPIN_GATE_URL')
+        // Jenkins credential ID for a token to authenticate webhook (string)
+        SPIN_WEBHOOK_TOKEN = credentials('SPIN_WEBHOOK_TOKEN')
     }
     
     options {
@@ -94,6 +100,27 @@ pipeline {
                 sh '''
                     cd tests/integration/kubernetes-nomad/test
                     python standalone-test.py -v
+                '''
+            }
+        }
+
+        // Optional: trigger a Spinnaker pipeline via Gate webhook
+        stage('Trigger Spinnaker') {
+            when {
+                allOf {
+                    branch 'main'
+                    expression { return env.SPIN_TRIGGER_ENABLED == 'true' }
+                }
+            }
+            steps {
+                sh '''
+                  if [ -z "$SPIN_GATE_URL" ]; then
+                    echo "SPIN_GATE_URL is not set; skipping" && exit 0
+                  fi
+                  curl -sS -X POST "$SPIN_GATE_URL/webhooks/webhook/mantl-deploy" \
+                    -H 'Content-Type: application/json' \
+                    -H "X-Webhook-Token: $SPIN_WEBHOOK_TOKEN" \
+                    -d '{"artifacts":[]}'
                 '''
             }
         }

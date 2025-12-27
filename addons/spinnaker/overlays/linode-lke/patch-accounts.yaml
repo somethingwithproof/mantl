@@ -1,0 +1,17 @@
+apiVersion: spinnaker.io/v1alpha2
+kind: SpinnakerService
+metadata:
+  name: spinnaker
+spec:
+  spinnakerConfig:
+    config:
+      providers:
+        kubernetes:
+          accounts:
+            - name: lke-staging
+              namespaces: ["staging"]
+              serviceAccount: spin-sa
+            - name: lke-prod
+              namespaces: ["prod"]
+              serviceAccount: spin-sa
+          primaryAccount: lke-staging
