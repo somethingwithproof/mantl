@@ -42,10 +42,10 @@ Mantl provides everything you need to build, deploy, and operate production Kube
 
 ### Observability
 - **Metrics**: Prometheus Operator with Alertmanager and Grafana
-- **Tracing**: Jaeger distributed tracing with Elasticsearch backend
+- **Tracing**: Grafana Tempo distributed tracing with object storage backend
+- **Logging**: Grafana Loki for log aggregation
 - **Telemetry**: OpenTelemetry Collector for unified ingestion (OTLP, Jaeger, Zipkin)
-- **Visualization**: Grafana with pre-configured data sources (Prometheus, Jaeger)
-- **Logging**: Loki integration (planned)
+- **Visualization**: Grafana with pre-configured data sources (Prometheus, Tempo, Loki)
 - **Service Mesh**: Optional Cilium service mesh with Hubble observability
 
 ## 📋 Prerequisites

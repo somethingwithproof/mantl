@@ -37,7 +37,7 @@ This deploys in dependency order (sync waves):
 - **Wave 2**: cert-manager (TLS automation)
 - **Wave 3**: External Secrets, Kyverno (secrets + policy)
 - **Wave 4**: Prometheus, Loki, Tempo (observability backends)
-- **Wave 5**: OTel Collector, Jaeger, Falco (telemetry + security)
+- **Wave 5**: OTel Collector, Falco (telemetry + security)
 - **Wave 6**: Harbor, External DNS (registry + DNS)
 
 ### 3. Monitor Deployment
@@ -69,10 +69,10 @@ kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
 # Default credentials: admin/prom-operator
 ```
 
-**Jaeger (distributed tracing):**
+**Tempo (distributed tracing):**
 ```bash
-kubectl port-forward -n observability svc/jaeger-query 16686:16686
-# Open http://localhost:16686
+kubectl port-forward -n observability svc/tempo 3100:3100
+# Query via Grafana or directly at http://localhost:3100
 ```
 
 **Prometheus (metrics):**
@@ -163,10 +163,10 @@ kubectl port-forward -n observability svc/otel-collector 4317:4317
 - Explore → Select "Prometheus" data source
 - Query: `up{job="kubernetes-pods"}`
 
-**4. View traces in Jaeger:**
-- Navigate to http://localhost:16686
-- Select a service from the dropdown
-- Click "Find Traces"
+**4. View traces in Grafana:**
+- Navigate to http://localhost:3000
+- Explore → Select "Tempo" data source
+- Query for traces by service name or trace ID
 
 ## Next Steps
 

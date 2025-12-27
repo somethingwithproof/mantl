@@ -18,10 +18,10 @@
 
 ## Observability
 
-- **[Observability Stack](ara/ARA-0005-observability-stack.md)** - Prometheus, Jaeger, OTel, Loki, Tempo
+- **[Observability Stack](ara/ARA-0005-observability-stack.md)** - Prometheus, Tempo, OTel, Loki
   - Metrics: Prometheus + Grafana
-  - Traces: Jaeger + OpenTelemetry Collector
-  - Logs: Loki (planned)
+  - Traces: Tempo + OpenTelemetry Collector
+  - Logs: Loki
 
 ## CI/CD & Delivery
 
