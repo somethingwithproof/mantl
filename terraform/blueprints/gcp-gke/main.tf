@@ -12,7 +12,7 @@ provider "google" {
 
 module "gke" {
   source            = "terraform-google-modules/kubernetes-engine/google//modules/beta-private-cluster"
-  version           = "~> 31.0"
+  version           = "~> 42.0"
   project_id        = var.project
   name              = var.cluster_name
   region            = var.region

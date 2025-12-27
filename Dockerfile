@@ -5,7 +5,7 @@
 
 # Stage: terraform-downloader (downloads Terraform and verifies checksum)
 FROM debian:bookworm-slim AS tfget
-ARG TF_VERSION=1.7.5
+ARG TF_VERSION=1.14.3
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates unzip gnupg && rm -rf /var/lib/apt/lists/* \
  && arch=$(dpkg --print-architecture) \
  && case "$arch" in amd64) TF_ARCH=amd64 ;; arm64) TF_ARCH=arm64 ;; *) echo "unsupported arch: $arch" && exit 1 ;; esac \
