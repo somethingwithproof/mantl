@@ -24,6 +24,10 @@ variable "kubeworker_count" {default = "0"}
 variable "worker_type" {default = "m3.medium"}
 variable "worker_volume_size" {default = "20"} # size is in gigabytes
 
+# Flow Logs configuration
+variable "flow_logs_enabled" { default = true }
+variable "flow_logs_retention_days" { default = 90 }
+
 module "iam-profiles" {
   source = "./iam"
   short_name = "${var.short_name}"
@@ -35,6 +39,71 @@ resource "aws_vpc" "main" {
   tags {
     Name = "${var.long_name}"
     KubernetesCluster = "${var.short_name}"
+  }
+}
+
+# CloudWatch Log Group for VPC Flow Logs
+resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
+  count             = var.flow_logs_enabled ? 1 : 0
+  name              = "/mantl/vpc-flow-logs-${var.short_name}"
+  retention_in_days = var.flow_logs_retention_days
+  tags {
+    KubernetesCluster = "${var.short_name}"
+  }
+}
+
+# IAM role for VPC Flow Logs to write to CloudWatch Logs
+resource "aws_iam_role" "vpc_flow_logs_role" {
+  count = var.flow_logs_enabled ? 1 : 0
+  name  = "${var.short_name}-vpc-flow-logs-role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "Service": "vpc-flow-logs.amazonaws.com" },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy" "vpc_flow_logs_policy" {
+  count = var.flow_logs_enabled ? 1 : 0
+  name  = "${var.short_name}-vpc-flow-logs-policy"
+  role  = aws_iam_role.vpc_flow_logs_role[0].id
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": [
+        "${aws_cloudwatch_log_group.vpc_flow_logs[0].arn}",
+        "${aws_cloudwatch_log_group.vpc_flow_logs[0].arn}:*"
+      ]
+    }
+  ]
+}
+EOF
+}
+
+# Enable VPC Flow Logs
+resource "aws_flow_log" "vpc" {
+  count                = var.flow_logs_enabled ? 1 : 0
+  vpc_id               = "${aws_vpc.main.id}"
+  traffic_type         = "ALL"
+  log_destination_type = "cloud-watch-logs"
+  log_group_name       = aws_cloudwatch_log_group.vpc_flow_logs[0].name
+  iam_role_arn         = aws_iam_role.vpc_flow_logs_role[0].arn
+  tags {
+    Name = "${var.short_name}-vpc-flow-logs"
   }
 }
 
@@ -291,45 +360,51 @@ resource "aws_security_group" "control" {
   }
 
   ingress { # SSH
+    description = "SSH"
     from_port = 22
     to_port = 22
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # Mesos
+    description = "Mesos"
     from_port = 5050
     to_port = 5050
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # Marathon
+    description = "Marathon"
     from_port = 8080
     to_port = 8080
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # Chronos
+    description = "Chronos"
     from_port = 4400
     to_port = 4400
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # Consul
+    description = "Consul"
     from_port = 8500
     to_port = 8500
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # ICMP
+    description = "ICMP"
     from_port = -1
     to_port = -1
     protocol = "icmp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
 }
@@ -344,52 +419,59 @@ resource "aws_security_group" "worker" {
   }
 
   ingress { # SSH
+    description = "SSH"
     from_port = 22
     to_port = 22
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # HTTP
+    description = "HTTP"
     from_port = 80
     to_port = 80
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # HTTPS
+    description = "HTTPS"
     from_port = 443
     to_port = 443
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # Mesos
+    description = "Mesos"
     from_port = 5050
     to_port = 5050
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # Marathon
+    description = "Marathon"
     from_port = 8080
     to_port = 8080
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # Consul
+    description = "Consul"
     from_port = 8500
     to_port = 8500
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # ICMP
+    description = "ICMP"
     from_port = -1
     to_port = -1
     protocol = "icmp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 }
 
@@ -403,24 +485,27 @@ resource "aws_security_group" "ui" {
   }
 
   ingress { # HTTP
+    description = "HTTP"
     from_port = 80
     to_port = 80
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # HTTPS
+    description = "HTTPS"
     from_port = 443
     to_port = 443
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # Consul
+    description = "Consul"
     from_port = 8500
     to_port = 8500
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 }
 
@@ -434,24 +519,27 @@ resource "aws_security_group" "edge" {
   }
 
   ingress { # SSH
+    description = "SSH"
     from_port = 22
     to_port = 22
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # HTTP
+    description = "HTTP"
     from_port = 80
     to_port = 80
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 
   ingress { # HTTPS
+    description = "HTTPS"
     from_port = 443
     to_port = 443
     protocol = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["*******/0"]
   }
 }
 
