@@ -19,7 +19,7 @@ variable "region" {}
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
-  tags {
+  tags = {
     Name              = var.long_name
     KubernetesCluster = var.short_name
   }
@@ -30,7 +30,7 @@ resource "aws_subnet" "main" {
   count             = length(split(",", var.availability_zones))
   cidr_block        = lookup(var.cidr_blocks, "az${count.index}")
   availability_zone = "${var.region}${element(split(",", var.availability_zones), count.index)}"
-  tags {
+  tags = {
     Name              = var.long_name
     KubernetesCluster = var.short_name
   }
@@ -38,7 +38,7 @@ resource "aws_subnet" "main" {
 
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
-  tags {
+  tags = {
     Name              = var.long_name
     KubernetesCluster = var.short_name
   }
@@ -50,7 +50,7 @@ resource "aws_route_table" "main" {
     cidr_block = "0.0.0.0/0"
     gateway_id = aws_internet_gateway.main.id
   }
-  tags {
+  tags = {
     Name              = var.long_name
     KubernetesCluster = var.short_name
   }

@@ -1,10 +1,19 @@
-variable "count" { default = "4" }
+variable "instance_count" {
+  type    = number
+  default = 4
+}
 variable "count_format" { default = "%02d" }
 variable "iam_profile" { default = "" }
 variable "ec2_type" { default = "m3.medium" }
-variable "ebs_volume_size" { default = "20" } # size is in gigabytes
+variable "ebs_volume_size" {
+  type    = number
+  default = 20
+} # size is in gigabytes
 variable "ebs_volume_type" { default = "gp2" }
-variable "data_ebs_volume_size" { default = "20" } # size is in gigabytes
+variable "data_ebs_volume_size" {
+  type    = number
+  default = 20
+} # size is in gigabytes
 variable "data_ebs_volume_type" { default = "gp2" }
 variable "role" {}
 variable "short_name" { default = "mantl" }
@@ -19,11 +28,11 @@ variable "ssh_username" { default = "centos" }
 
 resource "aws_ebs_volume" "ebs" {
   availability_zone = element(split(",", var.availability_zones), count.index)
-  count             = var.count
+  count             = var.instance_count
   size              = var.data_ebs_volume_size
   type              = var.data_ebs_volume_type
 
-  tags {
+  tags = {
     Name              = "${var.short_name}-${var.role}-lvm-${format(var.count_format, count.index + 1)}"
     KubernetesCluster = var.short_name
   }
@@ -33,8 +42,8 @@ resource "aws_ebs_volume" "ebs" {
 resource "aws_instance" "instance" {
   ami                         = var.source_ami
   instance_type               = var.ec2_type
-  count                       = var.count
-  vpc_security_group_ids      = ["${split(",", var.security_group_ids)}"]
+  count                       = var.instance_count
+  vpc_security_group_ids      = split(",", var.security_group_ids)
   key_name                    = var.ssh_key_pair
   associate_public_ip_address = true
   subnet_id                   = element(split(",", var.vpc_subnet_ids), count.index)
@@ -46,7 +55,7 @@ resource "aws_instance" "instance" {
   }
 
 
-  tags {
+  tags = {
     Name              = "${var.short_name}-${var.role}-${format(var.count_format, count.index + 1)}"
     sshUser           = var.ssh_username
     role              = var.role
@@ -57,7 +66,7 @@ resource "aws_instance" "instance" {
 
 
 resource "aws_volume_attachment" "instance-lvm-attachment" {
-  count        = var.count
+  count        = var.instance_count
   device_name  = "xvdh"
   instance_id  = element(aws_instance.instance.*.id, count.index)
   volume_id    = element(aws_ebs_volume.ebs.*.id, count.index)

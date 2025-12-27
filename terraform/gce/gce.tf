@@ -30,10 +30,10 @@ variable "zone" { default = "us-central1-a" }
 
 # Network
 resource "google_compute_network" "mi-network" {
-  name       = var.long_name
-  ipv4_range = var.network_ipv4
+  name                    = var.long_name
+  description             = "Mantl network"
+  auto_create_subnetworks = true
 }
-
 # Firewall
 resource "google_compute_firewall" "mi-firewall-external" {
   name          = "${var.short_name}-firewall-external"
