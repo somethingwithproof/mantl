@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased (2025-12-27)
+
+- GCE: Add feature-flagged modern control instance schema (google_compute_instance) via `use_modern_gce_schema`.
+  - Shielded VM enabled; project SSH keys blocked; optional external IP via `gce_public_ip` (default false).
+  - Boot disk from `gce_boot_image_family`/`gce_boot_image_project`; optional CMEK via `gce_boot_kms_key`.
+  - Legacy resources remain as default path unless the flag is set.
+
 ## 1.2 (July 07, 2016)
 
 * Mesos and Marathon improvements
