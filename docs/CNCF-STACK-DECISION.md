@@ -20,6 +20,7 @@ After analysis, we're adopting a **focused, production-ready stack** rather than
 | Kyverno | 3.6.x | Graduated | Policy enforcement |
 | External Secrets | 1.2.x | Incubating | Secret sync |
 | External DNS | 1.19.x | Incubating | DNS automation |
+| Crossplane | 1.18.x | Incubating | Infrastructure as Code |
 
 ### Observability & Security Additions
 
@@ -42,7 +43,6 @@ After analysis, we're adopting a **focused, production-ready stack** rather than
 | OPA | Kyverno handles policy; redundant |
 | Flux | ArgoCD handles GitOps; redundant |
 | Istio/Linkerd | Cilium provides service mesh |
-| Crossplane | Terraform/OpenTofu handles IaC |
 | Knative | No serverless requirements |
 | SPIRE | Cloud workload identity suffices |
 
@@ -56,6 +56,7 @@ platform/
 │   ├── argocd/           ✅ GitOps
 │   ├── cert-manager/     ✅ Certificates
 │   └── cilium/           ✅ CNI + L2 LB
+├── crossplane/           🆕 Infrastructure as Code
 ├── dns/
 │   └── external-dns/     ✅ DNS sync
 ├── observability/
@@ -82,8 +83,8 @@ policies/
 - Kubernetes, Cilium, ArgoCD, cert-manager, Kyverno
 - Prometheus, OpenTelemetry, Falco, Harbor
 
-**Incubating Projects Used**: 2
-- External Secrets, External DNS
+**Incubating Projects Used**: 3
+- External Secrets, External DNS, Crossplane
 
 **Non-CNCF Components**: 3
 - Grafana (visualization), Loki (logs), Tempo (tracing)
@@ -99,18 +100,54 @@ This is a focused stack optimized for production use, not badge collection.
 2. cert-manager     (sync-wave: 2) - TLS prereq
 3. External Secrets (sync-wave: 3) - Secrets
 4. Kyverno          (sync-wave: 3) - Policy
-5. Prometheus       (sync-wave: 4) - Metrics + Grafana
-6. Loki             (sync-wave: 4) - Log aggregation
-7. Tempo            (sync-wave: 4) - Distributed tracing
-8. OpenTelemetry    (sync-wave: 5) - Telemetry pipeline
-9. Falco            (sync-wave: 5) - Runtime security
-10. Harbor          (sync-wave: 6) - Registry
-11. External DNS    (sync-wave: 6) - DNS
+5. Crossplane       (sync-wave: 3) - Infrastructure as Code
+6. Prometheus       (sync-wave: 4) - Metrics + Grafana
+7. Loki             (sync-wave: 4) - Log aggregation
+8. Tempo            (sync-wave: 4) - Distributed tracing
+9. OpenTelemetry    (sync-wave: 5) - Telemetry pipeline
+10. Falco           (sync-wave: 5) - Runtime security
+11. Harbor          (sync-wave: 6) - Registry
+12. External DNS    (sync-wave: 6) - DNS
 ```
 
 ---
 
 ## Configuration Required
+
+### Crossplane Providers
+
+To use Crossplane for infrastructure management, install provider packages:
+
+```yaml
+# platform/crossplane/values.yaml
+provider:
+  packages:
+    # AWS Provider (example)
+    - xpkg.upbound.io/upbound/provider-aws-ec2:v1.1.0
+    - xpkg.upbound.io/upbound/provider-aws-s3:v1.1.0
+    - xpkg.upbound.io/upbound/provider-aws-rds:v1.1.0
+```
+
+Then create ProviderConfig with cloud credentials:
+```bash
+kubectl create secret generic aws-creds \
+  -n crossplane-system \
+  --from-literal=credentials="$(cat ~/.aws/credentials)"
+
+kubectl apply -f - <<EOF
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: aws-creds
+      key: credentials
+EOF
+```
 
 ### Harbor (On-Prem)
 ```yaml

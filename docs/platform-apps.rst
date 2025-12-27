@@ -30,6 +30,13 @@ Platform Components
   - Path: ``policies/kyverno``
   - Namespace: ``kyverno``
 
+- **crossplane**: Installs Crossplane for declarative infrastructure management
+  - Path: ``platform/crossplane``
+  - Namespace: ``crossplane-system``
+  - Version: 1.18.1 (CNCF Incubating)
+  - Purpose: Manage cloud infrastructure using Kubernetes APIs
+  - Providers: AWS, GCP, Azure, Kubernetes, Helm (configurable)
+
 **Sync Wave 4: Observability - Metrics**
 
 - **prometheus**: Installs kube-prometheus-stack (Prometheus, Alertmanager, Grafana)
