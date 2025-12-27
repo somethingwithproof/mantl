@@ -2,7 +2,7 @@ name: Code scanning issues
 
 on:
   code_scanning_alert:
-    types: [created, reopened]
+    types: [created, reopened, closed, dismissed, fixed]
 
 permissions:
   contents: read
@@ -10,9 +10,11 @@ permissions:
 
 jobs:
   create-issue:
+    if: ${{ github.event.action == 'created' || github.event.action == 'reopened' }}
     runs-on: ubuntu-latest
     steps:
       - name: Create issue for alert
+        id: create_issue
         uses: actions/github-script@v7
         with:
           script: |
@@ -41,6 +43,9 @@ jobs:
               labels,
             });
 
+            core.setOutput('issue_node_id', issue.node_id);
+            core.setOutput('issue_number', issue.number.toString());
+
             try {
               await github.rest.issues.addAssignees({
                 owner: context.repo.owner,
@@ -51,3 +56,50 @@ jobs:
             } catch (e) {
               core.info(`Assignee add failed (likely org owner): ${e.message}`);
             }
+      - name: Add issue to Security project
+        if: ${{ vars.SECURITY_PROJECT_URL != '' }}
+        uses: actions/add-to-project@v1
+        with:
+          project-url: ${{ vars.SECURITY_PROJECT_URL }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          content-id: ${{ steps.create_issue.outputs.issue_node_id }}
+
+  close-issue:
+    if: ${{ github.event.action != 'created' && github.event.action != 'reopened' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close matching security issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const alert = context.payload.alert;
+            const action = context.payload.action;
+            const url = alert.html_url || '';
+            const q = `repo:${context.repo.owner}/${context.repo.repo} "${url}" in:body is:issue is:open label:code-scanning label:security`;
+            const res = await github.rest.search.issuesAndPullRequests({ q });
+            if (!res.data.items.length) {
+              core.info('No matching issue found to close.');
+              return;
+            }
+            const issue = res.data.items[0];
+            const comment = `Alert resolved (action: ${action}).\n\nClosing this issue.\n\nAlert: ${url}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: comment,
+            });
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ['status: resolved']
+              });
+            } catch {}
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              state: 'closed'
+            });
