@@ -1,5 +1,10 @@
 name: Terraform CI
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 on:
   pull_request:
     paths:
@@ -73,6 +78,11 @@ jobs:
         with:
           working_directory: terraform
           soft_fail: false
+          sarif_file: tfsec.sarif
+      - name: Upload tfsec SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tfsec.sarif
 
   checkov:
     name: Checkov (repo)
@@ -83,3 +93,9 @@ jobs:
         with:
           directory: terraform
           soft_fail: false
+          output_format: sarif
+          output_file_path: checkov.sarif
+      - name: Upload Checkov SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov.sarif
