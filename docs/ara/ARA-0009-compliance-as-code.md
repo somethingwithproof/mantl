@@ -1,190 +1,139 @@
-# ARA-0009: Compliance-as-Code Architecture
+# ARA-0009: Compliance-as-Code Platform
 
 ## Status
 
-Accepted
+Proposed
 
 ## Context
 
-Enterprises adopting Mantl need to demonstrate compliance with various regulatory frameworks (SOC2, HIPAA, PCI-DSS, etc.). Traditional compliance approaches involve:
+Organizations deploying Kubernetes face increasing regulatory requirements (SOC2, HIPAA, PCI-DSS, FedRAMP, GDPR). Current compliance approaches suffer from:
 
-1. Manual evidence collection (screenshots, exports)
-2. Point-in-time audits (annual, quarterly)
-3. Spreadsheet-based control tracking
-4. Disconnected tooling for policy enforcement vs. evidence collection
+1. **Manual Evidence Collection**: Engineers spend 20-40% of audit prep time gathering screenshots and logs
+2. **Point-in-Time Audits**: Compliance is verified annually, not continuously
+3. **Policy-Control Disconnect**: Security policies exist in isolation from compliance frameworks
+4. **Framework Silos**: Organizations implement duplicate controls for overlapping frameworks
+5. **Remediation Lag**: Violations detected days/weeks after occurrence
 
-This creates significant operational burden, audit anxiety, and gaps between "compliant at audit time" vs. "continuously compliant."
+Existing tools address fragments:
+- **Kyverno/OPA**: Policy enforcement without compliance mapping
+- **Falco**: Runtime detection without evidence correlation
+- **Cloud Security Posture Management (CSPM)**: Cloud-specific, not Kubernetes-native
+- **GRC Platforms**: Manual, expensive, not GitOps-compatible
 
 ## Decision
 
-Implement a Compliance-as-Code module that:
+Implement a **Compliance-as-Code** platform as a core Mantl differentiator with:
 
-1. **Defines compliance frameworks as Kubernetes Custom Resources**
-   - ComplianceFramework: Defines controls (SOC2, HIPAA, etc.)
-   - ComplianceProfile: Selects applicable controls for an organization
-   - ControlMapping: Links abstract controls to concrete policies
-
-2. **Automatically generates and enforces policies**
-   - Operator generates Kyverno policies from control mappings
-   - Policies enforce in real-time (not just audit)
-   - Same policies produce evidence when triggered
-
-3. **Continuously collects evidence**
-   - Configuration snapshots (RBAC, NetworkPolicy, etc.)
-   - Log-based evidence (Loki queries)
-   - Metric-based evidence (Prometheus queries)
-   - Scan results (vulnerabilities, signatures)
-   - Human attestations for procedural controls
-
-4. **Generates audit-ready reports**
-   - Control-by-control status
-   - Evidence attachments with integrity hashes
-   - Finding remediation tracking
-   - Executive summaries
+1. **Unified Control Catalog**: Single source of truth mapping controls to policies to evidence
+2. **Continuous Compliance**: Real-time posture assessment, not point-in-time
+3. **Automated Evidence Collection**: GitOps-native evidence gathering and immutable storage
+4. **Multi-Framework Mapping**: Implement once, satisfy multiple frameworks
+5. **Remediation Automation**: Self-healing policies where safe
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                 ComplianceFramework (CRD)                        │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │ SOC2 Type II                                             │    │
-│  │  ├── CC6: Logical Access                                 │    │
-│  │  │    ├── CC6.1: Access Security → NetworkPolicy         │    │
-│  │  │    └── CC6.8: Malware Prevention → Image Signing      │    │
-│  │  └── CC7: System Operations                              │    │
-│  │       └── CC7.1: Event Detection → Falco Rules           │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                 ComplianceProfile (CRD)                          │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │ soc2-standard                                            │    │
-│  │  ├── frameworkRef: soc2-type2                           │    │
-│  │  ├── mode: enforce                                       │    │
-│  │  ├── excludeNamespaces: [kube-system, monitoring]       │    │
-│  │  └── evidenceStore: s3://compliance-evidence            │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                 Compliance Operator                              │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────────┐    │
-│  │   Framework   │  │    Audit      │  │   Remediation     │    │
-│  │  Controller   │  │  Controller   │  │   Controller      │    │
-│  │               │  │               │  │                   │    │
-│  │ • Validates   │  │ • Schedules   │  │ • Auto-fixes      │    │
-│  │   frameworks  │  │   audits      │  │   findings        │    │
-│  │ • Generates   │  │ • Aggregates  │  │ • Tracks manual   │    │
-│  │   Kyverno     │  │   evidence    │  │   remediation     │    │
-│  │   policies    │  │ • Generates   │  │                   │    │
-│  │               │  │   reports     │  │                   │    │
-│  └───────────────┘  └───────────────┘  └───────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-         │                    │                    │
-         ▼                    ▼                    ▼
-┌─────────────┐      ┌─────────────┐      ┌─────────────────────┐
-│   Kyverno   │      │  Evidence   │      │   Kubernetes API    │
-│             │      │   Store     │      │   (Remediation)     │
-│ • Enforce   │      │             │      │                     │
-│ • Audit     │      │ • S3/GCS    │      │ • Create policies   │
-│ • Generate  │      │ • Encrypted │      │ • Update configs    │
-│             │      │ • Immutable │      │                     │
-└─────────────┘      └─────────────┘      └─────────────────────┘
-```
+### Domain Model (DDD)
 
-## Control Mapping Strategy
+The compliance bounded context consists of:
 
-The key innovation is the control mapping layer:
+| Entity | Description | Identifier |
+|--------|-------------|------------|
+| **Framework** | Compliance standard (SOC2, HIPAA) | `framework-id` |
+| **Section** | Logical grouping within framework | `section-id` |
+| **Control** | Specific requirement | `control-id` |
+| **Policy** | Technical implementation (Kyverno) | `policy-name` |
+| **FalcoRule** | Runtime detection rule | `rule-name` |
+| **Evidence** | Proof of compliance (immutable) | `evidence-id` |
+| **Finding** | Violation or gap | `finding-id` |
+| **Audit** | Point-in-time assessment | `audit-id` |
+| **Report** | Auditor-ready documentation | `report-id` |
+
+### Control-to-Policy Mapping (Key Innovation)
+
+The core value proposition is **bidirectional traceability**:
 
 ```yaml
-# Abstract control
-Control:
-  id: CC6.1
-  name: "Logical Access Security"
-  description: "Entity implements logical access security..."
+# Single control can map to multiple policies
+Control: SOC2-CC6.1 (Logical Access Security)
+  - Policy: deny-privileged-containers
+  - Policy: deny-privilege-escalation  
+  - Policy: require-network-policies
+  - FalcoRule: detect-privilege-escalation
+  - FalcoRule: detect-rbac-changes
 
-# Maps to concrete implementations
-Mappings:
-  - type: policy
-    policyRef:
-      template: require-network-policy
-      mode: enforce
-  
-  - type: evidence
-    evidenceCollector:
-      type: config-snapshot
-      schedule: "0 0 * * *"
-      resources: [networkpolicies, clusterroles]
+# Single policy can satisfy multiple controls
+Policy: deny-privileged-containers
+  - Satisfies: SOC2-CC6.1
+  - Satisfies: HIPAA-164.312(a)(1)
+  - Satisfies: PCI-DSS-2.2.4
+  - Satisfies: CIS-K8S-5.2.1
 ```
 
-This creates a verifiable chain:
-1. **Compliance Requirement** → What the auditor cares about
-2. **Technical Control** → What we enforce in Kubernetes
-3. **Evidence** → How we prove compliance
+### Evidence Collection Strategy
 
-## Alternatives Considered
+| Evidence Type | Source | Collection Method | Frequency |
+|---------------|--------|-------------------|-----------|
+| Policy Compliance | Kyverno PolicyReport | Controller watch | Real-time |
+| Runtime Events | Falco Alerts | Falcosidekick to Loki | Real-time |
+| Audit Logs | K8s API Server | OTel Collector | Real-time |
+| Configuration Snapshots | etcd | Scheduled export | Daily |
+| Network Policies | Cilium | Hubble export | Hourly |
+| RBAC State | K8s RBAC | Controller snapshot | Hourly |
+| Container Images | Harbor | Trivy scan results | On push |
+| Secrets Access | Vault | Audit log | Real-time |
 
-### 1. Static Policy Libraries
-Pre-built Kyverno policies without the framework abstraction.
+## Implementation Phases
 
-**Rejected because:**
-- No control-to-policy mapping for auditors
-- No evidence collection integration
-- No compliance scoring/reporting
+### Phase 1: Foundation (Weeks 1-4)
+1. Custom Resource Definitions (CRDs)
+2. Control catalog for SOC2 Type II
+3. Kyverno policy pack with control mappings
+4. Basic evidence collection
 
-### 2. External GRC Platform Integration
-Integrate with Vanta, Drata, or similar.
+### Phase 2: Automation (Weeks 5-8)
+1. Evidence Controller with immutable storage
+2. Falco rules with control mappings
+3. Finding aggregation and deduplication
+4. CLI tooling (`mantl compliance`)
 
-**Rejected because:**
-- Vendor lock-in
-- Limited Kubernetes-native evidence
-- Additional cost
-- Doesn't leverage existing observability stack
+### Phase 3: Reporting (Weeks 9-12)
+1. Report Controller with PDF generation
+2. Auditor-ready templates
+3. Gap analysis automation
+4. Dashboard (Grafana)
 
-### 3. Manual Evidence Collection
-Continue with traditional audit approaches.
-
-**Rejected because:**
-- Labor-intensive
-- Point-in-time vs. continuous
-- Error-prone
-- Doesn't scale
+### Phase 4: Multi-Framework (Weeks 13-16)
+1. HIPAA framework and policies
+2. PCI-DSS framework and policies
+3. CIS Kubernetes Benchmark
+4. Cross-framework control mapping
 
 ## Consequences
 
 ### Positive
-- Continuous compliance monitoring (not just audit-time)
-- Automated evidence collection reduces toil
-- Single source of truth for compliance state
-- Reusable framework definitions across organizations
-- Clear auditor-ready reports
+- **Continuous Compliance**: Real-time posture vs annual audits
+- **Reduced Audit Prep**: 80% reduction in manual evidence gathering
+- **GitOps Native**: Policies and controls versioned alongside infrastructure
+- **Multi-Framework Efficiency**: Implement once, satisfy many
+- **Clear Differentiation**: No comparable OSS solution exists
 
 ### Negative
-- Additional CRDs to manage
-- Operator complexity
-- Storage costs for evidence
-- Some controls require human attestation
+- **Initial Complexity**: Significant upfront investment
+- **Framework Expertise**: Requires compliance domain knowledge
+- **Maintenance Burden**: Framework updates require policy updates
 
 ### Risks
-- False sense of compliance if mappings are incomplete
-- Evidence storage requires careful security
-- Auditor acceptance of automated evidence
+- **Framework Interpretation**: Controls are subjective; policies may not satisfy auditors
+- **False Sense of Security**: Automated compliance does not equal actual security
 
-## Implementation Plan
-
-1. **Phase 1**: Core CRDs and operator framework
-2. **Phase 2**: SOC2 framework with key controls
-3. **Phase 3**: Evidence collection infrastructure
-4. **Phase 4**: Report generation
-5. **Phase 5**: CLI and dashboard
-6. **Phase 6**: Additional frameworks (HIPAA, PCI-DSS)
+### Mitigations
+- Engage compliance consultants for control interpretation
+- Clear documentation that tool assists but does not replace auditors
+- Regular validation against real audit findings
 
 ## References
-
-- [AICPA Trust Services Criteria](https://www.aicpa.org/interestareas/frc/assuranceadvisoryservices/trustservices.html)
-- [Kyverno Policy Library](https://kyverno.io/policies/)
-- [NIST Cybersecurity Framework](https://www.nist.gov/cyberframework)
+- SOC2 Trust Services Criteria (AICPA)
+- HIPAA Security Rule (45 CFR Part 164)
+- PCI-DSS v4.0
+- CIS Kubernetes Benchmark v1.8
+- NIST Cybersecurity Framework
