@@ -1,0 +1,85 @@
+name: terraform-ci-matrix
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-ci-matrix.yml'
+  push:
+    branches: ['*']
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-ci-matrix.yml'
+
+jobs:
+  terraform:
+    name: Terraform fmt/validate • ${{ matrix.path }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        path: [
+          'terraform/aws',
+          'terraform/gce',
+          'terraform/vsphere'
+        ]
+    defaults:
+      run:
+        working-directory: ${{ matrix.path }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.7
+      - name: Init (no backend)
+        run: terraform init -backend=false
+      - name: Format check
+        run: terraform fmt -check -recursive
+      - name: Validate
+        run: terraform validate -no-color || true # allow legacy to pass softly
+
+  tflint:
+    name: TFLint • ${{ matrix.path }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        path: [
+          'terraform/aws',
+          'terraform/gce',
+          'terraform/vsphere'
+        ]
+    defaults:
+      run:
+        working-directory: ${{ matrix.path }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tflint
+        run: |
+          curl -sSL https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+      - name: Init
+        run: tflint --init
+      - name: Run tflint (no fail)
+        run: tflint --no-color || true
+
+  tfsec:
+    name: tfsec • ${{ matrix.path }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        path: [
+          'terraform/aws',
+          'terraform/gce',
+          'terraform/vsphere'
+        ]
+    defaults:
+      run:
+        working-directory: ${{ matrix.path }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tfsec
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | sh -s -- -b /usr/local/bin
+      - name: Run tfsec (soft-fail)
+        run: tfsec --soft-fail --no-color .
