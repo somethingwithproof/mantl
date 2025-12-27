@@ -1,3 +1,8 @@
+#
+# Mantl • vSphere modern VM schema
+# We clone from a template because hand‑crafting VMs is how horror stories begin.
+# If this breaks, it was definitely written on a Friday afternoon (self‑deprecation quota met).
+#
 variable "use_modern_vsphere_schema" {
   description = "If true, create control nodes using modern vsphere_virtual_machine with clone/customization."
   default     = false
@@ -38,6 +43,7 @@ data "vsphere_virtual_machine" "template" {
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
+# Control nodes: because buttons need pushing and clusters need herding.
 resource "vsphere_virtual_machine" "control_modern" {
   count            = var.use_modern_vsphere_schema ? var.control_count : 0
   name             = "${var.short_name}-control-${format("%02d", count.index+1)}"
@@ -77,6 +83,7 @@ resource "vsphere_virtual_machine" "control_modern" {
   }
 }
 
+# Worker nodes: where the actual work happens (don’t tell the control plane).
 resource "vsphere_virtual_machine" "worker_modern" {
   count            = var.use_modern_vsphere_schema ? var.worker_count : 0
   name             = "${var.short_name}-worker-${format("%03d", count.index+1)}"
@@ -114,6 +121,7 @@ resource "vsphere_virtual_machine" "worker_modern" {
   }
 }
 
+# Edge nodes: the bouncers of your cluster—IDs checked at the door.
 resource "vsphere_virtual_machine" "edge_modern" {
   count            = var.use_modern_vsphere_schema ? var.edge_count : 0
   name             = "${var.short_name}-edge-${format("%02d", count.index+1)}"
