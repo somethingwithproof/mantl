@@ -1,0 +1,133 @@
+# Mantl 2026: CNCF Graduated Projects Analysis
+
+**Analysis Date**: December 27, 2025
+**Repository**: thomasvincent/mantl
+
+---
+
+## Final Stack Decision
+
+After analysis, we're adopting a **focused, production-ready stack** rather than maximizing CNCF coverage.
+
+### Core Components (Keep)
+
+| Component | Version | CNCF Status | Purpose |
+|-----------|---------|-------------|---------|
+| Kubernetes | 1.31+ | Graduated | Orchestration |
+| Cilium | 1.18.5 | Graduated | CNI + Service Mesh + L2 LB |
+| ArgoCD | 2.13.x | Graduated | GitOps |
+| cert-manager | 1.19.x | Graduated | TLS automation |
+| Kyverno | 3.6.x | Graduated | Policy enforcement |
+| External Secrets | 1.2.x | Incubating | Secret sync |
+| External DNS | 1.19.x | Incubating | DNS automation |
+
+### New Additions
+
+| Component | Version | CNCF Status | Purpose |
+|-----------|---------|-------------|---------|
+| Prometheus | 65.2.0 (stack) | Graduated | Metrics + Alerting |
+| OpenTelemetry | 0.115.x | Graduated | Telemetry pipeline |
+| Grafana | 11.x | — | Visualization |
+| Falco | 4.15.0 | Graduated | Runtime security |
+| Harbor | 1.16.0 | Graduated | On-prem registry |
+
+---
+
+## What We're NOT Adding (and Why)
+
+| Component | Reason |
+|-----------|--------|
+| OPA | Kyverno handles policy; redundant |
+| Flux | ArgoCD handles GitOps; redundant |
+| Istio/Linkerd | Cilium provides service mesh |
+| Crossplane | Terraform/OpenTofu handles IaC |
+| Knative | No serverless requirements |
+| SPIRE | Cloud workload identity suffices |
+| Jaeger/Tempo | OpenTelemetry exports to backend of choice |
+
+---
+
+## Directory Structure
+
+```
+platform/
+├── base/
+│   ├── argocd/           ✅ GitOps
+│   ├── cert-manager/     ✅ Certificates
+│   └── cilium/           ✅ CNI + L2 LB
+├── dns/
+│   └── external-dns/     ✅ DNS sync
+├── observability/
+│   ├── prometheus/       🆕 Metrics + Grafana
+│   └── otel-collector/   🆕 Telemetry
+├── registry/
+│   └── harbor/           🆕 On-prem registry
+├── secrets/
+│   └── external-secrets/ ✅ Secret sync
+└── security/
+    └── falco/            🆕 Runtime security
+
+policies/
+└── kyverno/              ✅ Policy (remove opa/)
+```
+
+---
+
+## CNCF Coverage
+
+**Graduated Projects Used**: 9
+- Kubernetes, Cilium, ArgoCD, cert-manager, Kyverno
+- Prometheus, OpenTelemetry, Falco, Harbor
+
+**Incubating Projects Used**: 2
+- External Secrets, External DNS
+
+This is a focused stack optimized for production use, not badge collection.
+
+---
+
+## Deployment Order
+
+```
+1. Cilium           (sync-wave: 1) - CNI first
+2. cert-manager     (sync-wave: 2) - TLS prereq
+3. External Secrets (sync-wave: 3) - Secrets
+4. Kyverno          (sync-wave: 3) - Policy
+5. Prometheus       (sync-wave: 4) - Observability
+6. OpenTelemetry    (sync-wave: 5) - Telemetry
+7. Falco            (sync-wave: 5) - Security
+8. Harbor           (sync-wave: 6) - Registry
+9. External DNS     (sync-wave: 6) - DNS
+```
+
+---
+
+## Configuration Required
+
+### Harbor (On-Prem)
+```yaml
+# platform/registry/harbor/values.yaml
+expose:
+  ingress:
+    hosts:
+      core: harbor.YOUR-DOMAIN.com
+externalURL: https://harbor.YOUR-DOMAIN.com
+```
+
+### Cilium L2 (On-Prem)
+```yaml
+# platform/base/cilium/l2-announcement.yaml
+spec:
+  blocks:
+    - start: 192.168.X.100  # Your IP range
+      stop: 192.168.X.200
+```
+
+### Falco Alerts
+```yaml
+# platform/security/falco/values.yaml
+falcosidekick:
+  config:
+    slack:
+      webhookurl: "https://hooks.slack.com/..."
+```
