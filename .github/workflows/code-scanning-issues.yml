@@ -17,17 +17,37 @@ jobs:
         with:
           script: |
             const alert = context.payload.alert;
-            const tool = alert.tool?.name || 'code-scanning';
+            const tool = (alert.tool?.name || 'code-scanning').toLowerCase();
             const rule = alert.rule?.id || 'unknown-rule';
-            const severity = alert.rule?.severity || alert.most_severe_rule?.severity || 'unknown';
+            const sev = (alert.rule?.severity || alert.most_severe_rule?.severity || 'unknown').toLowerCase();
             const url = alert.html_url || `https://github.com/${context.repo.owner}/${context.repo.repo}/security/code-scanning`;
-            const title = `[${tool}] ${severity}: ${rule}`;
-            const body = `A new code scanning alert was detected.\n\n- Tool: ${tool}\n- Rule: ${rule}\n- Severity: ${severity}\n- Location: ${alert.location?.path || 'n/a'}\n- Alert: ${url}`;
-            const labels = ['security', 'code-scanning'];
-            await github.rest.issues.create({
+            const loc = alert.location?.path || alert.instances?.[0]?.location?.path || 'n/a';
+            const title = `[${tool}] ${sev}: ${rule}`;
+            const labels = [
+              'security',
+              'code-scanning',
+              `tool: ${tool}`,
+              `severity: ${sev}`,
+              'created-by: automation'
+            ];
+            const body = `A new code scanning alert was detected.\n\n- Tool: ${tool}\n- Rule: ${rule}\n- Severity: ${sev}\n- Location: ${loc}\n- Alert: ${url}`;
+
+            // Create the issue first, then try to assign the repo owner (if assignable).
+            const { data: issue } = await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title,
               body,
               labels,
             });
+
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                assignees: [context.repo.owner],
+              });
+            } catch (e) {
+              core.info(`Assignee add failed (likely org owner): ${e.message}`);
+            }
