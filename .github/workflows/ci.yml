@@ -52,6 +52,18 @@ jobs:
       - name: Validate Terraform
         run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-terraform.sh
 
+      - name: Slack notify (on failure)
+        if: failure() || cancelled()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then \
+            STATUS="Workflow failed: $GITHUB_WORKFLOW (#$GITHUB_RUN_NUMBER) on $GITHUB_REF"; \
+            curl -X POST -H 'Content-type: application/json' --data "{\"text\": \"$STATUS\nRepo: $GITHUB_REPOSITORY\nRun: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}" "$SLACK_WEBHOOK_URL"; \
+          else \
+            echo "SLACK_WEBHOOK_URL not set; skipping"; \
+          fi
+
 name: CI
 
 on:
