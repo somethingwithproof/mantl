@@ -1,3 +1,14 @@
+# Default owners
+* @thomasvincent
+
+# Components
+/apps/ @thomasvincent
+/clusters/ @thomasvincent
+/platform/ @thomasvincent
+/infra/terraform/ @thomasvincent
+/policies/ @thomasvincent
+/tests/ @thomasvincent
+
 # These owners will be the default reviewers for all pull requests in the repository
 # and will automatically be requested for review when a pull request is opened
 
