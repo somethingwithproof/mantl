@@ -45,3 +45,15 @@ jobs:
           docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci sh -lc "kustomize build clusters/production > rendered.yaml && \
             docker run --rm -v \"$PWD\":/project -w /project ghcr.io/kyverno/kyverno:v1.12.1 \
             kyverno apply policies/kyverno --resource rendered.yaml --policy-report --skip-background-request"
+
+      - name: Slack notify (always)
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then \
+            STATUS="Nightly status: $GITHUB_WORKFLOW (#$GITHUB_RUN_NUMBER) on $GITHUB_REF => $GITHUB_JOB"; \
+            curl -X POST -H 'Content-type: application/json' --data "{\"text\": \"$STATUS\nRepo: $GITHUB_REPOSITORY\nRun: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}" "$SLACK_WEBHOOK_URL"; \
+          else \
+            echo "SLACK_WEBHOOK_URL not set; skipping"; \
+          fi
