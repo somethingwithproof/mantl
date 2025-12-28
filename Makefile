@@ -27,63 +27,81 @@ help: ## Show this help message
 
 install-dev: ## Install complete dev environment (kind + platform)
 	@echo "${GREEN}Installing dev environment...${RESET}"
-	@./scripts/bootstrap-platform.sh --environment dev --cloud local --profile small
+	@./bin/bootstrap-platform.sh --environment dev --cloud local --profile small
 
 install-staging: ## Install staging environment
 	@echo "${GREEN}Installing staging environment...${RESET}"
-	@./scripts/bootstrap-platform.sh --environment staging --profile medium
+	@./bin/bootstrap-platform.sh --environment staging --profile medium
 
 install-production: ## Install production environment
 	@echo "${GREEN}Installing production environment...${RESET}"
-	@./scripts/bootstrap-platform.sh --environment production --profile full
+	@./bin/bootstrap-platform.sh --environment production --profile full
 
 ##@ Installation Profiles
 
 install-small: ## Install minimal platform (2 CPU, 4GB RAM)
 	@echo "${GREEN}Installing small profile...${RESET}"
-	@./scripts/bootstrap-platform.sh --profile small
+	@./bin/bootstrap-platform.sh --profile small
 
 install-medium: ## Install medium platform (4 CPU, 8GB RAM)
 	@echo "${GREEN}Installing medium profile...${RESET}"
-	@./scripts/bootstrap-platform.sh --profile medium
+	@./bin/bootstrap-platform.sh --profile medium
 
 install-full: ## Install full platform (all components)
 	@echo "${GREEN}Installing full profile...${RESET}"
-	@./scripts/bootstrap-platform.sh --profile full
+	@./bin/bootstrap-platform.sh --profile full
 
 ##@ Interactive Setup
 
 wizard: ## Run interactive setup wizard
-	@./scripts/setup-wizard.sh
+	@./bin/setup-wizard.sh
 
 ##@ Development Tools
 
+##@ Facade / Delegation
+infra-%: ## Delegate to infra/terraform Makefile (e.g., infra-validate, infra-fmt)
+	@$(MAKE) -C infra/terraform $(patsubst infra-%,%,$@)
+
+policies-%: ## Delegate to policies Makefile (e.g., policies-validate)
+	@$(MAKE) -C policies $(patsubst policies-%,%,$@)
+
 cli-install: ## Install mantl CLI tool
 	@echo "${GREEN}Installing mantl CLI...${RESET}"
-	@chmod +x scripts/mantl
-	@sudo cp scripts/mantl /usr/local/bin/mantl 2>/dev/null || cp scripts/mantl ~/bin/mantl || echo "${YELLOW}Please add scripts/mantl to your PATH${RESET}"
+	@chmod +x bin/mantl
+	@sudo cp bin/mantl /usr/local/bin/mantl 2>/dev/null || cp bin/mantl ~/bin/mantl || echo "${YELLOW}Please add bin to your PATH${RESET}"
 	@echo "${GREEN}✓ mantl CLI installed${RESET}"
 
 ##@ Testing & Validation
 
 test: ## Run all tests
 	@echo "${GREEN}Running tests...${RESET}"
-	@pytest -v tests/ || true
+	@pytest -v tests/
 	@echo "${GREEN}Validating Kustomize builds...${RESET}"
-	@./scripts/validate-kustomize.sh
+	@./ci/validate-kustomize.sh
 	@echo "${GREEN}Validating Terraform...${RESET}"
-	@./scripts/validate-terraform.sh
+	@./ci/validate-terraform.sh
 
 lint: ## Run all linters
 	@echo "${GREEN}Running linters...${RESET}"
-	@black --check . || true
-	@ruff check . || true
-	@yamllint . || true
-	@shellcheck scripts/*.sh || true
+	@black --check .
+	@ruff check .
+	@yamllint .
+@find bin ci -name "*.sh" -type f | xargs shellcheck --severity=warning
+
+## Run integration tests (requires INVENTORY or MOLECULE_INVENTORY_FILE)
+.PHONY: test-integration
+test-integration: ## Run integration tests with testinfra (set INVENTORY=/path/to/ansible/inventory)
+	@INV=$${MOLECULE_INVENTORY_FILE:-$${INVENTORY}}; \
+	if [ -z "$$INV" ]; then \
+		echo "Please set INVENTORY=/path/to/ansible_inventory or export MOLECULE_INVENTORY_FILE"; \
+		exit 2; \
+	fi; \
+	echo "${GREEN}Running integration tests with inventory: $$INV${RESET}"; \
+	MOLECULE_INVENTORY_FILE="$$INV" pytest -v tests/integration
 
 terraform-validate: ## Validate all Terraform configurations
 	@echo "${GREEN}Validating Terraform blueprints...${RESET}"
-	@for dir in terraform/blueprints/*/; do \
+	@for dir in infra/terraform/blueprints/*/; do \
 		echo "Validating $$dir"; \
 		cd "$$dir" && terraform init -backend=false && terraform validate && cd -; \
 	done
@@ -99,16 +117,16 @@ kustomize-validate: ## Validate all Kustomize configurations
 
 deploy-examples: ## Deploy all example applications
 	@echo "${GREEN}Deploying example applications...${RESET}"
-	@kubectl apply -k applications/examples/api-service/base
-	@kubectl apply -k applications/examples/frontend/base
-	@kubectl apply -k applications/examples/database-app/base
+	@kubectl apply -k apps/examples/api-service/base
+	@kubectl apply -k apps/examples/frontend/base
+	@kubectl apply -k apps/examples/database-app/base
 	@echo "${GREEN}✓ Examples deployed${RESET}"
 
 delete-examples: ## Delete all example applications
 	@echo "${YELLOW}Deleting example applications...${RESET}"
-	@kubectl delete -k applications/examples/api-service/base --ignore-not-found
-	@kubectl delete -k applications/examples/frontend/base --ignore-not-found
-	@kubectl delete -k applications/examples/database-app/base --ignore-not-found
+	@kubectl delete -k apps/examples/api-service/base --ignore-not-found
+	@kubectl delete -k apps/examples/frontend/base --ignore-not-found
+	@kubectl delete -k apps/examples/database-app/base --ignore-not-found
 	@echo "${GREEN}✓ Examples deleted${RESET}"
 
 ##@ Platform Management

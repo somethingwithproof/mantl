@@ -1,7 +1,7 @@
 # tfsec configuration for this repository
 # Keep the signal high: scan blueprints strictly, relax on examples.
 # Docs: https://aquasecurity.github.io/tfsec/latest/configuration/config/
-severity: HIGH
+severity: MEDIUM
 exclude-path:
   - terraform/examples
 

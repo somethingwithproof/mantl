@@ -106,17 +106,6 @@ serviceAccount:
 # Metrics for Prometheus
 metrics:
   enabled: true
-  service:
-    ports:
-      - port: 8765
-        targetPort: 8765
-        protocol: TCP
-        name: metrics
-  serviceMonitor:
-    enabled: true
-    interval: 30s
-    labels:
-      release: prometheus
 
 # Custom rules (add to rules.d/)
 customRules:

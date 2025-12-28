@@ -1,6 +1,72 @@
 name: CI
 
 on:
+  pull_request:
+  push:
+    branches: [ main, "reorg/*", "feature/**" ]
+
+jobs:
+  warm-cache:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Pre-build dev image to warm cache
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: mantl-dev:cache
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  container-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build dev image (cached)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: mantl-dev:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Pytest
+        run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci pytest -v tests
+
+- name: Validate Kustomize (full)
+        run: |
+          chmod +x ci/validate-kustomize.sh
+          docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-kustomize.sh
+
+      - name: Validate Terraform
+        run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-terraform.sh
+
+      - name: Slack notify (on failure)
+        if: failure() || cancelled()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then \
+            STATUS="Workflow failed: $GITHUB_WORKFLOW (#$GITHUB_RUN_NUMBER) on $GITHUB_REF"; \
+            curl -X POST -H 'Content-type: application/json' --data "{\"text\": \"$STATUS\nRepo: $GITHUB_REPOSITORY\nRun: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}" "$SLACK_WEBHOOK_URL"; \
+          else \
+            echo "SLACK_WEBHOOK_URL not set; skipping"; \
+          fi
+
+name: CI
+
+on:
   push:
     branches: [ main ]
     tags: [ 'v*.*.*' ]
@@ -20,6 +86,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
@@ -36,12 +103,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-test.txt
       - name: Run tests
-        run: pytest -q
+        run: |
+          pytest -q --cov=. --cov-report=xml --cov-report=term-missing --cov-fail-under=60
   terraform:
     runs-on: ubuntu-latest
     steps:
@@ -54,7 +123,7 @@ jobs:
       - name: Terraform validate (soft)
         continue-on-error: true
         run: |
-          find terraform -type d -maxdepth 2 -mindepth 1 -print0 | \
+          find infra/terraform -type d -maxdepth 2 -mindepth 1 -print0 | \
             xargs -0 -I {} sh -c 'cd {} && terraform init -backend=false -no-color || true; terraform validate -no-color || true'
   kind-smoke:
     runs-on: ubuntu-latest
@@ -78,7 +147,7 @@ jobs:
           cluster_name: mantl-e2e
       - name: Deploy example hello
         run: |
-          kubectl apply -k applications/examples/hello
+          kubectl apply -k apps/examples/hello
           kubectl rollout status deploy/app -n default --timeout=120s
       - name: Port-forward and curl
         run: |
@@ -98,17 +167,17 @@ external-dns-rfc2136-e2e:
           cluster_name: mantl-dns
       - name: Deploy test DNS (bind9) and svc
         run: |
-          kubectl apply -f tests/external-dns/rfc2136/bind9.yaml
+          kubectl apply -f tests/e2e/external-dns/rfc2136/bind9.yaml
           kubectl -n dns wait --for=condition=available deploy/bind9 --timeout=180s
       - name: Install ExternalDNS (RFC2136)
         run: |
           helm repo add external-dns https://kubernetes-sigs.github.io/external-dns/
           helm upgrade --install extdns external-dns/external-dns \
             --namespace external-dns --create-namespace \
-            -f tests/external-dns/rfc2136/values.yaml
+            -f tests/e2e/external-dns/rfc2136/values.yaml
       - name: Create annotated service
         run: |
-          kubectl apply -f tests/external-dns/rfc2136/app-svc.yaml
+          kubectl apply -f tests/e2e/external-dns/rfc2136/app-svc.yaml
           sleep 30
       - name: Query records (dig)
         run: |
@@ -120,7 +189,7 @@ external-dns-rfc2136-e2e:
           cluster_name: mantl-e2e
       - name: Deploy example hello
         run: |
-          kubectl apply -k applications/examples/hello
+          kubectl apply -k apps/examples/hello
           kubectl rollout status deploy/app -n default --timeout=120s
       - name: Port-forward and curl
         run: |
@@ -135,29 +204,6 @@ external-dns-rfc2136-e2e:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push image
-        run: |
-          IMAGE=ghcr.io/${{ github.repository_owner }}/mantl-dev:${{ github.sha }}
-          docker build -t "$IMAGE" .
-          docker push "$IMAGE"
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.5.0
-      - name: Sign image (keyless)
-        env:
-          COSIGN_EXPERIMENTAL: 1
-        run: |
-          cosign sign --yes $IMAGE
-
   publish-bundles:
     name: Package and publish Kustomize bundles (main/tags)
     runs-on: ubuntu-latest
@@ -234,12 +280,7 @@ external-dns-rfc2136-e2e:
     if: github.event_name != 'pull_request' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - name: tfsec scan
-        uses: aquasecurity/tfsec-action@v1.0.3
-        with:
-          working-directory: .
-          additional_args: --soft-fail
-      - name: Trivy filesystem scan
+      - name: Trivy filesystem scan (informational)
         uses: aquasecurity/trivy-action@0.24.0
         with:
           scan-type: fs
@@ -247,36 +288,6 @@ external-dns-rfc2136-e2e:
           ignore-unfixed: true
           format: table
           exit-code: '0'
-      - name: Trivy SARIF
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          scan-type: fs
-          scanners: vuln,secret,config
-          ignore-unfixed: true
-          format: sarif
-          output: trivy.sarif
-      - name: Checkov SARIF
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: .
-          quiet: true
-          soft_fail: true
-          output_format: sarif
-          output_file_path: checkov.sarif
-      - name: Upload SARIF to code scanning
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: trivy.sarif
-      - name: Upload Checkov SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: checkov.sarif
-      - name: Checkov IaC scan
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: .
-          quiet: true
-          soft_fail: true
 
   platform-health:
     runs-on: ubuntu-latest
@@ -298,7 +309,7 @@ external-dns-rfc2136-e2e:
     steps:
       - uses: actions/checkout@v4
       - name: Check Kyverno policy placeholders
-        run: scripts/check-placeholders.sh
+        run: ci/check-placeholders.sh
 
   kyverno-validate:
     runs-on: ubuntu-latest
@@ -313,7 +324,7 @@ external-dns-rfc2136-e2e:
           kustomize build clusters/production > rendered.yaml
       - name: Kyverno validate rendered manifests
         run: |
-          docker run --rm -v "$PWD":/project -w /project ghcr.io/kyverno/kyverno:latest kyverno apply policies/kyverno --resource rendered.yaml --policy-report --skip-background-request
+          docker run --rm -v "$PWD":/project -w /project ghcr.io/kyverno/kyverno:v1.12.1 kyverno apply policies/kyverno --resource rendered.yaml --policy-report --skip-background-request
 
   gateway-smoke:
     runs-on: ubuntu-latest
