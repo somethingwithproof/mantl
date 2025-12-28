@@ -1,0 +1,36 @@
+name: Nightly CI
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # daily at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  nightly-full:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build dev image (cached)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          tags: mantl-dev:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Pytest
+        run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci pytest -v tests
+
+      - name: Validate Kustomize (full)
+        run: |
+          chmod +x ci/validate-kustomize.sh
+          docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-kustomize.sh
+
+      - name: Validate Terraform
+        run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-terraform.sh
