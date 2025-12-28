@@ -34,3 +34,14 @@ jobs:
 
       - name: Validate Terraform
         run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-terraform.sh
+
+      - name: Kubeconform production manifests
+        run: |
+          docker run --rm -v "$PWD":/project -w /project ghcr.io/yannh/kubeconform:latest \
+            -strict -ignore-missing-schemas -summary <(docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci kustomize build clusters/production)
+
+      - name: Kyverno validate production manifests
+        run: |
+          docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci sh -lc "kustomize build clusters/production > rendered.yaml && \
+            docker run --rm -v \"$PWD\":/project -w /project ghcr.io/kyverno/kyverno:v1.12.1 \
+            kyverno apply policies/kyverno --resource rendered.yaml --policy-report --skip-background-request"
