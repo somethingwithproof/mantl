@@ -103,9 +103,9 @@ serviceAccount:
   create: true
   name: falco
 
-# Metrics for Prometheus (disabled in CI to avoid template issues)
+# Metrics for Prometheus
 metrics:
-  enabled: false
+  enabled: true
 
 # Custom rules (add to rules.d/)
 customRules:
