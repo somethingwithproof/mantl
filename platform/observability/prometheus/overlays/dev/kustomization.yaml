@@ -2,63 +2,12 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: monitoring
 resources:
-  - ../../base
-patches:
-  - patch: |-
-      apiVersion: v1
-      kind: ConfigMap
-      metadata:
-        name: kube-prometheus-stack-values
-        namespace: monitoring
-      data:
-        values.yaml: |
-          # Dev environment - reduced resources and retention
-          prometheus:
-            prometheusSpec:
-              replicas: 1
-              retention: 7d
-              retentionSize: 10GB
-              resources:
-                requests:
-                  cpu: 200m
-                  memory: 512Mi
-                limits:
-                  cpu: 1000m
-                  memory: 2Gi
-              storageSpec:
-                volumeClaimTemplate:
-                  spec:
-                    accessModes: ["ReadWriteOnce"]
-                    resources:
-                      requests:
-                        storage: 20Gi
-
-          alertmanager:
-            alertmanagerSpec:
-              replicas: 1
-              resources:
-                requests:
-                  cpu: 50m
-                  memory: 64Mi
-                limits:
-                  cpu: 200m
-                  memory: 256Mi
-
-          grafana:
-            enabled: true
-            replicas: 1
-            resources:
-              requests:
-                cpu: 100m
-                memory: 128Mi
-              limits:
-                cpu: 500m
-                memory: 512Mi
-
-          # Node exporter for dev
-          nodeExporter:
-            enabled: true
-
-          # Kube state metrics
-          kubeStateMetrics:
-            enabled: true
+  - ../../namespace.yaml
+helmCharts:
+  - name: kube-prometheus-stack
+    repo: https://prometheus-community.github.io/helm-charts
+    version: 65.2.0
+    releaseName: prometheus
+    namespace: monitoring
+    includeCRDs: true
+    valuesFile: values.yaml

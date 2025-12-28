@@ -11,32 +11,42 @@ spec:
     targetRevision: 1.19.0
     helm:
       values: |
-        # For Workload Identity, set client-id via helm.parameters below and omit credential env vars.
+        # ExternalDNS for Azure
         provider: azure
         policy: upsert-only
         registry: txt
         txtOwnerId: mantl-prod
-      parameters:
-        - name: serviceAccount.annotations.azure\.workload\.identity/client-id
-          value: "REPLACE_WITH_UAMI_CLIENT_ID"
-        
-        # Remove extraEnv entries below if using Workload Identity only.
+        # For Workload Identity set the UAMI client id annotation, otherwise remove this block
+        serviceAccount:
+          annotations:
+            azure.workload.identity/client-id: "REPLACE_WITH_UAMI_CLIENT_ID"
+        # Remove the extraEnv entries below if using Workload Identity only.
         extraEnv:
           - name: AZURE_TENANT_ID
             valueFrom:
-              secretKeyRef: {name: azuredns-credentials, key: tenantId}
+              secretKeyRef:
+                name: azuredns-credentials
+                key: tenantId
           - name: AZURE_CLIENT_ID
             valueFrom:
-              secretKeyRef: {name: azuredns-credentials, key: clientId}
+              secretKeyRef:
+                name: azuredns-credentials
+                key: clientId
           - name: AZURE_CLIENT_SECRET
             valueFrom:
-              secretKeyRef: {name: azuredns-credentials, key: clientSecret}
+              secretKeyRef:
+                name: azuredns-credentials
+                key: clientSecret
           - name: AZURE_SUBSCRIPTION_ID
             valueFrom:
-              secretKeyRef: {name: azuredns-credentials, key: subscriptionId}
+              secretKeyRef:
+                name: azuredns-credentials
+                key: subscriptionId
           - name: AZURE_RESOURCE_GROUP
             valueFrom:
-              secretKeyRef: {name: azuredns-credentials, key: resourceGroupName}
+              secretKeyRef:
+                name: azuredns-credentials
+                key: resourceGroupName
   destination:
     server: https://kubernetes.default.svc
     namespace: external-dns

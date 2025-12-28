@@ -1,0 +1,105 @@
+name: Code scanning issues
+
+on:
+  code_scanning_alert:
+    types: [created, reopened, closed, dismissed, fixed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-issue:
+    if: ${{ github.event.action == 'created' || github.event.action == 'reopened' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create issue for alert
+        id: create_issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const alert = context.payload.alert;
+            const tool = (alert.tool?.name || 'code-scanning').toLowerCase();
+            const rule = alert.rule?.id || 'unknown-rule';
+            const sev = (alert.rule?.severity || alert.most_severe_rule?.severity || 'unknown').toLowerCase();
+            const url = alert.html_url || `https://github.com/${context.repo.owner}/${context.repo.repo}/security/code-scanning`;
+            const loc = alert.location?.path || alert.instances?.[0]?.location?.path || 'n/a';
+            const title = `[${tool}] ${sev}: ${rule}`;
+            const labels = [
+              'security',
+              'code-scanning',
+              `tool: ${tool}`,
+              `severity: ${sev}`,
+              'created-by: automation'
+            ];
+            const body = `A new code scanning alert was detected.\n\n- Tool: ${tool}\n- Rule: ${rule}\n- Severity: ${sev}\n- Location: ${loc}\n- Alert: ${url}`;
+
+            // Create the issue first, then try to assign the repo owner (if assignable).
+            const { data: issue } = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels,
+            });
+
+            core.setOutput('issue_node_id', issue.node_id);
+            core.setOutput('issue_number', issue.number.toString());
+
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                assignees: [context.repo.owner],
+              });
+            } catch (e) {
+              core.info(`Assignee add failed (likely org owner): ${e.message}`);
+            }
+      - name: Add issue to Security project
+        if: ${{ vars.SECURITY_PROJECT_URL != '' }}
+        uses: actions/add-to-project@v1
+        with:
+          project-url: ${{ vars.SECURITY_PROJECT_URL }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          content-id: ${{ steps.create_issue.outputs.issue_node_id }}
+
+  close-issue:
+    if: ${{ github.event.action != 'created' && github.event.action != 'reopened' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close matching security issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const alert = context.payload.alert;
+            const action = context.payload.action;
+            const url = alert.html_url || '';
+            const q = `repo:${context.repo.owner}/${context.repo.repo} "${url}" in:body is:issue is:open label:code-scanning label:security`;
+            const res = await github.rest.search.issuesAndPullRequests({ q });
+            if (!res.data.items.length) {
+              core.info('No matching issue found to close.');
+              return;
+            }
+            const issue = res.data.items[0];
+            const comment = `Alert resolved (action: ${action}).\n\nClosing this issue.\n\nAlert: ${url}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: comment,
+            });
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: ['status: resolved']
+              });
+            } catch {}
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              state: 'closed'
+            });
