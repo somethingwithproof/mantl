@@ -2,6 +2,7 @@ name: Code scanning issues
 
 on:
   code_scanning_alert:
+  workflow_dispatch:
     types: [created, reopened, closed, dismissed, fixed]
 
 permissions:

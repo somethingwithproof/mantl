@@ -2,6 +2,7 @@ name: CI
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches: [ main, "reorg/*", "feature/**" ]
 
@@ -68,6 +69,7 @@ name: CI
 
 on:
   push:
+  workflow_dispatch:
     branches: [ main ]
     tags: [ 'v*.*.*' ]
   pull_request:

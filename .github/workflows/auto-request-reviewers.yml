@@ -2,6 +2,7 @@ name: Auto-request reviews from assignees
 
 on:
   pull_request_target:
+  workflow_dispatch:
     types: [assigned, opened, reopened, ready_for_review, edited, synchronize]
 
 permissions:
