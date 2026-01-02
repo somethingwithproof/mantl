@@ -29,6 +29,28 @@ Thank you for your interest in contributing to Mantl! This guide will help you g
 
 ## Development Environment Setup
 
+If you prefer an all-in-one toolchain, use the provided dev container (Dockerfile) which includes kubectl, kustomize+helm, Terraform, Python, and make.
+
+```bash
+# Build once
+docker build -t mantl-dev:local .
+
+# Pytest
+docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:local pytest -v tests
+
+# Validators
+docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:local ./ci/validate-kustomize.sh
+docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:local ./ci/validate-terraform.sh
+```
+
+Install pre-commit to match CI hooks:
+
+```bash
+pipx install pre-commit  # or: python -m pip install pre-commit --user
+pre-commit install
+pre-commit run -a
+```
+
 ### Prerequisites
 
 Install the following tools before contributing:
