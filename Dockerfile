@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
  && unzip terraform_${TF_VERSION}_linux_${TF_ARCH}.zip -d /tmp/tf
 
 # Final stage
-FROM python:3.12-slim
+FROM python:3.14-slim
 ENV DEBIAN_FRONTEND=noninteractive
 ARG KUBECTL_VERSION=1.30.4
 ARG KUSTOMIZE_VERSION=5.4.2
