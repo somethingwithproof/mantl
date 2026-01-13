@@ -1,0 +1,378 @@
+# Crossplane Provider Configurations
+# Multi-cloud infrastructure management with Crossplane
+# https://docs.crossplane.io/
+
+---
+# AWS Provider Configuration
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-ec2
+  labels:
+    app.kubernetes.io/name: crossplane-provider-aws-ec2
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-ec2:v1.14.0
+  runtimeConfigRef:
+    name: aws-runtime-config
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-s3
+  labels:
+    app.kubernetes.io/name: crossplane-provider-aws-s3
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-s3:v1.14.0
+  runtimeConfigRef:
+    name: aws-runtime-config
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-rds
+  labels:
+    app.kubernetes.io/name: crossplane-provider-aws-rds
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-rds:v1.14.0
+  runtimeConfigRef:
+    name: aws-runtime-config
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-eks
+  labels:
+    app.kubernetes.io/name: crossplane-provider-aws-eks
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-eks:v1.14.0
+  runtimeConfigRef:
+    name: aws-runtime-config
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-iam
+  labels:
+    app.kubernetes.io/name: crossplane-provider-aws-iam
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-aws-iam:v1.14.0
+  runtimeConfigRef:
+    name: aws-runtime-config
+---
+# GCP Provider Configuration
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp-compute
+  labels:
+    app.kubernetes.io/name: crossplane-provider-gcp-compute
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-gcp-compute:v1.8.0
+  runtimeConfigRef:
+    name: gcp-runtime-config
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp-storage
+  labels:
+    app.kubernetes.io/name: crossplane-provider-gcp-storage
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-gcp-storage:v1.8.0
+  runtimeConfigRef:
+    name: gcp-runtime-config
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp-sql
+  labels:
+    app.kubernetes.io/name: crossplane-provider-gcp-sql
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-gcp-sql:v1.8.0
+  runtimeConfigRef:
+    name: gcp-runtime-config
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp-container
+  labels:
+    app.kubernetes.io/name: crossplane-provider-gcp-container
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-gcp-container:v1.8.0
+  runtimeConfigRef:
+    name: gcp-runtime-config
+---
+# Azure Provider Configuration
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azure-compute
+  labels:
+    app.kubernetes.io/name: crossplane-provider-azure-compute
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-azure-compute:v1.3.0
+  runtimeConfigRef:
+    name: azure-runtime-config
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azure-storage
+  labels:
+    app.kubernetes.io/name: crossplane-provider-azure-storage
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-azure-storage:v1.3.0
+  runtimeConfigRef:
+    name: azure-runtime-config
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azure-sql
+  labels:
+    app.kubernetes.io/name: crossplane-provider-azure-sql
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-azure-sql:v1.3.0
+  runtimeConfigRef:
+    name: azure-runtime-config
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azure-containerservice
+  labels:
+    app.kubernetes.io/name: crossplane-provider-azure-containerservice
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/upbound/provider-azure-containerservice:v1.3.0
+  runtimeConfigRef:
+    name: azure-runtime-config
+---
+# Kubernetes Provider (for managing resources in remote clusters)
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-kubernetes
+  labels:
+    app.kubernetes.io/name: crossplane-provider-kubernetes
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v0.14.1
+---
+# Helm Provider (for deploying Helm charts)
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-helm
+  labels:
+    app.kubernetes.io/name: crossplane-provider-helm
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/provider-helm:v0.19.0
+---
+# Composition Functions for advanced transformation logic
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+  labels:
+    app.kubernetes.io/name: crossplane-function-patch-and-transform
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.7.0
+---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: function-auto-ready
+  labels:
+    app.kubernetes.io/name: crossplane-function-auto-ready
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-auto-ready:v0.4.0
+---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: function-go-templating
+  labels:
+    app.kubernetes.io/name: crossplane-function-go-templating
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-go-templating:v0.7.0
+---
+# DeploymentRuntimeConfig for AWS providers
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: aws-runtime-config
+  labels:
+    app.kubernetes.io/name: aws-runtime-config
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  deploymentTemplate:
+    spec:
+      replicas: 1
+      selector: {}
+      template:
+        spec:
+          serviceAccountName: crossplane-provider-aws
+          containers:
+            - name: package-runtime
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+---
+# DeploymentRuntimeConfig for GCP providers
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: gcp-runtime-config
+  labels:
+    app.kubernetes.io/name: gcp-runtime-config
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  deploymentTemplate:
+    spec:
+      replicas: 1
+      selector: {}
+      template:
+        spec:
+          serviceAccountName: crossplane-provider-gcp
+          containers:
+            - name: package-runtime
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+---
+# DeploymentRuntimeConfig for Azure providers
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: azure-runtime-config
+  labels:
+    app.kubernetes.io/name: azure-runtime-config
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  deploymentTemplate:
+    spec:
+      replicas: 1
+      selector: {}
+      template:
+        spec:
+          serviceAccountName: crossplane-provider-azure
+          containers:
+            - name: package-runtime
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              securityContext:
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+---
+# AWS ProviderConfig - configure credentials source
+# Uses IRSA (IAM Roles for Service Accounts) for secure authentication
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+  labels:
+    app.kubernetes.io/name: aws-provider-config
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  credentials:
+    source: IRSA
+  # Alternative: Use Secret for credentials
+  # credentials:
+  #   source: Secret
+  #   secretRef:
+  #     namespace: crossplane-system
+  #     name: aws-credentials
+  #     key: credentials
+---
+# GCP ProviderConfig - configure credentials source
+# Uses Workload Identity for secure authentication
+apiVersion: gcp.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+  labels:
+    app.kubernetes.io/name: gcp-provider-config
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  projectID: ""  # Set via environment overlay
+  credentials:
+    source: InjectedIdentity
+  # Alternative: Use Secret for credentials
+  # credentials:
+  #   source: Secret
+  #   secretRef:
+  #     namespace: crossplane-system
+  #     name: gcp-credentials
+  #     key: credentials.json
+---
+# Azure ProviderConfig - configure credentials source
+# Uses Workload Identity for secure authentication
+apiVersion: azure.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+  labels:
+    app.kubernetes.io/name: azure-provider-config
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  credentials:
+    source: OIDCTokenFile
+  subscriptionID: ""  # Set via environment overlay
+  tenantID: ""        # Set via environment overlay
+  # Alternative: Use Secret for credentials
+  # credentials:
+  #   source: Secret
+  #   secretRef:
+  #     namespace: crossplane-system
+  #     name: azure-credentials
+  #     key: credentials

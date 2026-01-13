@@ -1,0 +1,21 @@
+# Composer / vendor
+/vendor/
+/composer.lock
+
+# Node
+/node_modules/
+
+# Env
+/.env
+
+# WordPress core (installed by Composer)
+/web/wp/
+
+# Uploads and caches
+/web/app/uploads/
+/web/app/cache/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/

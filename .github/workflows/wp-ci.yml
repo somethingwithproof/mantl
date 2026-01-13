@@ -1,0 +1,39 @@
+name: wp-ci
+
+on:
+  pull_request:
+    paths:
+      - 'apps/pausatf-wp/**'
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'apps/pausatf-wp/**'
+
+jobs:
+  php-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/pausatf-wp
+    strategy:
+      matrix:
+        php: ['8.2', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('apps/pausatf-wp/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: PHPCS (WordPressCS)
+        run: vendor/bin/phpcs --standard=phpcs.xml.dist --report=full
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --no-progress

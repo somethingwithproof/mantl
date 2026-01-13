@@ -1,0 +1,794 @@
+# Cilium Network Policies for Zero-Trust Networking
+# Implements default-deny, microsegmentation, and L7 HTTP protection
+# https://docs.cilium.io/en/stable/security/policy/
+---
+# Namespace for Cilium policies and resources
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cilium-policies
+  labels:
+    app.kubernetes.io/name: cilium-policies
+    app.kubernetes.io/part-of: mantl-security
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+# =============================================================================
+# DEFAULT-DENY POLICIES
+# Zero-trust foundation: deny all traffic by default
+# =============================================================================
+---
+# Default deny all ingress traffic cluster-wide
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: default-deny-ingress
+  labels:
+    policy-type: zero-trust
+    scope: cluster
+    app.kubernetes.io/name: default-deny-ingress
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Zero-trust: Deny all ingress traffic by default"
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - cluster
+      toPorts: []
+  ingressDeny:
+    - fromEntities:
+        - all
+---
+# Default deny all egress traffic cluster-wide
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: default-deny-egress
+  labels:
+    policy-type: zero-trust
+    scope: cluster
+    app.kubernetes.io/name: default-deny-egress
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Zero-trust: Deny all egress traffic by default"
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - cluster
+      toPorts: []
+  egressDeny:
+    - toEntities:
+        - all
+---
+# =============================================================================
+# SYSTEM NAMESPACE EXCEPTIONS
+# Allow essential cluster services to function
+# =============================================================================
+---
+# Allow kube-system namespace essential communications
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-kube-system-essential
+  namespace: kube-system
+  labels:
+    policy-type: system
+    scope: namespace
+    app.kubernetes.io/name: allow-kube-system-essential
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Allow essential kube-system communications"
+  endpointSelector: {}
+  ingress:
+    # Allow from all pods in cluster for DNS
+    - fromEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    # Allow health checks from kubelet
+    - fromEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: "10250"
+              protocol: TCP
+            - port: "10255"
+              protocol: TCP
+  egress:
+    # Allow DNS resolution
+    - toEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    # Allow to Kubernetes API
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "6443"
+              protocol: TCP
+---
+# Allow CoreDNS to function
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-coredns
+  namespace: kube-system
+  labels:
+    policy-type: system
+    scope: namespace
+    app.kubernetes.io/name: allow-coredns
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Allow CoreDNS to serve DNS queries"
+  endpointSelector:
+    matchLabels:
+      k8s-app: kube-dns
+  ingress:
+    - fromEntities:
+        - cluster
+        - host
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+            - port: "9153"
+              protocol: TCP
+  egress:
+    # Allow upstream DNS resolution
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    # Allow to API server for service discovery
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+# =============================================================================
+# MICROSEGMENTATION POLICIES
+# Fine-grained access control between services
+# =============================================================================
+---
+# Frontend tier - can only receive external traffic and talk to backend
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: microseg-frontend-tier
+  namespace: default
+  labels:
+    policy-type: microsegmentation
+    tier: frontend
+    app.kubernetes.io/name: microseg-frontend-tier
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Microsegmentation: Frontend tier isolation"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/tier: frontend
+  ingress:
+    # Allow from ingress controllers
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: ingress-nginx
+        - matchLabels:
+            app.kubernetes.io/name: traefik
+        - matchLabels:
+            app: istio-ingressgateway
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP
+    # Allow health checks
+    - fromEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+            - port: "9090"
+              protocol: TCP
+  egress:
+    # Allow to backend tier only
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/tier: backend
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+            - port: "8081"
+              protocol: TCP
+            - port: "9090"
+              protocol: TCP
+    # Allow DNS
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+---
+# Backend tier - can only receive from frontend and talk to database
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: microseg-backend-tier
+  namespace: default
+  labels:
+    policy-type: microsegmentation
+    tier: backend
+    app.kubernetes.io/name: microseg-backend-tier
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Microsegmentation: Backend tier isolation"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/tier: backend
+  ingress:
+    # Only allow from frontend tier
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/tier: frontend
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+            - port: "8081"
+              protocol: TCP
+            - port: "9090"
+              protocol: TCP
+    # Allow health checks
+    - fromEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+            - port: "9090"
+              protocol: TCP
+  egress:
+    # Allow to database tier only
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/tier: database
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "3306"
+              protocol: TCP
+            - port: "27017"
+              protocol: TCP
+            - port: "6379"
+              protocol: TCP
+    # Allow to cache tier
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/tier: cache
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+            - port: "11211"
+              protocol: TCP
+    # Allow DNS
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+---
+# Database tier - only accessible from backend, no egress
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: microseg-database-tier
+  namespace: default
+  labels:
+    policy-type: microsegmentation
+    tier: database
+    app.kubernetes.io/name: microseg-database-tier
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Microsegmentation: Database tier isolation (most restrictive)"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/tier: database
+  ingress:
+    # Only allow from backend tier
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/tier: backend
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "3306"
+              protocol: TCP
+            - port: "27017"
+              protocol: TCP
+            - port: "6379"
+              protocol: TCP
+    # Allow replication between database pods
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/tier: database
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "3306"
+              protocol: TCP
+    # Allow health checks
+    - fromEntities:
+        - host
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+  egress:
+    # Allow DNS only
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+    # Allow replication to other database pods
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/tier: database
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "3306"
+              protocol: TCP
+---
+# =============================================================================
+# L7 HTTP POLICIES
+# Application-layer protection for API endpoints
+# =============================================================================
+---
+# L7 API Gateway protection
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-api-gateway-protection
+  namespace: default
+  labels:
+    policy-type: l7-http
+    scope: api
+    app.kubernetes.io/name: l7-api-gateway-protection
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "L7 HTTP protection for API gateway"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: api-gateway
+  ingress:
+    - fromEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              # Allow standard REST methods
+              - method: "GET"
+                path: "/api/v[0-9]+/.*"
+              - method: "POST"
+                path: "/api/v[0-9]+/.*"
+              - method: "PUT"
+                path: "/api/v[0-9]+/.*"
+              - method: "PATCH"
+                path: "/api/v[0-9]+/.*"
+              - method: "DELETE"
+                path: "/api/v[0-9]+/.*"
+              # Allow health endpoints
+              - method: "GET"
+                path: "/health"
+              - method: "GET"
+                path: "/healthz"
+              - method: "GET"
+                path: "/ready"
+              - method: "GET"
+                path: "/readyz"
+              - method: "GET"
+                path: "/live"
+              - method: "GET"
+                path: "/livez"
+              # Allow metrics
+              - method: "GET"
+                path: "/metrics"
+---
+# L7 REST API protection with rate limiting headers
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-rest-api-protection
+  namespace: default
+  labels:
+    policy-type: l7-http
+    scope: api
+    app.kubernetes.io/name: l7-rest-api-protection
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "L7 HTTP protection for REST APIs"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/type: rest-api
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/tier: frontend
+        - matchLabels:
+            app.kubernetes.io/component: api-gateway
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              # Public API endpoints - read only
+              - method: "GET"
+                path: "/api/v[0-9]+/public/.*"
+              # Authenticated endpoints - all methods
+              - method: "GET"
+                path: "/api/v[0-9]+/.*"
+                headers:
+                  - "Authorization"
+              - method: "POST"
+                path: "/api/v[0-9]+/.*"
+                headers:
+                  - "Authorization"
+                  - "Content-Type"
+              - method: "PUT"
+                path: "/api/v[0-9]+/.*"
+                headers:
+                  - "Authorization"
+                  - "Content-Type"
+              - method: "PATCH"
+                path: "/api/v[0-9]+/.*"
+                headers:
+                  - "Authorization"
+                  - "Content-Type"
+              - method: "DELETE"
+                path: "/api/v[0-9]+/.*"
+                headers:
+                  - "Authorization"
+              # Health checks without auth
+              - method: "GET"
+                path: "/health.*"
+              - method: "GET"
+                path: "/metrics"
+---
+# L7 GraphQL API protection
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-graphql-api-protection
+  namespace: default
+  labels:
+    policy-type: l7-http
+    scope: api
+    app.kubernetes.io/name: l7-graphql-api-protection
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "L7 HTTP protection for GraphQL APIs"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/type: graphql-api
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/tier: frontend
+        - matchLabels:
+            app.kubernetes.io/component: api-gateway
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              # GraphQL queries and mutations
+              - method: "POST"
+                path: "/graphql"
+                headers:
+                  - "Content-Type"
+              # GraphQL playground (disable in production)
+              - method: "GET"
+                path: "/graphql"
+              # Introspection endpoint (consider disabling in production)
+              - method: "POST"
+                path: "/graphql/introspection"
+              # Health check
+              - method: "GET"
+                path: "/health"
+---
+# L7 Admin API protection - highly restrictive
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: l7-admin-api-protection
+  namespace: default
+  labels:
+    policy-type: l7-http
+    scope: admin
+    security-level: critical
+    app.kubernetes.io/name: l7-admin-api-protection
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "L7 HTTP protection for admin APIs - highly restrictive"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/type: admin-api
+  ingress:
+    # Only allow from specific admin pods
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/role: admin-client
+            security.mantl.io/admin-access: "true"
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              # Admin operations require specific header
+              - method: "GET"
+                path: "/admin/.*"
+                headers:
+                  - "Authorization"
+                  - "X-Admin-Token"
+              - method: "POST"
+                path: "/admin/.*"
+                headers:
+                  - "Authorization"
+                  - "X-Admin-Token"
+                  - "Content-Type"
+              - method: "PUT"
+                path: "/admin/.*"
+                headers:
+                  - "Authorization"
+                  - "X-Admin-Token"
+                  - "Content-Type"
+              - method: "DELETE"
+                path: "/admin/.*"
+                headers:
+                  - "Authorization"
+                  - "X-Admin-Token"
+              # Block sensitive endpoints completely
+              # These would be handled by separate, more restrictive policies
+---
+# =============================================================================
+# OBSERVABILITY NAMESPACE POLICIES
+# Allow monitoring and logging communications
+# =============================================================================
+---
+# Prometheus can scrape metrics from all namespaces
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-prometheus-scraping
+  labels:
+    policy-type: observability
+    scope: cluster
+    app.kubernetes.io/name: allow-prometheus-scraping
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Allow Prometheus to scrape metrics from all pods"
+  endpointSelector: {}
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: prometheus
+        - matchLabels:
+            app: prometheus
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+            - port: "9091"
+              protocol: TCP
+            - port: "9093"
+              protocol: TCP
+            - port: "9100"
+              protocol: TCP
+            - port: "9115"
+              protocol: TCP
+            - port: "8080"
+              protocol: TCP
+            - port: "8081"
+              protocol: TCP
+---
+# Allow Jaeger/OpenTelemetry trace collection
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-tracing-collection
+  labels:
+    policy-type: observability
+    scope: cluster
+    app.kubernetes.io/name: allow-tracing-collection
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Allow tracing backends to receive traces"
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: tracing
+  ingress:
+    - fromEntities:
+        - cluster
+      toPorts:
+        - ports:
+            # Jaeger ports
+            - port: "6831"
+              protocol: UDP
+            - port: "6832"
+              protocol: UDP
+            - port: "14268"
+              protocol: TCP
+            - port: "14250"
+              protocol: TCP
+            # OTLP ports
+            - port: "4317"
+              protocol: TCP
+            - port: "4318"
+              protocol: TCP
+            # Zipkin
+            - port: "9411"
+              protocol: TCP
+---
+# =============================================================================
+# EGRESS POLICIES
+# Control outbound traffic
+# =============================================================================
+---
+# Allow egress to external services (controlled)
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: allow-external-https
+  labels:
+    policy-type: egress
+    scope: cluster
+    app.kubernetes.io/name: allow-external-https
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Allow HTTPS egress to approved external services"
+  endpointSelector:
+    matchLabels:
+      network.mantl.io/external-access: "true"
+  egress:
+    # Allow HTTPS to internet
+    - toEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+# Block egress to known malicious CIDR ranges
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: block-malicious-egress
+  labels:
+    policy-type: egress-deny
+    scope: cluster
+    security-level: critical
+    app.kubernetes.io/name: block-malicious-egress
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Block egress to known malicious IP ranges"
+  endpointSelector: {}
+  egressDeny:
+    # Block common cryptocurrency mining pools (example ranges)
+    - toCIDR:
+        - "185.165.169.0/24"
+        - "144.217.14.0/24"
+      toPorts:
+        - ports:
+            - port: "3333"
+              protocol: TCP
+            - port: "4444"
+              protocol: TCP
+            - port: "5555"
+              protocol: TCP
+    # Block metadata services from non-privileged pods
+    - toCIDR:
+        - "169.254.169.254/32"  # AWS/GCP metadata
+        - "169.254.170.2/32"    # ECS metadata
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+---
+# =============================================================================
+# NAMESPACE ISOLATION TEMPLATE
+# Template for namespace-level zero-trust
+# =============================================================================
+---
+# Template: Namespace isolation policy
+# Copy and customize for each application namespace
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: namespace-isolation-template
+  namespace: default
+  labels:
+    policy-type: namespace-isolation
+    scope: namespace
+    app.kubernetes.io/name: namespace-isolation-template
+    app.kubernetes.io/part-of: mantl-security
+  annotations:
+    mantl.io/description: "Template for namespace isolation - customize per namespace"
+spec:
+  description: "Isolate namespace with controlled ingress/egress"
+  endpointSelector: {}
+  ingress:
+    # Allow from same namespace
+    - fromEndpoints:
+        - {}
+    # Allow from ingress namespace
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: ingress-nginx
+    # Allow from monitoring namespace
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: monitoring
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+  egress:
+    # Allow to same namespace
+    - toEndpoints:
+        - {}
+    # Allow DNS
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+    # Allow to API server
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

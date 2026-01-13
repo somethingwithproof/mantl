@@ -1,0 +1,17 @@
+includes:
+  - vendor/szepeviktor/phpstan-wordpress/extension.neon
+  - vendor/szepeviktor/phpstan-wordpress/rules.neon
+
+parameters:
+  level: max
+  paths:
+    - web/app
+  tmpDir: var/phpstan
+  checkGenericClassInNonGenericObjectType: false
+  ignoreErrors:
+    - '#Function _\(\) not found#'
+    - '#^Parameter \#1 \$domain of function __\(\) expects string, mixed given\.$#'
+  scanFiles:
+    - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+  bootstrapFiles:
+    - vendor/autoload.php

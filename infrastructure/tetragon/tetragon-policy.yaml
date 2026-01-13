@@ -1,0 +1,470 @@
+# Cilium Tetragon Runtime Security Policies
+# eBPF-based security observability and enforcement
+# https://tetragon.io/
+
+---
+# Namespace for Tetragon policies
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tetragon-policies
+  labels:
+    app.kubernetes.io/name: tetragon-policies
+    app.kubernetes.io/part-of: mantl-security
+---
+# TracingPolicy: Detect privilege escalation attempts
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: privilege-escalation-detection
+  namespace: tetragon-policies
+  labels:
+    policy-type: security
+    severity: critical
+    app.kubernetes.io/name: privilege-escalation-detection
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  kprobes:
+    # Monitor setuid system calls
+    - call: "__x64_sys_setuid"
+      syscall: true
+      args:
+        - index: 0
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - "0"  # uid 0 (root)
+          matchActions:
+            - action: Sigkill
+            - action: NotifyEnforcer
+              argError: -1
+
+    # Monitor setgid system calls
+    - call: "__x64_sys_setgid"
+      syscall: true
+      args:
+        - index: 0
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - "0"  # gid 0 (root)
+          matchActions:
+            - action: Sigkill
+            - action: NotifyEnforcer
+              argError: -1
+
+    # Monitor setreuid for privilege changes
+    - call: "__x64_sys_setreuid"
+      syscall: true
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Equal
+              values:
+                - "0"
+          matchActions:
+            - action: Sigkill
+---
+# TracingPolicy: Detect suspicious file access
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: sensitive-file-access
+  namespace: tetragon-policies
+  labels:
+    policy-type: security
+    severity: high
+    app.kubernetes.io/name: sensitive-file-access
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  kprobes:
+    # Monitor access to sensitive files
+    - call: "fd_install"
+      syscall: false
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: file
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Prefix
+              values:
+                - "/etc/shadow"
+                - "/etc/passwd"
+                - "/etc/sudoers"
+                - "/etc/kubernetes"
+                - "/var/run/secrets"
+                - "/root/.ssh"
+                - "/root/.kube"
+          matchActions:
+            - action: Post
+              rateLimit: "1m"
+              rateLimitScope: process
+
+    # Monitor writes to sensitive directories
+    - call: "security_file_open"
+      syscall: false
+      args:
+        - index: 0
+          type: file
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - "/etc/cron"
+                - "/etc/systemd"
+                - "/etc/init.d"
+                - "/usr/lib/systemd"
+            - index: 1
+              operator: Mask
+              values:
+                - "2"  # Write access
+          matchActions:
+            - action: Post
+---
+# TracingPolicy: Detect container escape attempts
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: container-escape-detection
+  namespace: tetragon-policies
+  labels:
+    policy-type: security
+    severity: critical
+    app.kubernetes.io/name: container-escape-detection
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  kprobes:
+    # Monitor mount namespace changes
+    - call: "__x64_sys_setns"
+      syscall: true
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Mask
+              values:
+                - "0x00020000"  # CLONE_NEWNS (mount namespace)
+          matchActions:
+            - action: Sigkill
+            - action: NotifyEnforcer
+              argError: -1
+
+    # Monitor unshare for namespace manipulation
+    - call: "__x64_sys_unshare"
+      syscall: true
+      args:
+        - index: 0
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Mask
+              values:
+                - "0x00020000"  # CLONE_NEWNS
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - "host_ns"
+          matchActions:
+            - action: Sigkill
+
+    # Detect ptrace injection attempts
+    - call: "__x64_sys_ptrace"
+      syscall: true
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: InMap
+              values:
+                - "16"  # PTRACE_ATTACH
+                - "17"  # PTRACE_DETACH
+                - "24"  # PTRACE_SEIZE
+          matchActions:
+            - action: Sigkill
+---
+# TracingPolicy: Detect cryptomining and suspicious processes
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: cryptominer-detection
+  namespace: tetragon-policies
+  labels:
+    policy-type: security
+    severity: high
+    app.kubernetes.io/name: cryptominer-detection
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  tracepoints:
+    - subsystem: "sched"
+      event: "sched_process_exec"
+      args:
+        - index: 0
+          type: nop
+        - index: 1
+          type: string
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Postfix
+              values:
+                - "xmrig"
+                - "minerd"
+                - "cpuminer"
+                - "cgminer"
+                - "bfgminer"
+                - "ethminer"
+                - "stratum"
+                - "nicehash"
+          matchActions:
+            - action: Sigkill
+            - action: NotifyEnforcer
+              argError: -1
+---
+# TracingPolicy: Network security monitoring
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: network-security-monitoring
+  namespace: tetragon-policies
+  labels:
+    policy-type: network
+    severity: medium
+    app.kubernetes.io/name: network-security-monitoring
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  kprobes:
+    # Monitor outbound connections
+    - call: "tcp_connect"
+      syscall: false
+      args:
+        - index: 0
+          type: sock
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: DPort
+              values:
+                - "4444"   # Common reverse shell port
+                - "5555"   # Common reverse shell port
+                - "6666"   # Common reverse shell port
+                - "9001"   # Common C2 port
+                - "31337"  # Elite port
+          matchActions:
+            - action: Post
+              rateLimit: "1m"
+              rateLimitScope: process
+
+    # Monitor DNS queries for suspicious domains would require
+    # additional network policy integration
+---
+# TracingPolicy: File integrity monitoring
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: file-integrity-monitoring
+  namespace: tetragon-policies
+  labels:
+    policy-type: fim
+    severity: high
+    app.kubernetes.io/name: file-integrity-monitoring
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  kprobes:
+    # Monitor modifications to critical binaries
+    - call: "security_file_open"
+      syscall: false
+      args:
+        - index: 0
+          type: file
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - "/bin/"
+                - "/sbin/"
+                - "/usr/bin/"
+                - "/usr/sbin/"
+                - "/usr/local/bin/"
+            - index: 1
+              operator: Mask
+              values:
+                - "2"  # Write access
+          matchActions:
+            - action: Post
+
+    # Monitor library modifications
+    - call: "security_file_open"
+      syscall: false
+      args:
+        - index: 0
+          type: file
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - "/lib/"
+                - "/lib64/"
+                - "/usr/lib/"
+                - "/usr/lib64/"
+            - index: 1
+              operator: Mask
+              values:
+                - "2"
+          matchActions:
+            - action: Post
+---
+# TracingPolicy: Kubernetes API access monitoring
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: kubernetes-api-monitoring
+  namespace: tetragon-policies
+  labels:
+    policy-type: kubernetes
+    severity: medium
+    app.kubernetes.io/name: kubernetes-api-monitoring
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  kprobes:
+    # Monitor access to Kubernetes service account tokens
+    - call: "fd_install"
+      syscall: false
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: file
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Prefix
+              values:
+                - "/var/run/secrets/kubernetes.io/serviceaccount/"
+          matchActions:
+            - action: Post
+              rateLimit: "1m"
+              rateLimitScope: process
+
+    # Monitor kubectl and similar tool execution
+  tracepoints:
+    - subsystem: "sched"
+      event: "sched_process_exec"
+      args:
+        - index: 0
+          type: nop
+        - index: 1
+          type: string
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Postfix
+              values:
+                - "kubectl"
+                - "helm"
+                - "kustomize"
+          matchActions:
+            - action: Post
+---
+# TracingPolicy: Shell spawning detection
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: shell-spawn-detection
+  namespace: tetragon-policies
+  labels:
+    policy-type: security
+    severity: high
+    app.kubernetes.io/name: shell-spawn-detection
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  tracepoints:
+    - subsystem: "sched"
+      event: "sched_process_exec"
+      args:
+        - index: 0
+          type: nop
+        - index: 1
+          type: string
+      selectors:
+        # Detect shell spawns in non-shell containers
+        - matchArgs:
+            - index: 1
+              operator: Postfix
+              values:
+                - "/bin/sh"
+                - "/bin/bash"
+                - "/bin/zsh"
+                - "/bin/ash"
+                - "/bin/dash"
+          matchNamespaces:
+            - namespace: Pid
+              operator: NotIn
+              values:
+                - "host_ns"
+          matchBinaries:
+            - operator: NotIn
+              values:
+                - "/bin/sh"
+                - "/bin/bash"
+          matchActions:
+            - action: Post
+---
+# TracingPolicy: Process execution monitoring for compliance
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: process-execution-audit
+  namespace: tetragon-policies
+  labels:
+    policy-type: audit
+    severity: low
+    compliance: soc2
+    app.kubernetes.io/name: process-execution-audit
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  tracepoints:
+    - subsystem: "sched"
+      event: "sched_process_exec"
+      args:
+        - index: 0
+          type: nop
+        - index: 1
+          type: string
+      selectors:
+        - matchActions:
+            - action: Post
+              rateLimit: "10s"
+              rateLimitScope: global

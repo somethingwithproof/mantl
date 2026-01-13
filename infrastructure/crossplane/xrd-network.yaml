@@ -1,0 +1,443 @@
+# Crossplane Composite Resource Definition (XRD) for Network Infrastructure
+# Provides a cloud-agnostic interface for VPC/VNet provisioning
+# https://docs.crossplane.io/latest/concepts/composite-resource-definitions/
+
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xnetworks.infrastructure.mantl.io
+  labels:
+    app.kubernetes.io/name: xrd-network
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  group: infrastructure.mantl.io
+  names:
+    kind: XNetwork
+    plural: xnetworks
+  claimNames:
+    kind: Network
+    plural: networks
+  connectionSecretKeys:
+    - vpcId
+    - subnetIds
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - provider
+                - region
+                - cidrBlock
+              properties:
+                provider:
+                  type: string
+                  description: Cloud provider (aws, gcp, azure)
+                  enum:
+                    - aws
+                    - gcp
+                    - azure
+                region:
+                  type: string
+                  description: Cloud region for the network
+                cidrBlock:
+                  type: string
+                  description: CIDR block for the VPC/VNet
+                  pattern: '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$'
+                  default: "10.0.0.0/16"
+                enableNatGateway:
+                  type: boolean
+                  description: Enable NAT Gateway for private subnets
+                  default: true
+                enableVpnGateway:
+                  type: boolean
+                  description: Enable VPN Gateway
+                  default: false
+                availabilityZones:
+                  type: integer
+                  description: Number of availability zones
+                  minimum: 1
+                  maximum: 6
+                  default: 3
+                publicSubnetTags:
+                  type: object
+                  description: Tags for public subnets
+                  additionalProperties:
+                    type: string
+                privateSubnetTags:
+                  type: object
+                  description: Tags for private subnets
+                  additionalProperties:
+                    type: string
+                enableFlowLogs:
+                  type: boolean
+                  description: Enable VPC flow logs
+                  default: true
+                deletionPolicy:
+                  type: string
+                  description: Deletion policy for resources
+                  enum:
+                    - Delete
+                    - Orphan
+                  default: Delete
+            status:
+              type: object
+              properties:
+                vpcId:
+                  type: string
+                  description: ID of the created VPC/VNet
+                publicSubnetIds:
+                  type: array
+                  items:
+                    type: string
+                  description: IDs of public subnets
+                privateSubnetIds:
+                  type: array
+                  items:
+                    type: string
+                  description: IDs of private subnets
+                natGatewayIds:
+                  type: array
+                  items:
+                    type: string
+                  description: IDs of NAT gateways
+                state:
+                  type: string
+                  description: Current state of the network
+---
+# Composition for AWS VPC
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xnetwork-aws
+  labels:
+    provider: aws
+    app.kubernetes.io/name: composition-network-aws
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  compositeTypeRef:
+    apiVersion: infrastructure.mantl.io/v1alpha1
+    kind: XNetwork
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: vpc
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: VPC
+              spec:
+                forProvider:
+                  enableDnsHostnames: true
+                  enableDnsSupport: true
+                  tags:
+                    Name: ""
+                    "kubernetes.io/cluster/mantl": "shared"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidrBlock
+                toFieldPath: spec.forProvider.cidrBlock
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-vpc"
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.id
+                toFieldPath: status.vpcId
+
+          - name: internet-gateway
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: InternetGateway
+              spec:
+                forProvider:
+                  vpcIdSelector:
+                    matchControllerRef: true
+                  tags:
+                    Name: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-igw"
+
+          - name: public-subnet-a
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  access: public
+                  zone: a
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: true
+                  vpcIdSelector:
+                    matchControllerRef: true
+                  tags:
+                    "kubernetes.io/role/elb": "1"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.availabilityZone
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%sa"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidrBlock
+                toFieldPath: spec.forProvider.cidrBlock
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '^(\d+\.\d+)\.\d+\.\d+/\d+$'
+                        group: 1
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s.0.0/20"
+
+          - name: public-subnet-b
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  access: public
+                  zone: b
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: true
+                  vpcIdSelector:
+                    matchControllerRef: true
+                  tags:
+                    "kubernetes.io/role/elb": "1"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.availabilityZone
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%sb"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidrBlock
+                toFieldPath: spec.forProvider.cidrBlock
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '^(\d+\.\d+)\.\d+\.\d+/\d+$'
+                        group: 1
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s.16.0/20"
+
+          - name: public-subnet-c
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  access: public
+                  zone: c
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: true
+                  vpcIdSelector:
+                    matchControllerRef: true
+                  tags:
+                    "kubernetes.io/role/elb": "1"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.availabilityZone
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%sc"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidrBlock
+                toFieldPath: spec.forProvider.cidrBlock
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '^(\d+\.\d+)\.\d+\.\d+/\d+$'
+                        group: 1
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s.32.0/20"
+
+          - name: private-subnet-a
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  access: private
+                  zone: a
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: false
+                  vpcIdSelector:
+                    matchControllerRef: true
+                  tags:
+                    "kubernetes.io/role/internal-elb": "1"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.availabilityZone
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%sa"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidrBlock
+                toFieldPath: spec.forProvider.cidrBlock
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '^(\d+\.\d+)\.\d+\.\d+/\d+$'
+                        group: 1
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s.128.0/20"
+
+          - name: private-subnet-b
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  access: private
+                  zone: b
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: false
+                  vpcIdSelector:
+                    matchControllerRef: true
+                  tags:
+                    "kubernetes.io/role/internal-elb": "1"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.availabilityZone
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%sb"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidrBlock
+                toFieldPath: spec.forProvider.cidrBlock
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '^(\d+\.\d+)\.\d+\.\d+/\d+$'
+                        group: 1
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s.144.0/20"
+
+          - name: private-subnet-c
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: Subnet
+              metadata:
+                labels:
+                  access: private
+                  zone: c
+              spec:
+                forProvider:
+                  mapPublicIpOnLaunch: false
+                  vpcIdSelector:
+                    matchControllerRef: true
+                  tags:
+                    "kubernetes.io/role/internal-elb": "1"
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.availabilityZone
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%sc"
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.cidrBlock
+                toFieldPath: spec.forProvider.cidrBlock
+                transforms:
+                  - type: string
+                    string:
+                      type: Regexp
+                      regexp:
+                        match: '^(\d+\.\d+)\.\d+\.\d+/\d+$'
+                        group: 1
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s.160.0/20"
+
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

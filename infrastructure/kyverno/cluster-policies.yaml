@@ -1,0 +1,1110 @@
+# Kyverno Cluster Policies for Zero-Trust Security
+# Kubernetes-native policy management for security enforcement
+# https://kyverno.io/
+---
+# =============================================================================
+# NAMESPACE FOR KYVERNO POLICIES
+# =============================================================================
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kyverno
+  labels:
+    app.kubernetes.io/name: kyverno
+    app.kubernetes.io/part-of: mantl-security
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+# =============================================================================
+# REQUIRE NON-ROOT CONTAINERS
+# Prevent containers from running as root user
+# =============================================================================
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-run-as-non-root
+  labels:
+    app.kubernetes.io/name: require-run-as-non-root
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+  annotations:
+    policies.kyverno.io/title: Require Run As Non-Root
+    policies.kyverno.io/description: >-
+      Containers must run as a non-root user. Running as root increases the
+      risk of container breakout and host compromise.
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.10.0
+    kyverno.io/kubernetes-version: "1.26-1.29"
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: run-as-non-root-pod
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - spire
+                - cilium
+          - resources:
+              selector:
+                matchLabels:
+                  security.mantl.io/allow-root: "true"
+      validate:
+        message: >-
+          Pod-level securityContext must specify runAsNonRoot: true.
+          Running containers as root is prohibited.
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+    - name: run-as-non-root-container
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - spire
+                - cilium
+          - resources:
+              selector:
+                matchLabels:
+                  security.mantl.io/allow-root: "true"
+      validate:
+        message: >-
+          All containers must specify runAsNonRoot: true in their securityContext.
+          Container: {{request.object.spec.containers[*].name}}
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.securityContext.runAsNonRoot || false }}"
+                    operator: NotEquals
+                    value: true
+    - name: run-as-non-root-init-container
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - spire
+                - cilium
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.initContainers[] || '' | length(@) }}"
+            operator: GreaterThan
+            value: 0
+      validate:
+        message: >-
+          All init containers must specify runAsNonRoot: true.
+        foreach:
+          - list: "request.object.spec.initContainers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.securityContext.runAsNonRoot || false }}"
+                    operator: NotEquals
+                    value: true
+---
+# =============================================================================
+# REQUIRE RESOURCE LIMITS
+# Ensure all containers have CPU and memory limits
+# =============================================================================
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  labels:
+    app.kubernetes.io/name: require-resource-limits
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Resource Management
+    policies.kyverno.io/severity: medium
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/description: >-
+      All containers must specify CPU and memory resource limits to prevent
+      resource exhaustion and ensure fair scheduling.
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.10.0
+    kyverno.io/kubernetes-version: "1.26-1.29"
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-cpu-limit
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: >-
+          All containers must specify CPU limits. Container {{element.name}}
+          is missing resources.limits.cpu.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.resources.limits.cpu || '' }}"
+                    operator: Equals
+                    value: ""
+    - name: require-memory-limit
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: >-
+          All containers must specify memory limits. Container {{element.name}}
+          is missing resources.limits.memory.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.resources.limits.memory || '' }}"
+                    operator: Equals
+                    value: ""
+    - name: require-cpu-request
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: >-
+          All containers must specify CPU requests. Container {{element.name}}
+          is missing resources.requests.cpu.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.resources.requests.cpu || '' }}"
+                    operator: Equals
+                    value: ""
+    - name: require-memory-request
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: >-
+          All containers must specify memory requests. Container {{element.name}}
+          is missing resources.requests.memory.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.resources.requests.memory || '' }}"
+                    operator: Equals
+                    value: ""
+---
+# Enforce maximum resource limits
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: enforce-resource-limits-max
+  labels:
+    app.kubernetes.io/name: enforce-resource-limits-max
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Resource Management
+    policies.kyverno.io/severity: medium
+  annotations:
+    policies.kyverno.io/title: Enforce Maximum Resource Limits
+    policies.kyverno.io/description: >-
+      Containers cannot request more than the maximum allowed resources
+      to prevent resource monopolization.
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-cpu-limit-max
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - monitoring
+      validate:
+        message: >-
+          CPU limit exceeds maximum allowed (4 cores). Container {{element.name}}
+          has CPU limit of {{element.resources.limits.cpu}}.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.resources.limits.cpu | replace_all(@, 'm', '') | to_number(@) }}"
+                    operator: GreaterThan
+                    value: 4000
+    - name: validate-memory-limit-max
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - monitoring
+      validate:
+        message: >-
+          Memory limit exceeds maximum allowed (8Gi). Container {{element.name}}
+          has memory limit of {{element.resources.limits.memory}}.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.resources.limits.memory | replace_all(@, 'Gi', '000Mi') | replace_all(@, 'Mi', '') | to_number(@) }}"
+                    operator: GreaterThan
+                    value: 8000
+---
+# =============================================================================
+# REQUIRE SECURITY CONTEXTS
+# Ensure all pods have proper security contexts
+# =============================================================================
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-security-context
+  labels:
+    app.kubernetes.io/name: require-security-context
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+  annotations:
+    policies.kyverno.io/title: Require Security Context
+    policies.kyverno.io/description: >-
+      Pods and containers must have security contexts configured with
+      appropriate restrictions including read-only root filesystem,
+      dropped capabilities, and seccomp profiles.
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.10.0
+    kyverno.io/kubernetes-version: "1.26-1.29"
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-read-only-root-filesystem
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - spire
+                - cilium
+          - resources:
+              selector:
+                matchLabels:
+                  security.mantl.io/allow-writable-fs: "true"
+      validate:
+        message: >-
+          Containers must use a read-only root filesystem. Container {{element.name}}
+          must set securityContext.readOnlyRootFilesystem to true.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.securityContext.readOnlyRootFilesystem || false }}"
+                    operator: NotEquals
+                    value: true
+    - name: require-drop-all-capabilities
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - spire
+                - cilium
+      validate:
+        message: >-
+          Containers must drop ALL capabilities. Container {{element.name}}
+          must set securityContext.capabilities.drop to ["ALL"].
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "ALL"
+                    operator: AnyNotIn
+                    value: "{{ element.securityContext.capabilities.drop || [] }}"
+    - name: require-seccomp-profile
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - spire
+                - cilium
+      validate:
+        message: >-
+          Pods must have a seccomp profile set to RuntimeDefault or Localhost.
+          Set spec.securityContext.seccompProfile.type to RuntimeDefault.
+        pattern:
+          spec:
+            securityContext:
+              seccompProfile:
+                type: RuntimeDefault | Localhost
+    - name: disallow-privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: >-
+          Privilege escalation is not allowed. Container {{element.name}}
+          must set securityContext.allowPrivilegeEscalation to false.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.securityContext.allowPrivilegeEscalation || true }}"
+                    operator: NotEquals
+                    value: false
+---
+# =============================================================================
+# BLOCK PRIVILEGED CONTAINERS
+# Prevent containers from running in privileged mode
+# =============================================================================
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privileged-containers
+  labels:
+    app.kubernetes.io/name: disallow-privileged-containers
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: critical
+  annotations:
+    policies.kyverno.io/title: Disallow Privileged Containers
+    policies.kyverno.io/description: >-
+      Privileged containers are not allowed. Running containers in privileged
+      mode disables most security features and should never be used in production.
+    policies.kyverno.io/subject: Pod
+    kyverno.io/kyverno-version: 1.10.0
+    kyverno.io/kubernetes-version: "1.26-1.29"
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: deny-privileged-containers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+              selector:
+                matchLabels:
+                  security.mantl.io/privileged-exception: "true"
+      validate:
+        message: >-
+          Privileged containers are not allowed. Container {{element.name}}
+          has privileged set to true.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.securityContext.privileged || false }}"
+                    operator: Equals
+                    value: true
+    - name: deny-privileged-init-containers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.initContainers[] || '' | length(@) }}"
+            operator: GreaterThan
+            value: 0
+      validate:
+        message: >-
+          Privileged init containers are not allowed. Init container {{element.name}}
+          has privileged set to true.
+        foreach:
+          - list: "request.object.spec.initContainers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.securityContext.privileged || false }}"
+                    operator: Equals
+                    value: true
+---
+# Block hostPID, hostIPC, hostNetwork
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-host-namespaces
+  labels:
+    app.kubernetes.io/name: disallow-host-namespaces
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: critical
+  annotations:
+    policies.kyverno.io/title: Disallow Host Namespaces
+    policies.kyverno.io/description: >-
+      Sharing host namespaces (PID, IPC, Network) with containers is not allowed.
+      This can allow containers to access host processes and network.
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: deny-host-pid
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - spire
+                - cilium
+      validate:
+        message: >-
+          Sharing the host PID namespace is not allowed. Set spec.hostPID to false.
+        pattern:
+          spec:
+            =(hostPID): "false"
+    - name: deny-host-ipc
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: >-
+          Sharing the host IPC namespace is not allowed. Set spec.hostIPC to false.
+        pattern:
+          spec:
+            =(hostIPC): "false"
+    - name: deny-host-network
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - spire
+                - cilium
+      validate:
+        message: >-
+          Sharing the host network is not allowed. Set spec.hostNetwork to false.
+        pattern:
+          spec:
+            =(hostNetwork): "false"
+---
+# Block dangerous capabilities
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-dangerous-capabilities
+  labels:
+    app.kubernetes.io/name: disallow-dangerous-capabilities
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: critical
+  annotations:
+    policies.kyverno.io/title: Disallow Dangerous Capabilities
+    policies.kyverno.io/description: >-
+      Adding dangerous Linux capabilities to containers is not allowed.
+      These capabilities can be used to escape container isolation.
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: deny-dangerous-capabilities
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - cilium
+      validate:
+        message: >-
+          Adding dangerous capabilities is not allowed. Container {{element.name}}
+          is trying to add: {{element.securityContext.capabilities.add}}.
+          Prohibited capabilities: SYS_ADMIN, NET_ADMIN, SYS_PTRACE, DAC_OVERRIDE,
+          SETUID, SETGID, NET_RAW, SYS_RAWIO, MKNOD, AUDIT_WRITE, CHOWN, FOWNER,
+          FSETID, KILL, SETFCAP, SETPCAP, SYS_BOOT, SYS_CHROOT, SYS_MODULE, SYS_TIME.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: SYS_ADMIN
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: NET_ADMIN
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: SYS_PTRACE
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: DAC_OVERRIDE
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: SETUID
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: SETGID
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: NET_RAW
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: SYS_RAWIO
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: MKNOD
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: SYS_MODULE
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: SYS_BOOT
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+                  - key: SYS_CHROOT
+                    operator: AnyIn
+                    value: "{{ element.securityContext.capabilities.add || [] }}"
+---
+# =============================================================================
+# REQUIRE LABELS
+# Ensure all resources have required labels for governance
+# =============================================================================
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-labels
+  labels:
+    app.kubernetes.io/name: require-labels
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Governance
+    policies.kyverno.io/severity: medium
+  annotations:
+    policies.kyverno.io/title: Require Labels
+    policies.kyverno.io/description: >-
+      All pods, deployments, and services must have required labels for
+      proper resource management, cost allocation, and security policies.
+    policies.kyverno.io/subject: Pod, Deployment, Service
+    kyverno.io/kyverno-version: 1.10.0
+    kyverno.io/kubernetes-version: "1.26-1.29"
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-app-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+                - Service
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: >-
+          The label 'app.kubernetes.io/name' is required on all resources.
+        pattern:
+          metadata:
+            labels:
+              app.kubernetes.io/name: "?*"
+    - name: require-version-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: >-
+          The label 'app.kubernetes.io/version' is required on all workloads.
+        pattern:
+          metadata:
+            labels:
+              app.kubernetes.io/version: "?*"
+    - name: require-managed-by-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+                - Service
+                - ConfigMap
+                - Secret
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: >-
+          The label 'app.kubernetes.io/managed-by' is required to track resource ownership.
+        pattern:
+          metadata:
+            labels:
+              app.kubernetes.io/managed-by: "?*"
+    - name: require-owner-label
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - cert-manager
+                - spire
+                - monitoring
+      validate:
+        message: >-
+          The label 'mantl.io/owner' is required to identify the team responsible
+          for this workload.
+        pattern:
+          metadata:
+            labels:
+              mantl.io/owner: "?*"
+---
+# =============================================================================
+# ADDITIONAL SECURITY POLICIES
+# =============================================================================
+---
+# Disallow latest tag
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  labels:
+    app.kubernetes.io/name: disallow-latest-tag
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+  annotations:
+    policies.kyverno.io/title: Disallow Latest Tag
+    policies.kyverno.io/description: >-
+      Using the 'latest' tag for container images is not allowed.
+      Always use specific, immutable tags for reproducibility and security.
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-image-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: >-
+          Using the 'latest' tag is not allowed. Container {{element.name}}
+          has image {{element.image}}. Please use a specific version tag.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ element.image }}"
+                    operator: Equals
+                    value: "*:latest"
+                  - key: "{{ element.image | contains(@, ':') }}"
+                    operator: Equals
+                    value: false
+---
+# Require image pull policy
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-image-pull-policy
+  labels:
+    app.kubernetes.io/name: require-image-pull-policy
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: low
+  annotations:
+    policies.kyverno.io/title: Require Image Pull Policy
+    policies.kyverno.io/description: >-
+      Container image pull policy must be set to IfNotPresent or Always.
+      Never is not allowed as it can lead to using stale images.
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-image-pull-policy
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+      validate:
+        message: >-
+          Image pull policy must be IfNotPresent or Always. Container {{element.name}}
+          has imagePullPolicy: {{element.imagePullPolicy}}.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.imagePullPolicy || 'IfNotPresent' }}"
+                    operator: Equals
+                    value: Never
+---
+# Require probes for production workloads
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-probes
+  labels:
+    app.kubernetes.io/name: require-probes
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Reliability
+    policies.kyverno.io/severity: medium
+  annotations:
+    policies.kyverno.io/title: Require Health Probes
+    policies.kyverno.io/description: >-
+      Production workloads must have liveness and readiness probes configured
+      for proper health checking and load balancing.
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: require-liveness-probe
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - production
+                - prod
+      validate:
+        message: >-
+          Liveness probe is required for production workloads.
+          Container {{element.name}} is missing livenessProbe.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.livenessProbe || '' | length(@) }}"
+                    operator: Equals
+                    value: 0
+    - name: require-readiness-probe
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - production
+                - prod
+      validate:
+        message: >-
+          Readiness probe is required for production workloads.
+          Container {{element.name}} is missing readinessProbe.
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                all:
+                  - key: "{{ element.readinessProbe || '' | length(@) }}"
+                    operator: Equals
+                    value: 0
+---
+# Restrict volume types
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-volume-types
+  labels:
+    app.kubernetes.io/name: restrict-volume-types
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+  annotations:
+    policies.kyverno.io/title: Restrict Volume Types
+    policies.kyverno.io/description: >-
+      Only safe volume types are allowed. HostPath volumes are prohibited
+      as they can expose host filesystem to containers.
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: restrict-hostpath-volumes
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - spire
+                - cilium
+      validate:
+        message: >-
+          HostPath volumes are not allowed. Use PersistentVolumeClaims,
+          ConfigMaps, Secrets, or EmptyDir instead.
+        pattern:
+          spec:
+            =(volumes):
+              - X(hostPath): "null"
+---
+# Disallow default ServiceAccount
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-default-serviceaccount
+  labels:
+    app.kubernetes.io/name: disallow-default-serviceaccount
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: medium
+  annotations:
+    policies.kyverno.io/title: Disallow Default ServiceAccount
+    policies.kyverno.io/description: >-
+      Pods should not use the default ServiceAccount. Create dedicated
+      ServiceAccounts with appropriate RBAC permissions for each workload.
+    policies.kyverno.io/subject: Pod
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: validate-serviceaccount
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: >-
+          Using the 'default' ServiceAccount is not recommended.
+          Create a dedicated ServiceAccount for this workload.
+        pattern:
+          spec:
+            =(serviceAccountName): "!default"
+---
+# Require namespace quotas
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-namespace-quota
+  labels:
+    app.kubernetes.io/name: require-namespace-quota
+    app.kubernetes.io/part-of: mantl-security
+    policies.kyverno.io/category: Resource Management
+    policies.kyverno.io/severity: medium
+  annotations:
+    policies.kyverno.io/title: Require Namespace Resource Quota
+    policies.kyverno.io/description: >-
+      All non-system namespaces must have a ResourceQuota to prevent
+      resource exhaustion and ensure fair resource allocation.
+    policies.kyverno.io/subject: Namespace
+spec:
+  validationFailureAction: Audit
+  background: false
+  rules:
+    - name: generate-resource-quota
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              names:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - default
+                - kyverno
+                - cert-manager
+                - spire
+                - cilium
+      generate:
+        apiVersion: v1
+        kind: ResourceQuota
+        name: default-quota
+        namespace: "{{request.object.metadata.name}}"
+        synchronize: true
+        data:
+          spec:
+            hard:
+              requests.cpu: "10"
+              requests.memory: "20Gi"
+              limits.cpu: "20"
+              limits.memory: "40Gi"
+              pods: "100"
+              services: "50"
+              secrets: "100"
+              configmaps: "100"

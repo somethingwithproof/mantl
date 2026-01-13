@@ -1,0 +1,37 @@
+# Cilium Zero-Trust Security Kustomization
+# Network policies, mTLS, and microsegmentation
+# https://docs.cilium.io/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: cilium-zero-trust
+  labels:
+    app.kubernetes.io/name: cilium-zero-trust
+    app.kubernetes.io/part-of: mantl-platform
+
+namespace: kube-system
+
+resources:
+  - cilium-network-policies.yaml
+  - mtls-config.yaml
+
+# Helm chart for Cilium itself
+helmCharts:
+  - name: cilium
+    repo: https://helm.cilium.io
+    version: 1.15.0
+    releaseName: cilium
+    namespace: kube-system
+    valuesFile: cilium-values.yaml
+    includeCRDs: true
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  platform.mantl.io/component: cilium
+  security.mantl.io/zero-trust: "true"
+
+# Common annotations for all resources
+commonAnnotations:
+  mantl.io/security-component: "zero-trust-networking"
+  mantl.io/documentation: "https://docs.cilium.io/en/stable/"

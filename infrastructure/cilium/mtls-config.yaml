@@ -1,0 +1,781 @@
+# Cilium mTLS Configuration for Zero-Trust Service-to-Service Authentication
+# Implements automatic mutual TLS between services with certificate rotation
+# https://docs.cilium.io/en/stable/network/servicemesh/mutual-tls/
+---
+# =============================================================================
+# CERT-MANAGER CONFIGURATION
+# Required for automatic certificate management
+# =============================================================================
+---
+# ClusterIssuer for internal CA
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: mantl-internal-ca-issuer
+  labels:
+    app.kubernetes.io/name: mantl-internal-ca-issuer
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: pki
+spec:
+  selfSigned: {}
+---
+# Root CA Certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mantl-root-ca
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: mantl-root-ca
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: pki
+spec:
+  isCA: true
+  commonName: mantl-root-ca
+  secretName: mantl-root-ca-secret
+  duration: 87600h  # 10 years
+  renewBefore: 8760h  # 1 year before expiry
+  privateKey:
+    algorithm: ECDSA
+    size: 384
+  issuerRef:
+    name: mantl-internal-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  subject:
+    organizations:
+      - Mantl Platform
+    organizationalUnits:
+      - Security
+---
+# Intermediate CA for service mesh
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: mantl-mesh-ca-issuer
+  labels:
+    app.kubernetes.io/name: mantl-mesh-ca-issuer
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: pki
+spec:
+  ca:
+    secretName: mantl-root-ca-secret
+---
+# Intermediate CA Certificate for mTLS
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: mantl-mtls-intermediate-ca
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: mantl-mtls-intermediate-ca
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: pki
+spec:
+  isCA: true
+  commonName: mantl-mtls-intermediate-ca
+  secretName: mantl-mtls-ca-secret
+  duration: 8760h  # 1 year
+  renewBefore: 720h  # 30 days before expiry
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: mantl-mesh-ca-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+  subject:
+    organizations:
+      - Mantl Platform
+    organizationalUnits:
+      - Service Mesh
+  usages:
+    - digital signature
+    - key encipherment
+    - cert sign
+    - crl sign
+---
+# ClusterIssuer using the intermediate CA for service certificates
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: mantl-service-mtls-issuer
+  labels:
+    app.kubernetes.io/name: mantl-service-mtls-issuer
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: pki
+spec:
+  ca:
+    secretName: mantl-mtls-ca-secret
+---
+# =============================================================================
+# CILIUM MUTUAL AUTHENTICATION CONFIGURATION
+# Enable automatic mTLS for all services
+# =============================================================================
+---
+# ConfigMap for Cilium mTLS settings
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cilium-mtls-config
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: cilium-mtls-config
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: mtls
+data:
+  # Enable mutual authentication
+  enable-mutual-auth: "true"
+  # Authentication mode: required (strict) or optional (permissive)
+  mutual-auth-mode: "required"
+  # Certificate rotation interval
+  cert-rotation-interval: "24h"
+  # Certificate validity duration
+  cert-validity-duration: "168h"  # 7 days
+  # Enable SPIFFE/SPIRE integration
+  enable-spiffe: "true"
+  # SPIFFE trust domain
+  spiffe-trust-domain: "mantl.local"
+---
+# =============================================================================
+# SPIFFE/SPIRE CONFIGURATION
+# Workload identity for zero-trust
+# =============================================================================
+---
+# Namespace for SPIRE
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spire
+  labels:
+    app.kubernetes.io/name: spire
+    app.kubernetes.io/part-of: mantl-security
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+# SPIRE Server ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spire-server
+  namespace: spire
+  labels:
+    app.kubernetes.io/name: spire-server
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: spire
+data:
+  server.conf: |
+    server {
+      bind_address = "0.0.0.0"
+      bind_port = "8081"
+      socket_path = "/tmp/spire-server/private/api.sock"
+      trust_domain = "mantl.local"
+      data_dir = "/run/spire/data"
+      log_level = "INFO"
+      ca_key_type = "ec-p256"
+      ca_ttl = "168h"
+      default_x509_svid_ttl = "4h"
+      default_jwt_svid_ttl = "1h"
+
+      ca_subject {
+        country = ["US"]
+        organization = ["Mantl Platform"]
+        common_name = "SPIRE Server CA"
+      }
+    }
+
+    plugins {
+      DataStore "sql" {
+        plugin_data {
+          database_type = "sqlite3"
+          connection_string = "/run/spire/data/datastore.sqlite3"
+        }
+      }
+
+      NodeAttestor "k8s_psat" {
+        plugin_data {
+          clusters = {
+            "mantl-cluster" = {
+              service_account_allow_list = ["spire:spire-agent"]
+            }
+          }
+        }
+      }
+
+      KeyManager "disk" {
+        plugin_data {
+          keys_path = "/run/spire/data/keys.json"
+        }
+      }
+
+      Notifier "k8sbundle" {
+        plugin_data {
+          namespace = "spire"
+          config_map = "spire-bundle"
+        }
+      }
+    }
+
+    health_checks {
+      listener_enabled = true
+      bind_address = "0.0.0.0"
+      bind_port = "8080"
+      live_path = "/live"
+      ready_path = "/ready"
+    }
+---
+# SPIRE Agent ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spire-agent
+  namespace: spire
+  labels:
+    app.kubernetes.io/name: spire-agent
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: spire
+data:
+  agent.conf: |
+    agent {
+      data_dir = "/run/spire"
+      log_level = "INFO"
+      server_address = "spire-server"
+      server_port = "8081"
+      socket_path = "/run/spire/sockets/agent.sock"
+      trust_bundle_path = "/run/spire/bundle/bundle.crt"
+      trust_domain = "mantl.local"
+    }
+
+    plugins {
+      NodeAttestor "k8s_psat" {
+        plugin_data {
+          cluster = "mantl-cluster"
+        }
+      }
+
+      KeyManager "memory" {
+        plugin_data {}
+      }
+
+      WorkloadAttestor "k8s" {
+        plugin_data {
+          skip_kubelet_verification = true
+        }
+      }
+    }
+
+    health_checks {
+      listener_enabled = true
+      bind_address = "0.0.0.0"
+      bind_port = "8080"
+      live_path = "/live"
+      ready_path = "/ready"
+    }
+---
+# SPIRE Server StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: spire-server
+  namespace: spire
+  labels:
+    app.kubernetes.io/name: spire-server
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: spire
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: spire-server
+  serviceName: spire-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: spire-server
+        app.kubernetes.io/part-of: mantl-security
+        app.kubernetes.io/component: spire
+    spec:
+      serviceAccountName: spire-server
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: spire-server
+          image: ghcr.io/spiffe/spire-server:1.9.0
+          args:
+            - -config
+            - /run/spire/config/server.conf
+          ports:
+            - containerPort: 8081
+              name: grpc
+              protocol: TCP
+            - containerPort: 8080
+              name: health
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 60
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: spire-config
+              mountPath: /run/spire/config
+              readOnly: true
+            - name: spire-data
+              mountPath: /run/spire/data
+            - name: spire-server-socket
+              mountPath: /tmp/spire-server/private
+      volumes:
+        - name: spire-config
+          configMap:
+            name: spire-server
+        - name: spire-server-socket
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: spire-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+---
+# SPIRE Server Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: spire-server
+  namespace: spire
+  labels:
+    app.kubernetes.io/name: spire-server
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: spire
+spec:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 8081
+      targetPort: 8081
+      protocol: TCP
+    - name: health
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: spire-server
+---
+# SPIRE Agent DaemonSet
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: spire-agent
+  namespace: spire
+  labels:
+    app.kubernetes.io/name: spire-agent
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: spire
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: spire-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: spire-agent
+        app.kubernetes.io/part-of: mantl-security
+        app.kubernetes.io/component: spire
+    spec:
+      hostPID: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: spire-agent
+      containers:
+        - name: spire-agent
+          image: ghcr.io/spiffe/spire-agent:1.9.0
+          args:
+            - -config
+            - /run/spire/config/agent.conf
+          securityContext:
+            privileged: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - containerPort: 8080
+              name: health
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 60
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          volumeMounts:
+            - name: spire-config
+              mountPath: /run/spire/config
+              readOnly: true
+            - name: spire-bundle
+              mountPath: /run/spire/bundle
+              readOnly: true
+            - name: spire-agent-socket
+              mountPath: /run/spire/sockets
+            - name: spire-token
+              mountPath: /var/run/secrets/tokens
+      volumes:
+        - name: spire-config
+          configMap:
+            name: spire-agent
+        - name: spire-bundle
+          configMap:
+            name: spire-bundle
+            optional: true
+        - name: spire-agent-socket
+          hostPath:
+            path: /run/spire/sockets
+            type: DirectoryOrCreate
+        - name: spire-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: spire-agent
+                  expirationSeconds: 7200
+                  audience: spire-server
+---
+# SPIRE Server ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spire-server
+  namespace: spire
+  labels:
+    app.kubernetes.io/name: spire-server
+    app.kubernetes.io/part-of: mantl-security
+---
+# SPIRE Agent ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spire-agent
+  namespace: spire
+  labels:
+    app.kubernetes.io/name: spire-agent
+    app.kubernetes.io/part-of: mantl-security
+---
+# SPIRE Server ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: spire-server-cluster-role
+  labels:
+    app.kubernetes.io/name: spire-server
+    app.kubernetes.io/part-of: mantl-security
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+---
+# SPIRE Server ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: spire-server-cluster-role-binding
+  labels:
+    app.kubernetes.io/name: spire-server
+    app.kubernetes.io/part-of: mantl-security
+subjects:
+  - kind: ServiceAccount
+    name: spire-server
+    namespace: spire
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: spire-server-cluster-role
+---
+# SPIRE Agent ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: spire-agent-cluster-role
+  labels:
+    app.kubernetes.io/name: spire-agent
+    app.kubernetes.io/part-of: mantl-security
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "nodes/proxy"]
+    verbs: ["get"]
+---
+# SPIRE Agent ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: spire-agent-cluster-role-binding
+  labels:
+    app.kubernetes.io/name: spire-agent
+    app.kubernetes.io/part-of: mantl-security
+subjects:
+  - kind: ServiceAccount
+    name: spire-agent
+    namespace: spire
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: spire-agent-cluster-role
+---
+# =============================================================================
+# CILIUM MUTUAL AUTHENTICATION POLICIES
+# Enable mTLS enforcement through Cilium
+# =============================================================================
+---
+# CiliumNetworkPolicy to enforce mTLS for all inter-service traffic
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: enforce-mtls-cluster
+  labels:
+    policy-type: mtls
+    scope: cluster
+    app.kubernetes.io/name: enforce-mtls-cluster
+    app.kubernetes.io/part-of: mantl-security
+spec:
+  description: "Enforce mTLS for all cluster-internal traffic"
+  endpointSelector: {}
+  ingress:
+    - fromEntities:
+        - cluster
+      authentication:
+        mode: required
+  egress:
+    - toEntities:
+        - cluster
+      authentication:
+        mode: required
+---
+# Certificate policy for automatic service certificate provisioning
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: service-mtls-template
+  namespace: default
+  labels:
+    app.kubernetes.io/name: service-mtls-template
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: pki
+  annotations:
+    mantl.io/description: "Template for service mTLS certificates"
+spec:
+  secretName: service-mtls-cert
+  duration: 24h
+  renewBefore: 4h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  dnsNames:
+    - "*.default.svc.cluster.local"
+    - "*.default.svc"
+    - "*.default"
+  issuerRef:
+    name: mantl-service-mtls-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# =============================================================================
+# SERVICE MESH GATEWAY mTLS
+# Gateway-level certificate configuration
+# =============================================================================
+---
+# Gateway mTLS certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: gateway-mtls-cert
+  namespace: istio-system
+  labels:
+    app.kubernetes.io/name: gateway-mtls-cert
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: pki
+spec:
+  secretName: gateway-mtls-secret
+  duration: 2160h  # 90 days
+  renewBefore: 720h  # 30 days
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  dnsNames:
+    - "*.mantl.local"
+    - "gateway.mantl.local"
+    - "api.mantl.local"
+  issuerRef:
+    name: mantl-service-mtls-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+# =============================================================================
+# CERTIFICATE ROTATION CRONJOB
+# Automated certificate health checks and rotation triggers
+# =============================================================================
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cert-rotation-check
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-rotation-check
+    app.kubernetes.io/part-of: mantl-security
+    app.kubernetes.io/component: pki
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: cert-rotation-check
+        spec:
+          serviceAccountName: cert-rotation-checker
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: cert-checker
+              image: bitnami/kubectl:1.29
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  #!/bin/sh
+                  set -e
+                  echo "Checking certificate expiration..."
+
+                  # Get all certificates and check expiration
+                  kubectl get certificates --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}: {.status.notAfter}{"\n"}{end}' | while read line; do
+                    echo "Certificate: $line"
+                  done
+
+                  # Check for certificates expiring within 7 days
+                  EXPIRING=$(kubectl get certificates --all-namespaces -o json | jq -r '.items[] | select(.status.notAfter != null) | select(((.status.notAfter | fromdateiso8601) - now) < 604800) | "\(.metadata.namespace)/\(.metadata.name)"')
+
+                  if [ -n "$EXPIRING" ]; then
+                    echo "WARNING: The following certificates are expiring within 7 days:"
+                    echo "$EXPIRING"
+                  else
+                    echo "All certificates are healthy."
+                  fi
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 100m
+                  memory: 128Mi
+          restartPolicy: OnFailure
+---
+# ServiceAccount for cert rotation checker
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-rotation-checker
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: cert-rotation-checker
+    app.kubernetes.io/part-of: mantl-security
+---
+# ClusterRole for reading certificates
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cert-rotation-checker
+  labels:
+    app.kubernetes.io/name: cert-rotation-checker
+    app.kubernetes.io/part-of: mantl-security
+rules:
+  - apiGroups: ["cert-manager.io"]
+    resources: ["certificates"]
+    verbs: ["get", "list"]
+---
+# ClusterRoleBinding for cert rotation checker
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cert-rotation-checker
+  labels:
+    app.kubernetes.io/name: cert-rotation-checker
+    app.kubernetes.io/part-of: mantl-security
+subjects:
+  - kind: ServiceAccount
+    name: cert-rotation-checker
+    namespace: cert-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cert-rotation-checker

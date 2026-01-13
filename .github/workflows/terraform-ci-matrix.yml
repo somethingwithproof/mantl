@@ -1,4 +1,4 @@
-name: Terraform CI
+name: OpenTofu CI
 
 permissions:
   contents: read
@@ -6,7 +6,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: terraform-ci-${{ github.ref }}
+  group: opentofu-ci-${{ github.ref }}
   cancel-in-progress: true
 
 on:
@@ -28,14 +28,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: '~1.9'
-      - name: Terraform fmt (repo)
-        run: terraform fmt -check -recursive
+          tofu_version: '1.8.0'
+      - name: OpenTofu fmt (repo)
+        run: tofu fmt -check -recursive
 
-  terraform:
-    name: Terraform validate (${{ matrix.path }})
+  opentofu:
+    name: OpenTofu validate (${{ matrix.path }})
     runs-on: ubuntu-latest
     if: ${{ hashFiles(format('{0}/**/*.tf', matrix.path)) != '' }}
     strategy:
@@ -56,19 +56,19 @@ jobs:
         working-directory: ${{ matrix.path }}
     steps:
       - uses: actions/checkout@v4
-      - name: Terraform plugin cache
+      - name: OpenTofu plugin cache
         run: echo "plugin_cache_dir=$HOME/.terraform.d/plugin-cache" >> $GITHUB_ENV
       - uses: actions/cache@v4
         with:
           path: ~/.terraform.d/plugin-cache
-          key: ${{ runner.os }}-tf-${{ hashFiles(format('{0}/**/*.tf', matrix.path)) }}
-      - uses: hashicorp/setup-terraform@v3
+          key: ${{ runner.os }}-tofu-${{ hashFiles(format('{0}/**/*.tf', matrix.path)) }}
+      - uses: opentofu/setup-opentofu@v1
         with:
-          terraform_version: '~1.9'
+          tofu_version: '1.8.0'
       - name: Init
-        run: terraform init -backend=false -input=false
+        run: tofu init -backend=false -input=false
       - name: Validate
-        run: terraform validate
+        run: tofu validate
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@v4
       - name: Cache TFLint plugins
