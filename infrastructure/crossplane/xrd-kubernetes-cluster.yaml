@@ -1,0 +1,574 @@
+# Crossplane Composite Resource Definition (XRD) for Kubernetes Clusters
+# Provides a cloud-agnostic interface for managed Kubernetes provisioning
+# https://docs.crossplane.io/latest/concepts/composite-resource-definitions/
+
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xkubernetesclusters.infrastructure.mantl.io
+  labels:
+    app.kubernetes.io/name: xrd-kubernetes-cluster
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  group: infrastructure.mantl.io
+  names:
+    kind: XKubernetesCluster
+    plural: xkubernetesclusters
+  claimNames:
+    kind: KubernetesCluster
+    plural: kubernetesclusters
+  connectionSecretKeys:
+    - kubeconfig
+    - endpoint
+    - ca-certificate
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - provider
+                - region
+              properties:
+                provider:
+                  type: string
+                  description: Cloud provider (aws, gcp, azure)
+                  enum:
+                    - aws
+                    - gcp
+                    - azure
+                region:
+                  type: string
+                  description: Cloud region for the cluster
+                kubernetesVersion:
+                  type: string
+                  description: Kubernetes version
+                  default: "1.31"
+                nodeGroups:
+                  type: array
+                  description: Node groups configuration
+                  items:
+                    type: object
+                    required:
+                      - name
+                      - instanceType
+                    properties:
+                      name:
+                        type: string
+                        description: Name of the node group
+                      instanceType:
+                        type: string
+                        description: Instance type for nodes
+                        default: t3.medium
+                      minSize:
+                        type: integer
+                        description: Minimum number of nodes
+                        minimum: 0
+                        default: 1
+                      maxSize:
+                        type: integer
+                        description: Maximum number of nodes
+                        minimum: 1
+                        default: 10
+                      desiredSize:
+                        type: integer
+                        description: Desired number of nodes
+                        minimum: 1
+                        default: 2
+                      diskSizeGB:
+                        type: integer
+                        description: Disk size in GB
+                        minimum: 20
+                        default: 100
+                      labels:
+                        type: object
+                        additionalProperties:
+                          type: string
+                      taints:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                            value:
+                              type: string
+                            effect:
+                              type: string
+                              enum:
+                                - NoSchedule
+                                - PreferNoSchedule
+                                - NoExecute
+                  default:
+                    - name: default
+                      instanceType: t3.medium
+                      minSize: 2
+                      maxSize: 10
+                      desiredSize: 3
+                      diskSizeGB: 100
+                enablePrivateEndpoint:
+                  type: boolean
+                  description: Enable private API endpoint
+                  default: true
+                enablePublicEndpoint:
+                  type: boolean
+                  description: Enable public API endpoint
+                  default: false
+                publicAccessCidrs:
+                  type: array
+                  description: CIDR blocks for public API access
+                  items:
+                    type: string
+                  default: []
+                enableLogging:
+                  type: boolean
+                  description: Enable control plane logging
+                  default: true
+                logTypes:
+                  type: array
+                  description: Types of logs to enable
+                  items:
+                    type: string
+                  default:
+                    - api
+                    - audit
+                    - authenticator
+                    - controllerManager
+                    - scheduler
+                enableSecretEncryption:
+                  type: boolean
+                  description: Enable encryption of secrets at rest
+                  default: true
+                addons:
+                  type: object
+                  description: Cluster addons configuration
+                  properties:
+                    vpcCni:
+                      type: boolean
+                      default: true
+                    coreDns:
+                      type: boolean
+                      default: true
+                    kubeProxy:
+                      type: boolean
+                      default: true
+                    ebsCsiDriver:
+                      type: boolean
+                      default: true
+                    podIdentityAgent:
+                      type: boolean
+                      default: true
+                networkRef:
+                  type: object
+                  description: Reference to network for cluster placement
+                  properties:
+                    name:
+                      type: string
+                deletionPolicy:
+                  type: string
+                  description: Deletion policy for resources
+                  enum:
+                    - Delete
+                    - Orphan
+                  default: Delete
+            status:
+              type: object
+              properties:
+                endpoint:
+                  type: string
+                  description: Cluster API endpoint
+                certificateAuthority:
+                  type: string
+                  description: Cluster CA certificate
+                state:
+                  type: string
+                  description: Current state of the cluster
+                oidcIssuer:
+                  type: string
+                  description: OIDC issuer URL for IRSA
+---
+# Composition for AWS EKS
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xkubernetescluster-aws-eks
+  labels:
+    provider: aws
+    app.kubernetes.io/name: composition-kubernetes-cluster-aws-eks
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  compositeTypeRef:
+    apiVersion: infrastructure.mantl.io/v1alpha1
+    kind: XKubernetesCluster
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: cluster-role
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: Role
+              metadata:
+                labels:
+                  role: cluster
+              spec:
+                forProvider:
+                  assumeRolePolicy: |
+                    {
+                      "Version": "2012-10-17",
+                      "Statement": [
+                        {
+                          "Effect": "Allow",
+                          "Principal": {
+                            "Service": "eks.amazonaws.com"
+                          },
+                          "Action": "sts:AssumeRole"
+                        }
+                      ]
+                    }
+                  tags:
+                    Name: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-cluster-role"
+
+          - name: cluster-role-policy-attachment
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+                  roleSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      role: cluster
+
+          - name: cluster-role-vpc-policy-attachment
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
+                  roleSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      role: cluster
+
+          - name: node-role
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: Role
+              metadata:
+                labels:
+                  role: nodegroup
+              spec:
+                forProvider:
+                  assumeRolePolicy: |
+                    {
+                      "Version": "2012-10-17",
+                      "Statement": [
+                        {
+                          "Effect": "Allow",
+                          "Principal": {
+                            "Service": "ec2.amazonaws.com"
+                          },
+                          "Action": "sts:AssumeRole"
+                        }
+                      ]
+                    }
+                  tags:
+                    Name: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-node-role"
+
+          - name: node-role-worker-policy
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+                  roleSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      role: nodegroup
+
+          - name: node-role-cni-policy
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+                  roleSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      role: nodegroup
+
+          - name: node-role-ecr-policy
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+                  roleSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      role: nodegroup
+
+          - name: node-role-ssm-policy
+            base:
+              apiVersion: iam.aws.upbound.io/v1beta1
+              kind: RolePolicyAttachment
+              spec:
+                forProvider:
+                  policyArn: "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+                  roleSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      role: nodegroup
+
+          - name: eks-cluster
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta2
+              kind: Cluster
+              spec:
+                forProvider:
+                  roleArnSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      role: cluster
+                  vpcConfig:
+                    - endpointPrivateAccess: true
+                      endpointPublicAccess: false
+                      subnetIdSelector:
+                        matchLabels:
+                          access: private
+                  accessConfig:
+                    - authenticationMode: API_AND_CONFIG_MAP
+                      bootstrapClusterCreatorAdminPermissions: true
+                  tags:
+                    Name: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.kubernetesVersion
+                toFieldPath: spec.forProvider.version
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.enablePrivateEndpoint
+                toFieldPath: spec.forProvider.vpcConfig[0].endpointPrivateAccess
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.enablePublicEndpoint
+                toFieldPath: spec.forProvider.vpcConfig[0].endpointPublicAccess
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.publicAccessCidrs
+                toFieldPath: spec.forProvider.vpcConfig[0].publicAccessCidrs
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.enableLogging
+                toFieldPath: spec.forProvider.enabledClusterLogTypes
+                transforms:
+                  - type: convert
+                    convert:
+                      toType: string
+                  - type: map
+                    map:
+                      "true": "api,audit,authenticator,controllerManager,scheduler"
+                      "false": ""
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Name
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.endpoint
+                toFieldPath: status.endpoint
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.certificateAuthority[0].data
+                toFieldPath: status.certificateAuthority
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.identity[0].oidc[0].issuer
+                toFieldPath: status.oidcIssuer
+            connectionDetails:
+              - name: endpoint
+                fromFieldPath: status.atProvider.endpoint
+              - name: ca-certificate
+                fromFieldPath: status.atProvider.certificateAuthority[0].data
+
+          - name: eks-nodegroup-default
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta2
+              kind: NodeGroup
+              spec:
+                forProvider:
+                  clusterNameSelector:
+                    matchControllerRef: true
+                  nodeRoleArnSelector:
+                    matchControllerRef: true
+                    matchLabels:
+                      role: nodegroup
+                  subnetIdSelector:
+                    matchLabels:
+                      access: private
+                  scalingConfig:
+                    - minSize: 2
+                      maxSize: 10
+                      desiredSize: 3
+                  updateConfig:
+                    - maxUnavailable: 1
+                  capacityType: ON_DEMAND
+                  amiType: AL2023_x86_64_STANDARD
+                  tags:
+                    Name: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.nodeGroups[0].instanceType
+                toFieldPath: spec.forProvider.instanceTypes[0]
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.nodeGroups[0].minSize
+                toFieldPath: spec.forProvider.scalingConfig[0].minSize
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.nodeGroups[0].maxSize
+                toFieldPath: spec.forProvider.scalingConfig[0].maxSize
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.nodeGroups[0].desiredSize
+                toFieldPath: spec.forProvider.scalingConfig[0].desiredSize
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.nodeGroups[0].diskSizeGB
+                toFieldPath: spec.forProvider.diskSize
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-nodegroup-default"
+
+          - name: eks-addon-vpc-cni
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: Addon
+              metadata:
+                labels:
+                  addon: vpc-cni
+              spec:
+                forProvider:
+                  addonName: vpc-cni
+                  clusterNameSelector:
+                    matchControllerRef: true
+                  resolveConflictsOnCreate: OVERWRITE
+                  resolveConflictsOnUpdate: PRESERVE
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+
+          - name: eks-addon-coredns
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: Addon
+              metadata:
+                labels:
+                  addon: coredns
+              spec:
+                forProvider:
+                  addonName: coredns
+                  clusterNameSelector:
+                    matchControllerRef: true
+                  resolveConflictsOnCreate: OVERWRITE
+                  resolveConflictsOnUpdate: PRESERVE
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+
+          - name: eks-addon-kube-proxy
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: Addon
+              metadata:
+                labels:
+                  addon: kube-proxy
+              spec:
+                forProvider:
+                  addonName: kube-proxy
+                  clusterNameSelector:
+                    matchControllerRef: true
+                  resolveConflictsOnCreate: OVERWRITE
+                  resolveConflictsOnUpdate: PRESERVE
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+
+          - name: eks-addon-ebs-csi
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: Addon
+              metadata:
+                labels:
+                  addon: ebs-csi
+              spec:
+                forProvider:
+                  addonName: aws-ebs-csi-driver
+                  clusterNameSelector:
+                    matchControllerRef: true
+                  resolveConflictsOnCreate: OVERWRITE
+                  resolveConflictsOnUpdate: PRESERVE
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+
+          - name: eks-addon-pod-identity
+            base:
+              apiVersion: eks.aws.upbound.io/v1beta1
+              kind: Addon
+              metadata:
+                labels:
+                  addon: pod-identity
+              spec:
+                forProvider:
+                  addonName: eks-pod-identity-agent
+                  clusterNameSelector:
+                    matchControllerRef: true
+                  resolveConflictsOnCreate: OVERWRITE
+                  resolveConflictsOnUpdate: PRESERVE
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

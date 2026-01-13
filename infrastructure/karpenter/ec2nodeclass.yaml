@@ -1,0 +1,330 @@
+# Karpenter EC2NodeClass Configurations
+# Defines AWS-specific node configurations
+# https://karpenter.sh/docs/concepts/nodeclasses/
+
+---
+# Default EC2NodeClass for general workloads
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+  labels:
+    app.kubernetes.io/name: ec2nodeclass-default
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  # AMI configuration - use Amazon Linux 2023 EKS optimized
+  amiSelectorTerms:
+    - alias: al2023@latest
+
+  # Subnet discovery
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+        kubernetes.io/role/internal-elb: "1"
+
+  # Security group discovery
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+
+  # IAM Instance Profile
+  instanceProfile: "KarpenterNodeInstanceProfile-${CLUSTER_NAME}"
+
+  # Block device mappings
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 100Gi
+        volumeType: gp3
+        iops: 3000
+        throughput: 125
+        encrypted: true
+        deleteOnTermination: true
+
+  # Instance metadata options (IMDS v2 required for security)
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1
+    httpTokens: required  # Enforce IMDSv2
+
+  # User data for node customization
+  userData: |
+    #!/bin/bash
+    set -ex
+
+    # Configure containerd
+    cat <<EOF > /etc/containerd/config.toml
+    version = 2
+    [plugins."io.containerd.grpc.v1.cri"]
+      sandbox_image = "602401143452.dkr.ecr.${AWS_REGION}.amazonaws.com/eks/pause:3.5"
+      [plugins."io.containerd.grpc.v1.cri".containerd]
+        default_runtime_name = "runc"
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+          runtime_type = "io.containerd.runc.v2"
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+            SystemdCgroup = true
+    EOF
+
+    # Configure kubelet
+    cat <<EOF > /etc/kubernetes/kubelet/kubelet-config.json
+    {
+      "kind": "KubeletConfiguration",
+      "apiVersion": "kubelet.config.k8s.io/v1beta1",
+      "imageGCHighThresholdPercent": 85,
+      "imageGCLowThresholdPercent": 80,
+      "evictionHard": {
+        "memory.available": "100Mi",
+        "nodefs.available": "10%",
+        "nodefs.inodesFree": "5%"
+      },
+      "evictionSoft": {
+        "memory.available": "200Mi",
+        "nodefs.available": "15%"
+      },
+      "evictionSoftGracePeriod": {
+        "memory.available": "1m",
+        "nodefs.available": "1m"
+      },
+      "kubeReserved": {
+        "cpu": "100m",
+        "memory": "256Mi",
+        "ephemeral-storage": "1Gi"
+      },
+      "systemReserved": {
+        "cpu": "100m",
+        "memory": "256Mi",
+        "ephemeral-storage": "1Gi"
+      },
+      "maxPods": 110
+    }
+    EOF
+
+  # Tags for provisioned instances
+  tags:
+    Name: "karpenter-${CLUSTER_NAME}-default"
+    Environment: production
+    ManagedBy: karpenter
+    Platform: mantl
+---
+# EC2NodeClass for compute-optimized workloads
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: compute-optimized
+  labels:
+    app.kubernetes.io/name: ec2nodeclass-compute-optimized
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  amiSelectorTerms:
+    - alias: al2023@latest
+
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+        kubernetes.io/role/internal-elb: "1"
+
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+
+  instanceProfile: "KarpenterNodeInstanceProfile-${CLUSTER_NAME}"
+
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 200Gi
+        volumeType: gp3
+        iops: 6000
+        throughput: 250
+        encrypted: true
+        deleteOnTermination: true
+
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1
+    httpTokens: required
+
+  # Detailed monitoring for compute workloads
+  detailedMonitoring: true
+
+  tags:
+    Name: "karpenter-${CLUSTER_NAME}-compute"
+    Environment: production
+    ManagedBy: karpenter
+    Platform: mantl
+    WorkloadType: compute
+---
+# EC2NodeClass for memory-optimized workloads
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: memory-optimized
+  labels:
+    app.kubernetes.io/name: ec2nodeclass-memory-optimized
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  amiSelectorTerms:
+    - alias: al2023@latest
+
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+        kubernetes.io/role/internal-elb: "1"
+
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+
+  instanceProfile: "KarpenterNodeInstanceProfile-${CLUSTER_NAME}"
+
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 200Gi
+        volumeType: gp3
+        iops: 6000
+        throughput: 250
+        encrypted: true
+        deleteOnTermination: true
+
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1
+    httpTokens: required
+
+  detailedMonitoring: true
+
+  tags:
+    Name: "karpenter-${CLUSTER_NAME}-memory"
+    Environment: production
+    ManagedBy: karpenter
+    Platform: mantl
+    WorkloadType: memory
+---
+# EC2NodeClass for GPU workloads
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: gpu
+  labels:
+    app.kubernetes.io/name: ec2nodeclass-gpu
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  # Use NVIDIA GPU-optimized AMI
+  amiSelectorTerms:
+    - alias: al2023@latest  # AL2023 with GPU support
+
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+        kubernetes.io/role/internal-elb: "1"
+
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+
+  instanceProfile: "KarpenterNodeInstanceProfile-${CLUSTER_NAME}"
+
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 500Gi  # Larger disk for GPU workloads
+        volumeType: gp3
+        iops: 10000
+        throughput: 500
+        encrypted: true
+        deleteOnTermination: true
+
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1
+    httpTokens: required
+
+  detailedMonitoring: true
+
+  # Install NVIDIA device plugin
+  userData: |
+    #!/bin/bash
+    set -ex
+
+    # Install NVIDIA drivers if not present
+    if ! command -v nvidia-smi &> /dev/null; then
+      yum install -y nvidia-driver-latest-dkms
+    fi
+
+    # Configure nvidia-container-runtime
+    cat <<EOF > /etc/nvidia-container-runtime/config.toml
+    disable-require = false
+    [nvidia-container-cli]
+    environment = []
+    EOF
+
+    # Configure containerd for GPU
+    cat <<EOF > /etc/containerd/config.toml
+    version = 2
+    [plugins."io.containerd.grpc.v1.cri"]
+      [plugins."io.containerd.grpc.v1.cri".containerd]
+        default_runtime_name = "nvidia"
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+          runtime_type = "io.containerd.runc.v2"
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
+            BinaryName = "/usr/bin/nvidia-container-runtime"
+            SystemdCgroup = true
+    EOF
+
+  tags:
+    Name: "karpenter-${CLUSTER_NAME}-gpu"
+    Environment: production
+    ManagedBy: karpenter
+    Platform: mantl
+    WorkloadType: gpu
+---
+# EC2NodeClass for ARM64 (Graviton) workloads
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: graviton
+  labels:
+    app.kubernetes.io/name: ec2nodeclass-graviton
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  amiSelectorTerms:
+    - alias: al2023@latest
+
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+        kubernetes.io/role/internal-elb: "1"
+
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "${CLUSTER_NAME}"
+
+  instanceProfile: "KarpenterNodeInstanceProfile-${CLUSTER_NAME}"
+
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 100Gi
+        volumeType: gp3
+        iops: 3000
+        throughput: 125
+        encrypted: true
+        deleteOnTermination: true
+
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1
+    httpTokens: required
+
+  tags:
+    Name: "karpenter-${CLUSTER_NAME}-graviton"
+    Environment: production
+    ManagedBy: karpenter
+    Platform: mantl
+    Architecture: arm64

@@ -76,6 +76,10 @@ kubectl apply -f compliance/frameworks/soc2/profile-standard.yaml
 │  │Prometheus │ │   Loki    │ │   Tempo   │ │ OpenTelemetry │  │
 │  │ Metrics   │ │   Logs    │ │  Traces   │ │   Collector   │  │
 │  └───────────┘ └───────────┘ └───────────┘ └───────────────┘  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                    Tetragon (eBPF)                         │  │
+│  │            Runtime Security Observability                  │  │
+│  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────────┐
@@ -89,8 +93,8 @@ kubectl apply -f compliance/frameworks/soc2/profile-standard.yaml
 ┌─────────────────────────────────────────────────────────────────┐
 │                       Infrastructure                              │
 │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────────┐  │
-│  │  Cilium   │ │ OpenTofu  │ │External  │ │  Kubernetes   │  │
-│  │   CNI     │ │   IaC     │ │   DNS    │ │  EKS/GKE/AKS  │  │
+│  │  Cilium   │ │Crossplane │ │ Karpenter │ │  Kubernetes   │  │
+│  │   CNI     │ │   IaC     │ │ Autoscale │ │  EKS/GKE/AKS  │  │
 │  └───────────┘ └───────────┘ └───────────┘ └───────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -159,6 +163,100 @@ The Terraform modules under `terraform/` are being modernized with security-focu
 
 See module READMEs for details and examples.
 
+## Modern Kubernetes Infrastructure
+
+Mantl includes production-ready configurations for modern Kubernetes infrastructure management:
+
+### Crossplane - Multi-Cloud Infrastructure as Code
+
+Crossplane enables declarative infrastructure provisioning across AWS, GCP, and Azure using Kubernetes-native APIs.
+
+**Features:**
+- Multi-cloud provider support (AWS, GCP, Azure)
+- Composite Resource Definitions (XRDs) for abstracted infrastructure
+- Pre-built compositions for networks, databases, and Kubernetes clusters
+- GitOps-native infrastructure management
+
+**Example - Provision a VPC:**
+```yaml
+apiVersion: infrastructure.mantl.io/v1alpha1
+kind: Network
+metadata:
+  name: production-vpc
+spec:
+  provider: aws
+  region: us-west-2
+  cidrBlock: "10.0.0.0/16"
+  enableNatGateway: true
+  availabilityZones: 3
+```
+
+**Example - Provision a Database:**
+```yaml
+apiVersion: infrastructure.mantl.io/v1alpha1
+kind: Database
+metadata:
+  name: production-db
+spec:
+  provider: aws
+  region: us-west-2
+  engine: postgres
+  engineVersion: "15"
+  instanceClass: db.r6g.large
+  storageGB: 100
+  multiAZ: true
+  enableEncryption: true
+```
+
+### Karpenter - Just-in-Time Node Provisioning
+
+Karpenter provides fast, efficient node autoscaling for Kubernetes clusters with intelligent instance selection.
+
+**Features:**
+- Sub-minute node provisioning
+- Cost-optimized instance selection
+- Support for Spot, On-Demand, and mixed capacity
+- GPU and ARM64 (Graviton) workload support
+- Automatic node consolidation
+
+**Pre-configured NodePools:**
+| NodePool | Use Case | Instance Types |
+|----------|----------|----------------|
+| default | General workloads | c6i, m6i, r6i (medium-2xlarge) |
+| compute-optimized | CPU-intensive | c7i (xlarge-8xlarge) |
+| memory-optimized | Memory-intensive | r7i (xlarge-8xlarge) |
+| gpu | ML/AI workloads | g5, p4d |
+| spot | Cost optimization | Mixed (50%+ savings) |
+
+**Deploy Karpenter resources:**
+```bash
+kubectl apply -k infrastructure/karpenter/
+```
+
+### Tetragon - eBPF Runtime Security
+
+Cilium Tetragon provides deep runtime security observability using eBPF, enabling detection and prevention of security threats at the kernel level.
+
+**Security Policies Included:**
+- **Privilege Escalation Detection** - Monitors setuid/setgid calls to root
+- **Container Escape Detection** - Detects namespace manipulation and ptrace injection
+- **Sensitive File Access** - Monitors access to /etc/shadow, /etc/kubernetes, secrets
+- **Cryptominer Detection** - Blocks known mining software execution
+- **Network Security** - Monitors suspicious outbound connections
+- **File Integrity Monitoring** - Detects modifications to system binaries
+- **Shell Spawn Detection** - Alerts on unexpected shell execution in containers
+
+**Example - View security events:**
+```bash
+kubectl logs -n tetragon -l app.kubernetes.io/name=tetragon -f | \
+  tetra getevents -o compact
+```
+
+**Deploy Tetragon:**
+```bash
+kubectl apply -k infrastructure/tetragon/
+```
+
 ## Documentation
 
 - [Quick Start Guide](docs/quickstart-platform.md)
@@ -185,6 +283,9 @@ All components are CNCF projects (Graduated or Incubating):
 | Secrets | External Secrets | Graduated |
 | TLS | cert-manager | Graduated |
 | DNS | External DNS | Incubating |
+| Infrastructure | Crossplane | Incubating |
+| Autoscaling | Karpenter | Graduated |
+| eBPF Security | Tetragon | - |
 
 ## Developer Experience
 
@@ -239,6 +340,10 @@ mantl/
 │   ├── frameworks/      # SOC2, HIPAA, CIS, etc.
 │   ├── operator/        # Kubernetes operator
 │   └── evidence/        # Evidence collection
+├── infrastructure/      # Modern Kubernetes infrastructure
+│   ├── crossplane/      # Multi-cloud IaC with XRDs
+│   ├── karpenter/       # Node autoscaling
+│   └── tetragon/        # eBPF security policies
 ├── platform/            # Platform components
 │   ├── base/            # Cilium, cert-manager, etc.
 │   ├── observability/   # Prometheus, Loki, Tempo

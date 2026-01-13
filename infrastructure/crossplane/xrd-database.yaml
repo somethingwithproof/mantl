@@ -1,0 +1,359 @@
+# Crossplane Composite Resource Definition (XRD) for Database Infrastructure
+# Provides a cloud-agnostic interface for managed database provisioning
+# https://docs.crossplane.io/latest/concepts/composite-resource-definitions/
+
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xdatabases.infrastructure.mantl.io
+  labels:
+    app.kubernetes.io/name: xrd-database
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  group: infrastructure.mantl.io
+  names:
+    kind: XDatabase
+    plural: xdatabases
+  claimNames:
+    kind: Database
+    plural: databases
+  connectionSecretKeys:
+    - endpoint
+    - port
+    - username
+    - password
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - provider
+                - region
+                - engine
+              properties:
+                provider:
+                  type: string
+                  description: Cloud provider (aws, gcp, azure)
+                  enum:
+                    - aws
+                    - gcp
+                    - azure
+                region:
+                  type: string
+                  description: Cloud region for the database
+                engine:
+                  type: string
+                  description: Database engine type
+                  enum:
+                    - postgres
+                    - mysql
+                    - mariadb
+                  default: postgres
+                engineVersion:
+                  type: string
+                  description: Database engine version
+                  default: "15"
+                instanceClass:
+                  type: string
+                  description: Instance class/size
+                  default: db.t3.medium
+                storageGB:
+                  type: integer
+                  description: Storage size in GB
+                  minimum: 20
+                  maximum: 65536
+                  default: 100
+                storageType:
+                  type: string
+                  description: Storage type
+                  enum:
+                    - gp3
+                    - io1
+                    - io2
+                  default: gp3
+                multiAZ:
+                  type: boolean
+                  description: Enable Multi-AZ deployment
+                  default: true
+                publiclyAccessible:
+                  type: boolean
+                  description: Allow public access
+                  default: false
+                backupRetentionDays:
+                  type: integer
+                  description: Backup retention period in days
+                  minimum: 0
+                  maximum: 35
+                  default: 7
+                enableEncryption:
+                  type: boolean
+                  description: Enable storage encryption
+                  default: true
+                enablePerformanceInsights:
+                  type: boolean
+                  description: Enable Performance Insights
+                  default: true
+                enableAutoMinorVersionUpgrade:
+                  type: boolean
+                  description: Enable automatic minor version upgrades
+                  default: true
+                maintenanceWindow:
+                  type: string
+                  description: Preferred maintenance window
+                  default: "sun:04:00-sun:05:00"
+                backupWindow:
+                  type: string
+                  description: Preferred backup window
+                  default: "03:00-04:00"
+                networkRef:
+                  type: object
+                  description: Reference to network for database placement
+                  properties:
+                    name:
+                      type: string
+                deletionPolicy:
+                  type: string
+                  description: Deletion policy for resources
+                  enum:
+                    - Delete
+                    - Orphan
+                  default: Delete
+            status:
+              type: object
+              properties:
+                endpoint:
+                  type: string
+                  description: Database endpoint
+                port:
+                  type: integer
+                  description: Database port
+                state:
+                  type: string
+                  description: Current state of the database
+---
+# Composition for AWS RDS PostgreSQL
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: xdatabase-aws-postgres
+  labels:
+    provider: aws
+    engine: postgres
+    app.kubernetes.io/name: composition-database-aws-postgres
+    app.kubernetes.io/part-of: mantl-infrastructure
+spec:
+  compositeTypeRef:
+    apiVersion: infrastructure.mantl.io/v1alpha1
+    kind: XDatabase
+  mode: Pipeline
+  pipeline:
+    - step: patch-and-transform
+      functionRef:
+        name: function-patch-and-transform
+      input:
+        apiVersion: pt.fn.crossplane.io/v1beta1
+        kind: Resources
+        resources:
+          - name: subnet-group
+            base:
+              apiVersion: rds.aws.upbound.io/v1beta1
+              kind: SubnetGroup
+              spec:
+                forProvider:
+                  description: "Managed by Crossplane"
+                  subnetIdSelector:
+                    matchLabels:
+                      access: private
+                  tags:
+                    Name: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-subnet-group"
+
+          - name: security-group
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroup
+              spec:
+                forProvider:
+                  description: "Database security group managed by Crossplane"
+                  vpcIdSelector:
+                    matchControllerRef: true
+                  tags:
+                    Name: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-db-sg"
+
+          - name: security-group-rule-ingress
+            base:
+              apiVersion: ec2.aws.upbound.io/v1beta1
+              kind: SecurityGroupRule
+              spec:
+                forProvider:
+                  type: ingress
+                  fromPort: 5432
+                  toPort: 5432
+                  protocol: tcp
+                  cidrBlocks:
+                    - "10.0.0.0/8"
+                  securityGroupIdSelector:
+                    matchControllerRef: true
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+
+          - name: parameter-group
+            base:
+              apiVersion: rds.aws.upbound.io/v1beta1
+              kind: ParameterGroup
+              spec:
+                forProvider:
+                  family: postgres15
+                  description: "Managed by Crossplane"
+                  parameter:
+                    - name: log_statement
+                      value: "all"
+                    - name: log_min_duration_statement
+                      value: "1000"
+                    - name: shared_preload_libraries
+                      value: "pg_stat_statements"
+                  tags:
+                    Name: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Name
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-param-group"
+
+          - name: rds-instance
+            base:
+              apiVersion: rds.aws.upbound.io/v1beta2
+              kind: Instance
+              spec:
+                forProvider:
+                  engine: postgres
+                  username: mantladmin
+                  autoGeneratePassword: true
+                  passwordSecretRef:
+                    namespace: crossplane-system
+                    key: password
+                  dbSubnetGroupNameSelector:
+                    matchControllerRef: true
+                  vpcSecurityGroupIdSelector:
+                    matchControllerRef: true
+                  parameterGroupNameSelector:
+                    matchControllerRef: true
+                  skipFinalSnapshot: false
+                  finalSnapshotIdentifier: ""
+                  copyTagsToSnapshot: true
+                  deletionProtection: true
+                  iamDatabaseAuthenticationEnabled: true
+                  enabledCloudwatchLogsExports:
+                    - postgresql
+                    - upgrade
+                  tags:
+                    Name: ""
+            patches:
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.region
+                toFieldPath: spec.forProvider.region
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.engineVersion
+                toFieldPath: spec.forProvider.engineVersion
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.instanceClass
+                toFieldPath: spec.forProvider.instanceClass
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.storageGB
+                toFieldPath: spec.forProvider.allocatedStorage
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.storageType
+                toFieldPath: spec.forProvider.storageType
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.multiAZ
+                toFieldPath: spec.forProvider.multiAz
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.publiclyAccessible
+                toFieldPath: spec.forProvider.publiclyAccessible
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.backupRetentionDays
+                toFieldPath: spec.forProvider.backupRetentionPeriod
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.enableEncryption
+                toFieldPath: spec.forProvider.storageEncrypted
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.enablePerformanceInsights
+                toFieldPath: spec.forProvider.performanceInsightsEnabled
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.enableAutoMinorVersionUpgrade
+                toFieldPath: spec.forProvider.autoMinorVersionUpgrade
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.maintenanceWindow
+                toFieldPath: spec.forProvider.maintenanceWindow
+              - type: FromCompositeFieldPath
+                fromFieldPath: spec.backupWindow
+                toFieldPath: spec.forProvider.backupWindow
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.finalSnapshotIdentifier
+                transforms:
+                  - type: string
+                    string:
+                      type: Format
+                      fmt: "%s-final-snapshot"
+              - type: FromCompositeFieldPath
+                fromFieldPath: metadata.name
+                toFieldPath: spec.forProvider.tags.Name
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.endpoint
+                toFieldPath: status.endpoint
+              - type: ToCompositeFieldPath
+                fromFieldPath: status.atProvider.port
+                toFieldPath: status.port
+            connectionDetails:
+              - name: endpoint
+                fromFieldPath: status.atProvider.endpoint
+              - name: port
+                fromFieldPath: status.atProvider.port
+              - name: username
+                fromFieldPath: spec.forProvider.username
+              - name: password
+                fromConnectionSecretKey: attribute.password
+
+    - step: auto-ready
+      functionRef:
+        name: function-auto-ready

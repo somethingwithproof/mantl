@@ -1,0 +1,223 @@
+# Kyverno Helm Values
+# Production-ready configuration with high availability
+# https://kyverno.io/docs/installation/
+---
+# Installation mode
+installCRDs: true
+
+# Kyverno replicas for high availability
+replicaCount: 3
+
+# Resource configuration
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# Init container resources
+initResources:
+  limits:
+    cpu: 100m
+    memory: 256Mi
+  requests:
+    cpu: 10m
+    memory: 64Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 443
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Security context for pods
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# Security context for containers
+securityContext:
+  runAsNonRoot: true
+  privileged: false
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Anti-affinity for spreading across nodes
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - kyverno
+          topologyKey: kubernetes.io/hostname
+
+# Tolerations
+tolerations:
+  - key: CriticalAddonsOnly
+    operator: Exists
+
+# Priority class
+priorityClassName: system-cluster-critical
+
+# Webhook configuration
+webhooks:
+  # Failure policy for validation webhook
+  validating:
+    failurePolicy: Fail
+  # Failure policy for mutation webhook
+  mutating:
+    failurePolicy: Fail
+
+# Config for background controller
+backgroundController:
+  enabled: true
+  replicas: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Config for cleanup controller
+cleanupController:
+  enabled: true
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Config for reports controller
+reportsController:
+  enabled: true
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Admission controller configuration
+admissionController:
+  replicas: 3
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# Logging configuration
+logging:
+  # Log format: text or json
+  format: json
+  # Log level: debug, info, warn, error
+  level: info
+
+# Features configuration
+features:
+  # Enable admission reports
+  admissionReports:
+    enabled: true
+  # Enable background scan
+  backgroundScan:
+    enabled: true
+    # How often to run background scan
+    backgroundScanInterval: 1h
+  # Enable policy reports
+  policyReports:
+    enabled: true
+
+# Metrics configuration
+metricsConfig:
+  # Enable metrics
+  enabled: true
+  # Annotations for Prometheus scraping
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+
+# Service monitor for Prometheus
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 25s
+
+# Network policy
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - podSelector: {}
+    - namespaceSelector: {}
+
+# Exclude namespaces from policy enforcement
+config:
+  # Namespaces to exclude
+  excludeGroups: []
+  excludeUsernames: []
+  excludeRoles: []
+  excludeClusterRoles: []
+  generateSuccessEvents: true
+  # Resource filters - exclude certain resources
+  resourceFilters:
+    - "[Event,*,*]"
+    - "[*,kube-system,*]"
+    - "[*,kube-public,*]"
+    - "[*,kube-node-lease,*]"
+    - "[Node,*,*]"
+    - "[APIService,*,*]"
+    - "[TokenReview,*,*]"
+    - "[SubjectAccessReview,*,*]"
+    - "[SelfSubjectAccessReview,*,*]"
+    - "[Binding,*,*]"
+    - "[ReplicaSet,*,*]"
+    - "[AdmissionReport,*,*]"
+    - "[ClusterAdmissionReport,*,*]"
+    - "[BackgroundScanReport,*,*]"
+    - "[ClusterBackgroundScanReport,*,*]"
+
+# Exclude kyverno namespace
+excludeKyvernoNamespace: true
+
+# Webhook timeout
+webhookTimeoutSeconds: 30
+
+# Test configuration
+test:
+  # Enable test resources
+  enabled: false
+
+# Custom resource definitions configuration
+crds:
+  # Install CRDs
+  install: true
+  # Annotations for CRDs
+  annotations: {}
+
+# Grafana dashboard
+grafana:
+  enabled: false
+  namespace: monitoring
