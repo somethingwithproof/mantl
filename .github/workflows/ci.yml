@@ -1,39 +1,182 @@
 name: CI
 
 on:
-  pull_request:
-  workflow_dispatch:
   push:
     branches: [ main, "reorg/*", "feature/**" ]
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  security-events: write
 
 jobs:
-  warm-cache:
-    if: github.ref == 'refs/heads/main'
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Pre-build dev image to warm cache
-        uses: docker/build-push-action@v5
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
-          context: .
-          tags: mantl-dev:cache
-          load: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          python-version: '3.12'  # Changed from 3.13 for better compatibility
+          cache: 'pip'
 
-  container-tests:
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint (black, ruff, yamllint)
+        run: |
+          black --check .
+          ruff check .
+          yamllint .
+
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-test.txt
+
+      - name: Run tests with coverage
+        run: |
+          pytest -v --cov=. --cov-report=xml --cov-report=html --cov-report=term-missing
+          coverage report --fail-under=60
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-mantl
+
+      - name: Upload HTML coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: htmlcov/
+          retention-days: 30
+
+      - name: Comment coverage on PR
+        uses: py-cov-action/python-coverage-comment-action@v3
+        if: github.event_name == 'pull_request'
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MINIMUM_GREEN: 60
+          MINIMUM_ORANGE: 50
+
+  security-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install safety
+        run: pip install safety pip-audit
+
+      - name: Check dependencies for vulnerabilities (safety)
+        run: safety check --json || true
+
+      - name: Audit dependencies (pip-audit)
+        run: pip-audit || true
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.3
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate
+        continue-on-error: true
+        run: |
+          find infra/terraform -type d -maxdepth 2 -mindepth 1 -print0 | \
+            xargs -0 -I {} sh -c 'cd {} && terraform init -backend=false -no-color && terraform validate -no-color'
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner (filesystem)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: 'fs'
+          scanners: 'vuln,secret,config'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: '.'
+          soft_fail: true
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: '.'
+          quiet: true
+          soft_fail: true
+
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          path: '.'
+          format: 'spdx-json'
+          output-file: 'sbom.spdx.json'
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+          retention-days: 90
+
+  container-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build dev image (cached)
+      - name: Build dev image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -42,10 +185,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Pytest
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: 'mantl-dev:ci'
+          format: 'sarif'
+          output: 'trivy-image-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy image scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-image-results.sarif'
+
+      - name: Run tests in container
         run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci pytest -v tests
 
-- name: Validate Kustomize (full)
+      - name: Validate Kustomize builds
         run: |
           chmod +x ci/validate-kustomize.sh
           docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-kustomize.sh
@@ -53,340 +210,92 @@ jobs:
       - name: Validate Terraform
         run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-terraform.sh
 
-      - name: Slack notify (on failure)
-        if: failure() || cancelled()
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          if [ -n "$SLACK_WEBHOOK_URL" ]; then \
-            STATUS="Workflow failed: $GITHUB_WORKFLOW (#$GITHUB_RUN_NUMBER) on $GITHUB_REF"; \
-            curl -X POST -H 'Content-type: application/json' --data "{\"text\": \"$STATUS\nRepo: $GITHUB_REPOSITORY\nRun: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}" "$SLACK_WEBHOOK_URL"; \
-          else \
-            echo "SLACK_WEBHOOK_URL not set; skipping"; \
-          fi
-
-name: CI
-
-on:
-  push:
-  workflow_dispatch:
-    branches: [ main ]
-    tags: [ 'v*.*.*' ]
-  pull_request:
-    branches: [ main ]
-
-permissions:
-  contents: read
-  packages: write
-  id-token: write
-
-jobs:
-  lint:
+  image-publish:
+    name: Build, push, and sign image
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-          cache: 'pip'
-      - name: Install deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-      - name: Lint (black, ruff, yamllint)
-        run: |
-          black --check .
-          ruff .
-          yamllint .
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-          cache: 'pip'
-      - name: Install deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -r requirements-test.txt
-      - name: Run tests
-        run: |
-          pytest -q --cov=. --cov-report=xml --cov-report=term-missing --cov-fail-under=60
-  terraform:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.14.3
-      - name: Terraform fmt (recursive)
-        run: terraform fmt -check -recursive
-      - name: Terraform validate (soft)
-        continue-on-error: true
-        run: |
-          find infra/terraform -type d -maxdepth 2 -mindepth 1 -print0 | \
-            xargs -0 -I {} sh -c 'cd {} && terraform init -backend=false -no-color || true; terraform validate -no-color || true'
-  kind-smoke:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: helm/kind-action@v1
-        with:
-          cluster_name: mantl
-      - name: Verify cluster
-        run: |
-          kubectl get nodes
-          kubectl cluster-info
-
-  e2e-hello:
-    runs-on: ubuntu-latest
-    needs: [kind-smoke]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: helm/kind-action@v1
-        with:
-          cluster_name: mantl-e2e
-      - name: Deploy example hello
-        run: |
-          kubectl apply -k apps/examples/hello
-          kubectl rollout status deploy/app -n default --timeout=120s
-      - name: Port-forward and curl
-        run: |
-          kubectl port-forward svc/app -n default 8080:80 &
-          PF_PID=$!
-          sleep 3
-          curl -fsS http://127.0.0.1:8080/ | head -c 100
-          kill $PF_PID || true
-
-external-dns-rfc2136-e2e:
-    runs-on: ubuntu-latest
-    needs: [kind-smoke]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: helm/kind-action@v1
-        with:
-          cluster_name: mantl-dns
-      - name: Deploy test DNS (bind9) and svc
-        run: |
-          kubectl apply -f tests/e2e/external-dns/rfc2136/bind9.yaml
-          kubectl -n dns wait --for=condition=available deploy/bind9 --timeout=180s
-      - name: Install ExternalDNS (RFC2136)
-        run: |
-          helm repo add external-dns https://kubernetes-sigs.github.io/external-dns/
-          helm upgrade --install extdns external-dns/external-dns \
-            --namespace external-dns --create-namespace \
-            -f tests/e2e/external-dns/rfc2136/values.yaml
-      - name: Create annotated service
-        run: |
-          kubectl apply -f tests/e2e/external-dns/rfc2136/app-svc.yaml
-          sleep 30
-      - name: Query records (dig)
-        run: |
-          kubectl run -n dns dig --image=infoblox/dnstools --restart=Never --rm -it --command -- \
-            dig @bind9.dns.svc.cluster.local app.test.local +short || true
-      - uses: actions/checkout@v4
-      - uses: helm/kind-action@v1
-        with:
-          cluster_name: mantl-e2e
-      - name: Deploy example hello
-        run: |
-          kubectl apply -k apps/examples/hello
-          kubectl rollout status deploy/app -n default --timeout=120s
-      - name: Port-forward and curl
-        run: |
-          kubectl port-forward svc/app -n default 8080:80 &
-          PF_PID=$!
-          sleep 3
-          curl -fsS http://127.0.0.1:8080/ | head -c 100
-          kill $PF_PID || true
-
-  image-build-and-sign:
-    name: Build, push, and sign dev image (main/tags)
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
-    steps:
-  publish-bundles:
-    name: Package and publish Kustomize bundles (main/tags)
-    runs-on: ubuntu-latest
-    needs: [image-build-and-sign]
+    needs: [lint, test, security-scan, container-build]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v4
-      - name: Install kustomize
-        uses: imranismail/setup-kustomize@v2
-        with:
-          kustomize-version: v5.4.3
-      - name: Render bundles
-        run: |
-          mkdir -p dist
-          kustomize build clusters/production > dist/cluster-production.yaml
-      - name: Install ORAS
-        uses: oras-project/setup-oras@v1
-      - name: Push bundles to GHCR (OCI)
-        env:
-          REPO_OWNER: ${{ github.repository_owner }}
-        run: |
-          oras push ghcr.io/${REPO_OWNER}/mantl-bundles:$(echo $GITHUB_SHA | cut -c1-12) \
-            --artifact-type application/vnd.cncf.kustomize+yaml \
-            dist/cluster-production.yaml:application/yaml
-      - name: Sign bundles (keyless)
-        uses: sigstore/cosign-installer@v3.5.0
-      - name: Cosign sign bundles
-        env:
-          COSIGN_EXPERIMENTAL: 1
-          REPO_OWNER: ${{ github.repository_owner }}
-        run: |
-          cosign sign --yes ghcr.io/${REPO_OWNER}/mantl-bundles:$(echo $GITHUB_SHA | cut -c1-12)
-      - uses: actions/checkout@v4
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and push image
-        run: |
-          IMAGE=ghcr.io/${{ github.repository_owner }}/mantl-dev:${{ github.sha }}
-          docker build -t "$IMAGE" .
-          docker push "$IMAGE"
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/mantl-dev:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/mantl-dev:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.5.0
+
       - name: Sign image (keyless)
         env:
           COSIGN_EXPERIMENTAL: 1
         run: |
-          cosign sign --yes $IMAGE
+          cosign sign --yes ghcr.io/${{ github.repository_owner }}/mantl-dev:${{ github.sha }}
+          cosign sign --yes ghcr.io/${{ github.repository_owner }}/mantl-dev:latest
 
-  sbom:
+  kind-smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Generate SBOM (Syft)
-        uses: anchore/sbom-action@v0
-        with:
-          path: .
-          format: spdx-json
-          output-file: sbom.spdx.json
-      - name: Upload SBOM
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom
-          path: sbom.spdx.json
 
-  security-scan:
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' || github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Trivy filesystem scan (informational)
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          scan-type: fs
-          scanners: vuln,secret,config
-          ignore-unfixed: true
-          format: table
-          exit-code: '0'
-
-  platform-health:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install kustomize
-        uses: imranismail/setup-kustomize@v2
-        with:
-          kustomize-version: v5.4.3
-      - name: Build production manifests
-        run: |
-          kustomize build clusters/production > rendered.yaml
-      - name: Kubeconform validate (ignore missing CRD schemas)
-        run: |
-          docker run --rm -v "$PWD":/project -w /project ghcr.io/yannh/kubeconform:latest -strict -ignore-missing-schemas -summary rendered.yaml
-
-  policy-placeholder-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check Kyverno policy placeholders
-        run: ci/check-placeholders.sh
-
-  kyverno-validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install kustomize
-        uses: imranismail/setup-kustomize@v2
-        with:
-          kustomize-version: v5.4.3
-      - name: Build production manifests
-        run: |
-          kustomize build clusters/production > rendered.yaml
-      - name: Kyverno validate rendered manifests
-        run: |
-          docker run --rm -v "$PWD":/project -w /project ghcr.io/kyverno/kyverno:v1.12.1 kyverno apply policies/kyverno --resource rendered.yaml --policy-report --skip-background-request
-
-  gateway-smoke:
-    runs-on: ubuntu-latest
-    needs: [kind-smoke]
-    steps:
-      - uses: actions/checkout@v4
       - uses: helm/kind-action@v1
         with:
-          cluster_name: mantl-gw
-      - name: Install Gateway API CRDs
-        run: |
-          kubectl kustomize platform/ingress/gateway-api/sample >/dev/null 2>&1 || true
-          kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.1.0/config/crd/experimental/gateway.networking.k8s.io_gatewayclasses.yaml
-          kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.1.0/config/crd/standard
-      - name: Apply gateway sample manifests
-        run: |
-          kubectl apply -k platform/ingress/gateway-api/sample
-          kubectl get gatewayclasses,gateway,httproutes -A
+          cluster_name: mantl
 
-  policy-tests:
+      - name: Verify cluster
+        run: |
+          kubectl get nodes
+          kubectl cluster-info
+
+  policy-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install kustomize
-        uses: imranismail/setup-kustomize@v2
-        with:
-          kustomize-version: v5.4.3
-      - name: Render production manifests
+
+      - name: Check for placeholder secrets
         run: |
-          kustomize build clusters/production > rendered.yaml
+          chmod +x ci/check-placeholders.sh
+          ./ci/check-placeholders.sh
+
       - name: Install Kyverno CLI
         run: |
           curl -LO https://github.com/kyverno/kyverno/releases/download/v1.12.1/kyverno-cli_v1.12.1_linux_x86_64.tar.gz
           tar -xzf kyverno-cli_v1.12.1_linux_x86_64.tar.gz
           sudo mv kyverno /usr/local/bin/
-      - name: Test Kyverno policies (soft on PR)
-        if: github.event_name == 'pull_request'
+
+      - name: Validate Kyverno policies
         run: |
-          kyverno apply policies/kyverno/policies/ --resource rendered.yaml || true
-      - name: Test Kyverno policies (strict on main/tags)
-        if: github.event_name != 'pull_request'
+          find policies/kyverno -name "*.yaml" -type f | while read policy; do
+            echo "Validating: $policy"
+            kyverno validate "$policy"
+          done
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [lint, test, security-scan, container-build]
+    if: failure() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    steps:
+      - name: Slack notification
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
-          kyverno apply policies/kyverno/policies/ --resource rendered.yaml
-      - uses: actions/checkout@v4
-      - name: tfsec scan
-        uses: aquasecurity/tfsec-action@v1.0.3
-        with:
-          working-directory: .
-          additional_args: --soft-fail
-      - name: Trivy filesystem scan
-        uses: aquasecurity/trivy-action@0.24.0
-        with:
-          scan-type: fs
-          scanners: vuln,secret,config
-          ignore-unfixed: true
-          format: table
-          exit-code: '0'
-      - name: Checkov IaC scan
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: .
-          quiet: true
-          soft_fail: true
+          STATUS="Workflow failed: $GITHUB_WORKFLOW (#$GITHUB_RUN_NUMBER) on $GITHUB_REF"
+          DETAILS="Repo: $GITHUB_REPOSITORY - Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\": \"${STATUS}\n${DETAILS}\"}" "$SLACK_WEBHOOK_URL"

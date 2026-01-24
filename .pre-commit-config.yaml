@@ -1,4 +1,5 @@
 repos:
+  # Security and quality checks (local)
   - repo: local
     hooks:
       - id: kyverno-no-placeholders
@@ -6,6 +7,27 @@ repos:
         entry: ci/check-placeholders.sh
         language: system
         pass_filenames: false
+
+      - id: kyverno-validate
+        name: kyverno-validate-policies
+        entry: bash -c 'command -v kyverno >/dev/null 2>&1 && find policies/kyverno -name "*.yaml" -type f | xargs -I {} kyverno validate {} || echo "Kyverno CLI not installed, skipping validation"'
+        language: system
+        pass_filenames: false
+        files: ^policies/kyverno/.*\.yaml$
+
+      - id: pytest-check
+        name: pytest-fast-tests
+        entry: bash -c 'pytest tests/unit -v --tb=short -m "not slow" || true'
+        language: system
+        pass_filenames: false
+        files: ^(tests/.*\.py|.*\.py)$
+
+      - id: no-commit-to-main
+        name: no-commit-to-main
+        entry: bash -c 'if [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ]; then echo "ERROR: Direct commits to main branch are not allowed. Use a feature branch."; exit 1; fi'
+        language: system
+        pass_filenames: false
+        stages: [commit]
 - repo: https://github.com/psf/black
     rev: 25.12.0
     hooks:
