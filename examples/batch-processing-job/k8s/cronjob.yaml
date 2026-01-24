@@ -1,0 +1,217 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: batch-processing
+  labels:
+    purpose: "batch-data-processing"
+    platform: mantl
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: batch-processor-config
+  namespace: batch-processing
+data:
+  BATCH_SIZE: "1000"
+  PARALLEL_WORKERS: "4"
+  S3_BUCKET: "mantl-data"
+  PUSHGATEWAY_URL: "http://prometheus-pushgateway.mantl-system:9091"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: batch-processor-secrets
+  namespace: batch-processing
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql://batchuser:CHANGE_ME@postgres-rw:5432/batchdb"
+  AWS_ACCESS_KEY_ID: "CHANGE_ME"
+  AWS_SECRET_ACCESS_KEY: "CHANGE_ME"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: batch-processor
+  namespace: batch-processing
+  labels:
+    app: batch-processor
+spec:
+  # Run every day at 2 AM UTC
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid  # Don't run concurrent jobs
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata:
+      labels:
+        app: batch-processor
+    spec:
+      # Allow job to run for max 2 hours
+      activeDeadlineSeconds: 7200
+      # Keep failed pods for debugging
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: batch-processor
+          annotations:
+            prometheus.io/scrape: "false"  # Jobs push metrics instead
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: batch-processor
+            image: REGISTRY/batch-processor:latest
+            imagePullPolicy: IfNotPresent
+            env:
+            - name: MODE
+              value: "process"
+            - name: JOB_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            envFrom:
+            - configMapRef:
+                name: batch-processor-config
+            - secretRef:
+                name: batch-processor-secrets
+            resources:
+              requests:
+                cpu: 1000m
+                memory: 2Gi
+              limits:
+                cpu: 4000m
+                memory: 8Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 1000
+              capabilities:
+                drop:
+                - ALL
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          volumes:
+          - name: tmp
+            emptyDir: {}
+---
+# One-time setup job (run once to create schema and seed data)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: batch-processor-setup
+  namespace: batch-processing
+spec:
+  template:
+    metadata:
+      labels:
+        app: batch-processor-setup
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: setup
+        image: REGISTRY/batch-processor:latest
+        env:
+        - name: MODE
+          value: "setup"
+        envFrom:
+        - configMapRef:
+            name: batch-processor-config
+        - secretRef:
+            name: batch-processor-secrets
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}
+---
+# NetworkPolicy for batch job
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: batch-processor
+  namespace: batch-processing
+spec:
+  podSelector:
+    matchLabels:
+      app: batch-processor
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow database access
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: database
+      podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow Pushgateway
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: mantl-system
+      podSelector:
+        matchLabels:
+          app: prometheus-pushgateway
+    ports:
+    - protocol: TCP
+      port: 9091
+  # Allow S3 (external)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+---
+# ServiceAccount with IRSA for S3 access (AWS)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: batch-processor
+  namespace: batch-processing
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/batch-processor-s3-access
