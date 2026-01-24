@@ -21,7 +21,7 @@ spec:
             - argocd
             - kyverno
   rules:
-    - name: verify-cosign-ghcr
+    - name: verify-cosign-ghcr-keyless
       match:
         any:
           - resources:
@@ -31,9 +31,20 @@ spec:
             - "ghcr.io/*/*"
           attestors:
             - entries:
-                - keys:
-                    publicKeys: |
-                      # TODO: replace with your Cosign public key(s)
-                      -----BEGIN PUBLIC KEY-----
-                      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnPlaceholderKey
-                      -----END PUBLIC KEY-----
+                - keyless:
+                    subject: "https://github.com/{{repo_owner}}/{{repo_name}}/*"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: "https://rekor.sigstore.dev"
+          # For key-based verification, create a secret with your public key:
+          # kubectl create secret generic cosign-key --from-file=cosign.pub -n kyverno
+          # Then uncomment and use:
+          # - entries:
+          #     - keys:
+          #         publicKeys: |-
+          #           -----BEGIN PUBLIC KEY-----
+          #           Your actual Cosign public key here
+          #           -----END PUBLIC KEY-----
+          #         secret:
+          #           name: cosign-key
+          #           namespace: kyverno

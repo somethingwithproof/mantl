@@ -2,17 +2,49 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "dependencyDashboard": true,
-  "labels": ["dependencies", "helm", "automated"],
+  "labels": ["dependencies", "automated"],
   "schedule": ["every weekend"],
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
 
-  "enabledManagers": ["helm-values", "regex"],
+  "enabledManagers": [
+    "helm-values",
+    "regex",
+    "terraform",
+    "dockerfile",
+    "github-actions",
+    "pip_requirements"
+  ],
 
   "packageRules": [
     {
       "matchManagers": ["helm-values", "regex"],
       "matchDatasources": ["helm"],
-      "groupName": "Helm charts (weekly)",
-      "separateMinorPatch": false
+      "groupName": "Helm charts",
+      "separateMinorPatch": false,
+      "schedule": ["every weekend"]
+    },
+    {
+      "matchManagers": ["terraform"],
+      "groupName": "Terraform modules",
+      "schedule": ["every weekend"]
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "schedule": ["every weekend"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "matchManagers": ["pip_requirements"],
+      "groupName": "Python dependencies",
+      "schedule": ["every weekend"]
+    },
+    {
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr"
     }
   ],
 
@@ -25,6 +57,13 @@
       "datasourceTemplate": "helm",
       "packageNameTemplate": "{{depName}}",
       "registryUrlTemplate": "{{depRegistryUrl}}"
+    },
+    {
+      "fileMatch": ["(^|/)Dockerfile$"],
+      "matchStrings": [
+        "FROM\\s+(?<depName>[a-z0-9-]+/[a-z0-9-]+):(?<currentValue>[a-zA-Z0-9.-]+)"
+      ],
+      "datasourceTemplate": "docker"
     }
   ]
 }

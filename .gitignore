@@ -31,8 +31,41 @@ packer_cache/
 account.json
 # annoying osx files
 .DS_Store
+Thumbs.db
 
+# IDE files
 .idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.cover
+.hypothesis/
+.tox/
+
+# Logs and temporary files
+*.log
+*.tmp
+err
 
 # Terraform
 .terraform/

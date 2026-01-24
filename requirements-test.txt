@@ -8,3 +8,4 @@ freezegun==1.5.5
 requests-mock==1.12.1
 parameterized==0.9.0
 coverage==7.13.1
+python-hcl2==4.3.4  # For parsing Terraform HCL files in tests
