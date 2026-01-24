@@ -1,0 +1,152 @@
+# Cluster Registration Template
+# Use this as a template to register new clusters with ArgoCD
+
+# 1. Get cluster credentials
+# kubectl config view --flatten --minify > cluster-config.yaml
+
+# 2. Create sealed secret
+# kubeseal --format=yaml < cluster-secret.yaml > sealed-cluster-secret.yaml
+
+# 3. Apply to management cluster
+# kubectl apply -f sealed-cluster-secret.yaml
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: CLUSTER_NAME
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+
+    # Required labels
+    environment: ENVIRONMENT  # dev, staging, production
+    region: REGION           # us-east-1, eu-west-1, ap-south-1
+
+    # Optional labels for targeted deployments
+    tier: TIER                    # gold, silver, bronze
+    rollout-phase: "PHASE"        # "1", "2", "3"
+    app: "ecommerce"              # Enable ecommerce app deployment
+    monitoring: "enabled"         # Enable monitoring stack
+    workload-type: "web"          # web, database, ml
+
+  annotations:
+    # Version of Kubernetes running on this cluster
+    kubernetes-version: "1.28"
+
+    # Contact information
+    owner: "platform-engineering@example.com"
+
+    # Application versions to deploy
+    ecommerce-version: "v1.0.0"
+
+    # Creation timestamp
+    created: "2024-01-24"
+
+type: Opaque
+stringData:
+  # Cluster name (must be unique)
+  name: CLUSTER_NAME
+
+  # API server URL
+  server: https://CLUSTER_API_SERVER
+
+  # Cluster connection configuration
+  config: |
+    {
+      "bearerToken": "BEARER_TOKEN",
+      "tlsClientConfig": {
+        "insecure": false,
+        "caData": "BASE64_CA_CERT",
+        "certData": "BASE64_CLIENT_CERT",
+        "keyData": "BASE64_CLIENT_KEY"
+      }
+    }
+
+---
+# Example: Production Cluster in US East
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prod-us-east-01
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    environment: production
+    region: us-east-1
+    tier: gold
+    rollout-phase: "3"
+    app: ecommerce
+    monitoring: enabled
+  annotations:
+    kubernetes-version: "1.28"
+    owner: "platform-engineering@example.com"
+    ecommerce-version: "v1.0.0"
+type: Opaque
+stringData:
+  name: prod-us-east-01
+  server: https://prod-us-east-01.example.com
+  config: |
+    {
+      "bearerToken": "<redacted>",
+      "tlsClientConfig": {
+        "insecure": false,
+        "caData": "<redacted>"
+      }
+    }
+
+---
+# Example: Staging Cluster
+apiVersion: v1
+kind: Secret
+metadata:
+  name: staging-us-west-01
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    environment: staging
+    region: us-west-2
+    tier: silver
+    rollout-phase: "2"
+    app: ecommerce
+    monitoring: enabled
+type: Opaque
+stringData:
+  name: staging-us-west-01
+  server: https://staging-us-west-01.example.com
+  config: |
+    {
+      "bearerToken": "<redacted>",
+      "tlsClientConfig": {
+        "insecure": false,
+        "caData": "<redacted>"
+      }
+    }
+
+---
+# Example: Dev Cluster
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dev-eu-central-01
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    environment: dev
+    region: eu-central-1
+    tier: bronze
+    rollout-phase: "1"
+    app: ecommerce
+    monitoring: enabled
+type: Opaque
+stringData:
+  name: dev-eu-central-01
+  server: https://dev-eu-central-01.example.com
+  config: |
+    {
+      "bearerToken": "<redacted>",
+      "tlsClientConfig": {
+        "insecure": false,
+        "caData": "<redacted>"
+      }
+    }
