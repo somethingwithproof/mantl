@@ -20,6 +20,16 @@ global:
 # Profile selection (dev, staging, production)
 profile: production
 
+# Namespace configuration
+namespaceOverride: ""  # Override the namespace name
+namespaceAnnotations: {}  # Additional annotations for the namespace
+
+# Service account configuration
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
 ################################################################################
 # Monitoring Stack
 ################################################################################
