@@ -1,0 +1,281 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-slo-rules
+  namespace: monitoring
+  labels:
+    app: prometheus
+data:
+  slo-rules.yaml: |
+    groups:
+      # API Availability SLO
+      - name: slo_availability
+        interval: 30s
+        rules:
+          # SLI: Ratio of successful requests (2xx, 3xx) to total requests
+          - record: slo:api_success_rate:ratio
+            expr: |
+              sum(rate(http_requests_total{code!~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total[5m]))
+
+          # Error budget: 99.9% availability = 0.1% error budget
+          - record: slo:api_error_budget_remaining:ratio
+            expr: |
+              1 - (
+                (1 - slo:api_success_rate:ratio)
+                / 0.001
+              )
+
+          # Burn rate: How fast we're consuming error budget
+          # 1.0 = consuming at normal rate, >1.0 = burning faster
+          - record: slo:api_error_budget_burn_rate:ratio
+            expr: |
+              (1 - slo:api_success_rate:ratio)
+              / 0.001
+
+      # Latency SLO
+      - name: slo_latency
+        interval: 30s
+        rules:
+          # SLI: 95th percentile latency
+          - record: slo:api_latency_p95:seconds
+            expr: |
+              histogram_quantile(0.95,
+                sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, handler)
+              )
+
+          # SLI: Ratio of fast requests (p95 < 500ms)
+          - record: slo:api_latency_fast_ratio:ratio
+            expr: |
+              sum(rate(http_request_duration_seconds_bucket{le="0.5"}[5m]))
+              /
+              sum(rate(http_request_duration_seconds_count[5m]))
+
+          # Latency error budget remaining
+          - record: slo:api_latency_error_budget_remaining:ratio
+            expr: |
+              1 - (
+                (1 - slo:api_latency_fast_ratio:ratio)
+                / 0.05
+              )
+
+      # Platform Component Health SLO
+      - name: slo_platform_health
+        interval: 30s
+        rules:
+          # SLI: Ratio of healthy pods to total pods
+          - record: slo:platform_pod_health:ratio
+            expr: |
+              sum(kube_pod_status_phase{phase="Running"})
+              /
+              sum(kube_pod_status_phase)
+
+          # SLI: Node availability
+          - record: slo:platform_node_health:ratio
+            expr: |
+              sum(kube_node_status_condition{condition="Ready",status="true"})
+              /
+              sum(kube_node_status_condition{condition="Ready"})
+
+      # Request Rate SLO
+      - name: slo_request_rate
+        interval: 30s
+        rules:
+          # Requests per second by service
+          - record: slo:api_request_rate:rps
+            expr: |
+              sum(rate(http_requests_total[5m])) by (job, handler)
+
+          # Error rate (5xx responses)
+          - record: slo:api_error_rate:ratio
+            expr: |
+              sum(rate(http_requests_total{code=~"5.."}[5m]))
+              /
+              sum(rate(http_requests_total[5m]))
+
+      # Certificate Expiry SLO
+      - name: slo_certificate_expiry
+        interval: 5m
+        rules:
+          # Days until certificate expires
+          - record: slo:cert_expiry_days:days
+            expr: |
+              (certmanager_certificate_expiration_timestamp_seconds - time()) / 86400
+
+          # Certificates expiring soon (< 30 days)
+          - record: slo:cert_expiring_soon:count
+            expr: |
+              count(slo:cert_expiry_days:days < 30)
+
+      # Storage SLO
+      - name: slo_storage
+        interval: 1m
+        rules:
+          # PVC usage ratio
+          - record: slo:storage_pvc_usage:ratio
+            expr: |
+              kubelet_volume_stats_used_bytes
+              /
+              kubelet_volume_stats_capacity_bytes
+
+          # Node disk usage
+          - record: slo:storage_node_disk_usage:ratio
+            expr: |
+              (node_filesystem_size_bytes - node_filesystem_avail_bytes)
+              /
+              node_filesystem_size_bytes
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-slo-alerts
+  namespace: monitoring
+  labels:
+    app: prometheus
+data:
+  slo-alerts.yaml: |
+    groups:
+      - name: slo_alerts
+        rules:
+          # Critical: Error budget exhausted (99.9% SLO violated)
+          - alert: SLOErrorBudgetExhausted
+            expr: slo:api_error_budget_remaining:ratio < 0
+            for: 5m
+            labels:
+              severity: critical
+              slo: availability
+            annotations:
+              summary: "API availability SLO violated - error budget exhausted"
+              description: |
+                The API availability has dropped below 99.9% SLO.
+                Current success rate: {{ $value | humanizePercentage }}
+                Error budget remaining: {{ $value | humanizePercentage }}
+              runbook_url: "https://github.com/thomasvincent/mantl/docs/runbooks.md#slo-violation"
+
+          # Warning: Error budget burning fast (6x normal rate)
+          - alert: SLOErrorBudgetBurnRateHigh
+            expr: slo:api_error_budget_burn_rate:ratio > 6
+            for: 5m
+            labels:
+              severity: warning
+              slo: availability
+            annotations:
+              summary: "Error budget burning 6x faster than acceptable rate"
+              description: |
+                At current burn rate, error budget will be exhausted in {{ $value | humanizeDuration }}.
+                Current burn rate: {{ $value }}x
+              runbook_url: "https://github.com/thomasvincent/mantl/docs/runbooks.md#error-budget-burn"
+
+          # Critical: High error rate
+          - alert: SLOHighErrorRate
+            expr: slo:api_error_rate:ratio > 0.05
+            for: 5m
+            labels:
+              severity: critical
+              slo: availability
+            annotations:
+              summary: "API error rate above 5%"
+              description: |
+                API is returning errors at {{ $value | humanizePercentage }} rate.
+                Threshold: 5%
+              runbook_url: "https://github.com/thomasvincent/mantl/docs/runbooks.md#high-error-rate"
+
+          # Warning: Latency SLO at risk
+          - alert: SLOLatencyBudgetAtRisk
+            expr: slo:api_latency_error_budget_remaining:ratio < 0.2
+            for: 10m
+            labels:
+              severity: warning
+              slo: latency
+            annotations:
+              summary: "Latency error budget below 20%"
+              description: |
+                Only {{ $value | humanizePercentage }} of latency error budget remains.
+                P95 latency: {{ $value }}s (target: <500ms)
+              runbook_url: "https://github.com/thomasvincent/mantl/docs/runbooks.md#latency-degradation"
+
+          # Critical: Platform unhealthy
+          - alert: SLOPlatformHealthDegraded
+            expr: slo:platform_pod_health:ratio < 0.95
+            for: 5m
+            labels:
+              severity: critical
+              slo: platform_health
+            annotations:
+              summary: "Platform health below 95%"
+              description: |
+                Only {{ $value | humanizePercentage }} of pods are healthy.
+                Threshold: 95%
+              runbook_url: "https://github.com/thomasvincent/mantl/docs/runbooks.md#platform-health"
+
+          # Warning: Node unavailable
+          - alert: SLONodeUnavailable
+            expr: slo:platform_node_health:ratio < 1.0
+            for: 5m
+            labels:
+              severity: warning
+              slo: platform_health
+            annotations:
+              summary: "One or more nodes not ready"
+              description: |
+                Node availability: {{ $value | humanizePercentage }}
+                Check node status with: kubectl get nodes
+              runbook_url: "https://github.com/thomasvincent/mantl/docs/runbooks.md#node-not-ready"
+
+          # Critical: Certificate expiring soon
+          - alert: SLOCertificateExpiringSoon
+            expr: slo:cert_expiry_days:days < 7
+            for: 1h
+            labels:
+              severity: critical
+              slo: security
+            annotations:
+              summary: "Certificate expires in less than 7 days"
+              description: |
+                Certificate {{ $labels.name }} expires in {{ $value }} days.
+                Namespace: {{ $labels.namespace }}
+              runbook_url: "https://github.com/thomasvincent/mantl/docs/runbooks.md#certificate-renewal"
+
+          # Warning: Certificate expiring in 30 days
+          - alert: SLOCertificateExpiryWarning
+            expr: slo:cert_expiry_days:days < 30 and slo:cert_expiry_days:days >= 7
+            for: 24h
+            labels:
+              severity: warning
+              slo: security
+            annotations:
+              summary: "Certificate expires in less than 30 days"
+              description: |
+                Certificate {{ $labels.name }} expires in {{ $value }} days.
+                Plan renewal soon.
+
+          # Critical: Storage almost full
+          - alert: SLOStorageAlmostFull
+            expr: slo:storage_pvc_usage:ratio > 0.9
+            for: 10m
+            labels:
+              severity: critical
+              slo: storage
+            annotations:
+              summary: "PVC storage usage above 90%"
+              description: |
+                PVC {{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full.
+                Namespace: {{ $labels.namespace }}
+              runbook_url: "https://github.com/thomasvincent/mantl/docs/runbooks.md#storage-full"
+
+          # Warning: Node disk filling up
+          - alert: SLONodeDiskFillingUp
+            expr: slo:storage_node_disk_usage:ratio > 0.85
+            for: 10m
+            labels:
+              severity: warning
+              slo: storage
+            annotations:
+              summary: "Node disk usage above 85%"
+              description: |
+                Node {{ $labels.node }} disk is {{ $value | humanizePercentage }} full.
+                Mount: {{ $labels.mountpoint }}
+              runbook_url: "https://github.com/thomasvincent/mantl/docs/runbooks.md#disk-space"
