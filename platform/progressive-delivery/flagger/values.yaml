@@ -1,0 +1,76 @@
+################################################################################
+# Flagger Configuration for Progressive Delivery
+################################################################################
+
+flagger:
+  # Metrics server for canary analysis
+  metricsServer: "http://prometheus-server.monitoring.svc:80"
+
+  # Integration with Gateway API
+  meshProvider: gatewayapi
+
+  # Slack notifications (optional)
+  slack:
+    user: flagger
+    channel: "#platform-alerts"
+    # url: set via External Secret
+
+  # Resources
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # ServiceMonitor for Prometheus
+  prometheus:
+    enabled: true
+
+  # RBAC
+  rbac:
+    create: true
+    pspEnabled: false  # Pod Security Policies deprecated
+
+  # Log level
+  logLevel: info
+
+  # Thread count
+  threadiness: 10
+
+# Flagger Loadtester (for canary testing)
+loadtester:
+  enabled: true
+  image:
+    repository: ghcr.io/fluxcd/flagger-loadtester
+    tag: 0.32.0
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Service
+  service:
+    type: ClusterIP
+    port: 80
+
+# Default canary analysis template
+canaryAnalysisDefaults:
+  interval: 1m
+  threshold: 5
+  maxWeight: 50
+  stepWeight: 10
+  metrics:
+    - name: request-success-rate
+      thresholdRange:
+        min: 99
+      interval: 1m
+    - name: request-duration
+      thresholdRange:
+        max: 500
+      interval: 1m

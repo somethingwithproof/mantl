@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: crashloop-detector
+  namespace: automation
+data:
+  detect.sh: |
+    #!/bin/bash
+    # Detect pods in CrashLoopBackOff and restart them
+
+    NAMESPACE=${NAMESPACE:-"production"}
+    THRESHOLD=${THRESHOLD:-"5"}
+
+    while true; do
+      # Find crashlooping pods
+      kubectl get pods -n $NAMESPACE --field-selector=status.phase!=Running,status.phase!=Succeeded -o json | \
+        jq -r '.items[] | select(.status.containerStatuses[].restartCount > '$THRESHOLD') | .metadata.name' | \
+        while read pod; do
+          echo "[$(date)] Detected crashloop: $pod (namespace: $NAMESPACE)"
+
+          # Delete pod to force recreation
+          kubectl delete pod $pod -n $NAMESPACE --grace-period=0 --force
+
+          # Alert
+          curl -X POST ${SLACK_WEBHOOK} -H 'Content-Type: application/json' -d "{
+            \"text\": \":warning: Auto-restarted crashlooping pod: \`$pod\` in \`$NAMESPACE\`\"
+          }"
+        done
+
+      sleep 300  # Check every 5 minutes
+    done
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crashloop-detector
+  namespace: automation
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: automation-sa
+          containers:
+          - name: detector
+            image: bitnami/kubectl:latest
+            command: ["/bin/bash", "/scripts/detect.sh"]
+            env:
+            - name: NAMESPACE
+              value: "production"
+            - name: THRESHOLD
+              value: "5"
+            - name: SLACK_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: slack-webhook
+                  key: url
+            volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+          volumes:
+          - name: scripts
+            configMap:
+              name: crashloop-detector
+              defaultMode: 0755
+          restartPolicy: OnFailure

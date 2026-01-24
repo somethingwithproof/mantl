@@ -1,0 +1,22 @@
+cloudnative-pg:
+  # Monitoring
+  monitoring:
+    podMonitorEnabled: true
+
+  # Resources
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Webhook
+  webhook:
+    port: 9443
+
+  config:
+    data:
+      INHERITED_ANNOTATIONS: "*"
+      INHERITED_LABELS: "app,role"

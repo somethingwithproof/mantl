@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cert-checker
+  namespace: automation
+data:
+  check.sh: |
+    #!/bin/bash
+    # Check certificate expiry and force renewal if needed
+
+    WARN_DAYS=${WARN_DAYS:-"14"}
+    RENEW_DAYS=${RENEW_DAYS:-"7"}
+
+    kubectl get certificates -A -o json | \
+      jq -r '.items[] |
+        select(.status.notAfter) |
+        [.metadata.namespace, .metadata.name, .status.notAfter] | @tsv' | \
+      while IFS=$'\t' read namespace name expiry; do
+
+        expiry_epoch=$(date -d "$expiry" +%s)
+        now_epoch=$(date +%s)
+        days_left=$(( ($expiry_epoch - $now_epoch) / 86400 ))
+
+        echo "[$(date)] Certificate: $namespace/$name expires in $days_left days"
+
+        if [ $days_left -le $RENEW_DAYS ]; then
+          echo "  → Forcing renewal (expires in $days_left days)"
+
+          # Annotate to trigger renewal
+          kubectl annotate certificate $name -n $namespace \
+            cert-manager.io/issue-temporary-certificate=true \
+            --overwrite
+
+          # Alert
+          curl -X POST ${SLACK_WEBHOOK} -H 'Content-Type: application/json' -d "{
+            \"text\": \":certificate: Auto-renewing certificate: \`$namespace/$name\` (expires in $days_left days)\"
+          }"
+
+        elif [ $days_left -le $WARN_DAYS ]; then
+          echo "  ⚠️  Warning: expires soon"
+        fi
+      done
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cert-checker
+  namespace: automation
+spec:
+  schedule: "0 0 * * *"  # Daily at midnight
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: automation-sa
+          containers:
+          - name: checker
+            image: bitnami/kubectl:latest
+            command: ["/bin/bash", "/scripts/check.sh"]
+            env:
+            - name: WARN_DAYS
+              value: "14"
+            - name: RENEW_DAYS
+              value: "7"
+            - name: SLACK_WEBHOOK
+              valueFrom:
+                secretKeyRef:
+                  name: slack-webhook
+                  key: url
+            volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+          volumes:
+          - name: scripts
+            configMap:
+              name: cert-checker
+              defaultMode: 0755
+          restartPolicy: OnFailure

@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: automation
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - pod-restart/crashloop-detector.yaml
+  - auto-scale/hpa-adjuster.yaml
+  - cert-renewal/cert-checker.yaml
+  - log-cleanup/log-rotator.yaml

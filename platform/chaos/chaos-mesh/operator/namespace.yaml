@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chaos-mesh
+  labels:
+    name: chaos-mesh
+    pod-security.kubernetes.io/enforce: privileged

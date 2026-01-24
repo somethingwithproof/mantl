@@ -1,0 +1,34 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: api-service-ab-test
+  namespace: production
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-service
+
+  service:
+    port: 8080
+
+  # A/B Testing configuration
+  analysis:
+    interval: 1m
+    threshold: 10
+    iterations: 10
+
+    # Match conditions for A/B testing
+    match:
+      - headers:
+          user-agent:
+            regex: ".*Chrome.*"
+      - headers:
+          x-canary:
+            exact: "insider"
+
+    metrics:
+      - name: request-success-rate
+        thresholdRange:
+          min: 99
+        interval: 1m

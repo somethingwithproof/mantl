@@ -1,0 +1,96 @@
+backstage:
+  # Image
+  image:
+    registry: ghcr.io
+    repository: backstage/backstage
+    tag: latest
+
+  # Ingress
+  ingress:
+    enabled: true
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    host: backstage.mantl.example.com
+    tls:
+      enabled: true
+      secretName: backstage-tls
+
+  # App config
+  appConfig:
+    app:
+      title: Mantl Developer Portal
+      baseUrl: https://backstage.mantl.example.com
+
+    organization:
+      name: Mantl
+
+    backend:
+      baseUrl: https://backstage.mantl.example.com
+      listen:
+        port: 7007
+      cors:
+        origin: https://backstage.mantl.example.com
+      database:
+        client: pg
+        connection:
+          host: ${POSTGRES_HOST}
+          port: ${POSTGRES_PORT}
+          user: ${POSTGRES_USER}
+          password: ${POSTGRES_PASSWORD}
+
+    integrations:
+      github:
+        - host: github.com
+          token: ${GITHUB_TOKEN}
+
+    catalog:
+      import:
+        entityFilename: catalog-info.yaml
+      rules:
+        - allow: [Component, System, API, Resource, Location]
+      locations:
+        - type: url
+          target: https://github.com/thomasvincent/mantl/blob/main/catalog-info.yaml
+
+    kubernetes:
+      serviceLocatorMethod:
+        type: multiTenant
+      clusterLocatorMethods:
+        - type: config
+          clusters:
+            - url: ${K8S_API_URL}
+              name: mantl-production
+              authProvider: serviceAccount
+              skipTLSVerify: false
+              serviceAccountToken: ${K8S_TOKEN}
+
+    techdocs:
+      builder: local
+      generator:
+        runIn: local
+      publisher:
+        type: local
+
+    auth:
+      providers:
+        github:
+          development:
+            clientId: ${GITHUB_CLIENT_ID}
+            clientSecret: ${GITHUB_CLIENT_SECRET}
+
+  # Resources
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+  # PostgreSQL
+  postgresql:
+    enabled: true
+    auth:
+      username: backstage
+      password: ${POSTGRES_PASSWORD}
+      database: backstage

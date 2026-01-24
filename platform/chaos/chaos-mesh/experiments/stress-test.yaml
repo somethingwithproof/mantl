@@ -1,0 +1,19 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-stress-test
+  namespace: chaos-mesh
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - staging
+    labelSelectors:
+      app: api-service
+  stressors:
+    cpu:
+      workers: 4
+      load: 80
+  duration: "5m"
+  scheduler:
+    cron: "0 3 * * 6"  # Saturday 3 AM

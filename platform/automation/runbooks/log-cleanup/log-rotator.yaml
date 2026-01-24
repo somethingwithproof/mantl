@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-rotator
+  namespace: automation
+data:
+  rotate.sh: |
+    #!/bin/bash
+    # Cleanup old logs and compress large files
+
+    RETENTION_DAYS=${RETENTION_DAYS:-"30"}
+    COMPRESS_SIZE_MB=${COMPRESS_SIZE_MB:-"100"}
+
+    echo "[$(date)] Starting log cleanup (retention: $RETENTION_DAYS days)"
+
+    # Find and delete old logs
+    find /var/log -name "*.log" -type f -mtime +$RETENTION_DAYS -exec rm -f {} \;
+
+    # Compress large logs
+    find /var/log -name "*.log" -type f -size +${COMPRESS_SIZE_MB}M | while read log; do
+      echo "  → Compressing: $log"
+      gzip $log
+    done
+
+    # Clean up old compressed logs
+    find /var/log -name "*.gz" -type f -mtime +$RETENTION_DAYS -exec rm -f {} \;
+
+    echo "[$(date)] Log cleanup complete"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: log-rotator
+  namespace: automation
+spec:
+  selector:
+    matchLabels:
+      app: log-rotator
+  template:
+    metadata:
+      labels:
+        app: log-rotator
+    spec:
+      containers:
+      - name: rotator
+        image: alpine:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          while true; do
+            /scripts/rotate.sh
+            sleep 86400  # Daily
+          done
+        env:
+        - name: RETENTION_DAYS
+          value: "30"
+        - name: COMPRESS_SIZE_MB
+          value: "100"
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        - name: varlog
+          mountPath: /var/log
+      volumes:
+      - name: scripts
+        configMap:
+          name: log-rotator
+          defaultMode: 0755
+      - name: varlog
+        hostPath:
+          path: /var/log
