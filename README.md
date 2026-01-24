@@ -262,10 +262,20 @@ kubectl apply -k infrastructure/tetragon/
 
 ## Documentation
 
+### Getting Started
 - [Quick Start Guide](docs/quickstart-platform.md)
 - [Architecture Overview](docs/architecture-diagram.md)
-- [Compliance Module](compliance/README.md)
 - [Development Guide](DEVELOPMENT.md)
+
+### Operational Runbooks
+- [Disaster Recovery Procedures](docs/runbooks/disaster-recovery.md) - Complete DR procedures for all failure scenarios
+- [Scaling Operations](docs/runbooks/scaling-operations.md) - HPA, VPA, cluster autoscaling procedures
+- [Upgrade Procedures](docs/runbooks/upgrade-procedures.md) - Kubernetes, platform, and application upgrades
+- [Troubleshooting Guide](docs/runbooks/troubleshooting-guide.md) - Common issues and solutions
+- [Incident Response](docs/runbooks/incident-response.md) - Incident classification and response playbooks
+
+### Additional Documentation
+- [Compliance Module](compliance/README.md)
 - [Architecture Decision Records](docs/ara/README.md)
 
 ## Components
@@ -305,16 +315,51 @@ Mantl provides multiple ways to get started, from zero to production in minutes:
 
 Production-ready examples demonstrating best practices:
 
-- **api-service** - Backend API with OpenTelemetry tracing and Prometheus metrics
-- **frontend** - Nginx frontend with Gateway API ingress
-- **database-app** - Stateful application with PostgreSQL StatefulSet
-- **hello** - Simple hello-world example
+#### E-Commerce Microservices (`examples/ecommerce-microservices/`)
+- Full-stack application with Products API (FastAPI/Python) and React frontend
+- PostgreSQL database integration with CloudNativePG
+- Prometheus metrics and OpenTelemetry tracing
+- Complete CI/CD with GitHub Actions
+- Horizontal Pod Autoscaling
+
+#### ML Inference Service (`examples/ml-inference-service/`)
+- Machine learning model serving with FastAPI
+- Single and batch prediction endpoints
+- Model versioning and A/B testing support
+- Optional GPU acceleration
+- Autoscaling based on prediction latency
+
+#### Batch Processing Job (`examples/batch-processing-job/`)
+- CronJob for scheduled batch data processing
+- Parallel processing with async workers
+- S3 checkpointing for resume capability
+- Idempotent processing patterns
+- Prometheus Pushgateway metrics
+
+#### Event-Driven Architecture (`examples/event-driven-arch/`)
+- NATS JetStream message broker (clustered)
+- Publisher service with REST API
+- Subscriber service with consumer groups
+- CloudEvents standard format
+- At-least-once delivery guarantees
+
+#### Static Website with CDN (`examples/static-website/`)
+- Production nginx configuration
+- CloudFront/Cloudflare CDN integration
+- Aggressive caching and compression
+- Security headers (CSP, X-Frame-Options)
+- Responsive design
 
 Deploy examples:
 ```bash
-make deploy-examples
-# or
-kubectl apply -k applications/examples/<app-name>/base
+# Individual examples
+kubectl apply -f examples/ml-inference-service/k8s/
+kubectl apply -f examples/batch-processing-job/k8s/
+kubectl apply -f examples/event-driven-arch/k8s/
+kubectl apply -f examples/static-website/k8s/
+
+# E-commerce microservices (requires Flux)
+flux reconcile kustomization ecommerce-microservices
 ```
 
 ## Environments
