@@ -1,0 +1,7 @@
+# End-to-End Test Dependencies
+
+pytest==8.3.4
+pytest-xdist==3.6.1  # Parallel test execution
+pytest-timeout==2.3.1  # Test timeouts
+pytest-html==4.1.1  # HTML reports
+pyyaml==6.0.2  # YAML parsing
