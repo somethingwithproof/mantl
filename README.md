@@ -1,7 +1,10 @@
 # Mantl
 
 [![CI](https://github.com/thomasvincent/mantl/actions/workflows/ci.yml/badge.svg)](https://github.com/thomasvincent/mantl/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/thomasvincent/mantl/branch/main/graph/badge.svg)](https://codecov.io/gh/thomasvincent/mantl)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Security Rating](https://img.shields.io/badge/security-A+-brightgreen)](docs/security.md)
+[![Code Quality](https://img.shields.io/badge/quality-A+-brightgreen)](#code-quality)
 
 Mantl is a modern, cloud-native platform for rapidly deploying globally distributed services with built-in compliance automation.
 

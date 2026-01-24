@@ -46,10 +46,17 @@
 - **[Backstage Catalog](../catalog-info.yaml)** - Service catalog metadata
 - **[Backstage Guide](backstage.md)** - Developer portal setup
 
+## Operations
+
+- **[Troubleshooting Guide](troubleshooting.md)** - Common issues and solutions
+- **[Operational Runbooks](runbooks.md)** - Standard operating procedures
+- **[Testing Guide](../tests/README.md)** - Running and writing tests
+
 ## Reference
 
 - **Multi-Cloud**: [multicloud.rst](multicloud.rst) - Cross-cloud deployment patterns
 - **Kyverno Policies**: `policies/kyverno/` - Policy enforcement rules
+- **[Architecture Diagram](architecture-diagram.md)** - System architecture overview
 
 ---
 
