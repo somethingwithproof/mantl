@@ -275,6 +275,7 @@ kubectl apply -k infrastructure/tetragon/
 - [Incident Response](docs/runbooks/incident-response.md) - Incident classification and response playbooks
 
 ### Additional Documentation
+- [Cost Optimization Guide](docs/cost-optimization.md) - Multi-cloud cost comparison, right-sizing, spot instances (40-70% savings)
 - [Compliance Module](compliance/README.md)
 - [Architecture Decision Records](docs/ara/README.md)
 
