@@ -1,0 +1,126 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install Development Environment",
+      "type": "shell",
+      "command": "make install-dev",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Start Tilt (Hot Reload Development)",
+      "type": "shell",
+      "command": "tilt up",
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Stop Tilt",
+      "type": "shell",
+      "command": "tilt down",
+      "problemMatcher": []
+    },
+    {
+      "label": "Deploy Platform (ArgoCD)",
+      "type": "shell",
+      "command": "kubectl apply -f clusters/dev/app-of-apps.yaml",
+      "problemMatcher": []
+    },
+    {
+      "label": "Port Forward - ArgoCD UI",
+      "type": "shell",
+      "command": "kubectl port-forward svc/argocd-server -n argocd 8080:443",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Port Forward - Prometheus",
+      "type": "shell",
+      "command": "kubectl port-forward svc/prometheus-operated -n observability 9090:9090",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Port Forward - Grafana",
+      "type": "shell",
+      "command": "kubectl port-forward svc/grafana -n observability 3001:80",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Tests (Python)",
+      "type": "shell",
+      "command": "pytest tests/ -v --cov",
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Lint Python Code",
+      "type": "shell",
+      "command": "ruff check . && black --check .",
+      "problemMatcher": []
+    },
+    {
+      "label": "Format Python Code",
+      "type": "shell",
+      "command": "ruff check --fix . && black .",
+      "problemMatcher": []
+    },
+    {
+      "label": "Validate Kubernetes Manifests",
+      "type": "shell",
+      "command": "find . -name '*.yaml' -o -name '*.yml' | grep -E '(k8s|kubernetes)' | xargs kubectl apply --dry-run=client -f",
+      "problemMatcher": []
+    },
+    {
+      "label": "Terraform Plan (AWS)",
+      "type": "shell",
+      "command": "cd terraform/blueprints/aws-eks && terraform plan",
+      "problemMatcher": []
+    },
+    {
+      "label": "Open K9s (Kubernetes TUI)",
+      "type": "shell",
+      "command": "k9s",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "View Logs - Products API",
+      "type": "shell",
+      "command": "stern products-api -n ecommerce",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Create Kind Cluster",
+      "type": "shell",
+      "command": "kind create cluster --name mantl-dev --config scripts/kind-config.yaml",
+      "problemMatcher": []
+    },
+    {
+      "label": "Delete Kind Cluster",
+      "type": "shell",
+      "command": "kind delete cluster --name mantl-dev",
+      "problemMatcher": []
+    }
+  ]
+}

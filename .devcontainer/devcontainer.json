@@ -1,0 +1,141 @@
+{
+  "name": "Mantl Platform Development",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-22.04",
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true
+    },
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "version": "latest",
+      "helm": "latest",
+      "minikube": "latest"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/aws-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/azure-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "version": "latest"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "ms-azuretools.vscode-docker",
+        "HashiCorp.terraform",
+        "redhat.vscode-yaml",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "esbenp.prettier-vscode",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "eamodio.gitlens",
+        "vscode-icons-team.vscode-icons"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+        "files.associations": {
+          "*.yaml": "yaml",
+          "*.yml": "yaml",
+          "Tiltfile": "python"
+        },
+        "yaml.schemas": {
+          "https://json.schemastore.org/kustomization.json": "kustomization.yaml",
+          "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.{yml,yaml}",
+          "kubernetes": "*.k8s.yaml"
+        },
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit",
+            "source.fixAll": "explicit"
+          }
+        },
+        "[yaml]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.tabSize": 2
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        }
+      }
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "mounts": [
+    "source=${localEnv:HOME}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,consistency=cached"
+  ],
+
+  "remoteEnv": {
+    "KUBECONFIG": "/home/vscode/.kube/config"
+  },
+
+  "forwardPorts": [
+    3000,  // Frontend
+    8000,  // API services
+    8080,  // Alternative HTTP
+    9090,  // Prometheus/Kubecost
+    3100,  // Loki
+    16686, // Jaeger UI
+    9411   // Zipkin
+  ],
+
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "API",
+      "onAutoForward": "notify"
+    },
+    "9090": {
+      "label": "Prometheus/Kubecost",
+      "onAutoForward": "silent"
+    },
+    "3100": {
+      "label": "Loki",
+      "onAutoForward": "silent"
+    },
+    "16686": {
+      "label": "Jaeger UI",
+      "onAutoForward": "silent"
+    }
+  },
+
+  "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}"
+}

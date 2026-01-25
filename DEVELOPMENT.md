@@ -4,6 +4,26 @@ This guide provides detailed information for developers working on the Mantl 202
 
 ## Quick Start
 
+### Option 1: VS Code DevContainer (Recommended - Zero Setup)
+
+**All tools pre-installed, works on Windows/Mac/Linux**
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop) and [VS Code](https://code.visualstudio.com/)
+2. Install [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+3. Clone repo: `git clone https://github.com/thomasvincent/mantl.git && cd mantl && code .`
+4. Click **"Reopen in Container"** when prompted (wait 2-5 min for first build)
+5. You're ready! All tools pre-installed ✅
+
+**Included**: kubectl, helm, kind, argocd, flux, tilt, k9s, stern, terraform, python, node, go, AWS/Azure/GCP CLIs
+
+### Option 2: GitHub Codespaces (Cloud-Based - Zero Local Setup)
+
+1. Go to https://github.com/thomasvincent/mantl
+2. Click **Code** → **Codespaces** → **Create codespace on main**
+3. Wait 2-3 minutes → Start coding in browser! ✅
+
+### Option 3: Traditional Setup
+
 ```bash
 # Install the platform locally
 make install-dev
@@ -119,6 +139,67 @@ The pre-commit hooks automatically check your code before each commit for:
 - Terraform formatting
 - Shell script linting (shellcheck)
 - Commit message format (Conventional Commits)
+
+## Hot-Reload Development with Tilt
+
+**Tilt automatically rebuilds and redeploys when you change code - zero manual steps!**
+
+```bash
+# Start Tilt (watches all example applications)
+tilt up
+
+# Tilt UI opens automatically at http://localhost:10350
+```
+
+**What Tilt Watches**:
+- Python files → Auto-restart FastAPI
+- TypeScript/React files → Hot-reload in browser
+- Kubernetes manifests → Auto-apply changes
+- Dockerfiles → Auto-rebuild images
+
+**Keyboard Shortcuts in Terminal**:
+- `s` - Open Tilt UI in browser
+- `space` - Select a resource
+- `r` - Trigger manual rebuild
+- `q` - Quit Tilt
+
+**Tilt Features**:
+- Live code updates (no rebuilds for interpreted languages)
+- Fast incremental Docker builds
+- Real-time logs from all services
+- Resource health monitoring
+- Port-forward management
+
+## VS Code Integration
+
+### Pre-configured Tasks
+
+Press `Cmd/Ctrl+Shift+P` → **Tasks: Run Task**:
+
+- **Start Tilt (Hot Reload Development)** - One-click hot-reload
+- **Install Development Environment** - Setup kind cluster
+- **Port Forward - ArgoCD UI** - Access ArgoCD at https://localhost:8080
+- **Port Forward - Prometheus** - Access at http://localhost:9090
+- **Port Forward - Grafana** - Access at http://localhost:3001
+- **Run Tests (Python)** - Execute pytest
+- **Open K9s (Kubernetes TUI)** - Interactive cluster management
+
+### Debugging
+
+**Pre-configured launch configurations** - Press `F5`:
+
+- **Python: Products API** - Debug FastAPI service
+- **Python: ML Inference Service** - Debug ML service
+- **Python: Event Publisher** - Debug NATS publisher
+- **Python: Event Subscriber** - Debug NATS subscriber
+- **Python: Pytest Current File** - Debug current test
+- **Python: Pytest All Tests** - Debug all tests
+
+**How to Debug**:
+1. Set breakpoint (click line number)
+2. Press `F5`
+3. Select configuration from dropdown
+4. Use debug console to inspect variables
 
 ## Development Workflow
 
