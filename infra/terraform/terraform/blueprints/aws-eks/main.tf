@@ -229,7 +229,7 @@ module "eks" {
 
 module "kms" {
   source  = "terraform-aws-modules/kms/aws"
-  version = "~> 2.2"
+  version = "~> 4.2"
 
   aliases               = ["eks/${local.name}"]
   description           = "KMS key for EKS cluster ${local.name} secrets encryption"
