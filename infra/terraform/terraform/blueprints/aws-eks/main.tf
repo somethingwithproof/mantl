@@ -247,7 +247,7 @@ module "kms" {
 # External DNS
 module "external_dns_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  version = "~> 6.4"
 
   role_name = "${local.name}-external-dns"
 
@@ -267,7 +267,7 @@ module "external_dns_irsa" {
 # External Secrets
 module "external_secrets_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  version = "~> 6.4"
 
   role_name = "${local.name}-external-secrets"
 
@@ -288,7 +288,7 @@ module "external_secrets_irsa" {
 # cert-manager
 module "cert_manager_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  version = "~> 6.4"
 
   role_name = "${local.name}-cert-manager"
 
@@ -308,7 +308,7 @@ module "cert_manager_irsa" {
 # Cluster Autoscaler
 module "cluster_autoscaler_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  version = "~> 6.4"
 
   role_name = "${local.name}-cluster-autoscaler"
 
@@ -328,7 +328,7 @@ module "cluster_autoscaler_irsa" {
 # EBS CSI Driver
 module "ebs_csi_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  version = "~> 6.4"
 
   role_name = "${local.name}-ebs-csi"
 
@@ -347,7 +347,7 @@ module "ebs_csi_irsa" {
 # Load Balancer Controller
 module "load_balancer_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  version = "~> 6.4"
 
   role_name = "${local.name}-aws-load-balancer-controller"
 
