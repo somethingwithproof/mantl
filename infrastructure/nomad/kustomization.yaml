@@ -1,0 +1,50 @@
+# HashiCorp Nomad Infrastructure Kustomization
+# Alternative orchestrator for Mantl platform
+# https://developer.hashicorp.com/nomad
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: nomad-infrastructure
+  labels:
+    app.kubernetes.io/name: nomad
+    app.kubernetes.io/part-of: mantl-platform
+
+# Note: Nomad doesn't use Kubernetes resources directly
+# This kustomization manages Nomad-in-Kubernetes deployments
+# for hybrid orchestration scenarios
+
+namespace: nomad-system
+
+resources:
+  - nomad-namespace.yaml
+  - nomad-secrets.yaml
+  - nomad-configmaps.yaml
+
+# Helm chart for Nomad on Kubernetes (hybrid setup)
+helmCharts:
+  - name: nomad
+    repo: https://helm.releases.hashicorp.com
+    version: 1.2.0
+    releaseName: nomad
+    namespace: nomad-system
+    valuesFile: nomad-helm-values.yaml
+    includeCRDs: true
+
+  # Consul for service discovery
+  - name: consul
+    repo: https://helm.releases.hashicorp.com
+    version: 1.3.0
+    releaseName: consul
+    namespace: consul-system
+    valuesFile: consul-helm-values.yaml
+    includeCRDs: true
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  platform.mantl.io/component: nomad
+  platform.mantl.io/orchestrator: nomad
+
+commonAnnotations:
+  mantl.io/infrastructure-component: "nomad-orchestrator"
+  mantl.io/documentation: "https://developer.hashicorp.com/nomad/docs"

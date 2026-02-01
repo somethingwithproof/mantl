@@ -13,7 +13,8 @@
 #                      Format: https://github.com/ORG/REPO/.github/workflows/FILE@refs/heads/BRANCH
 #
 # Examples:
-#   set-keyless-subject.sh "https://github.com/myorg/myrepo/.github/workflows/ci.yaml@refs/heads/main"
+#   set-keyless-subject.sh \
+#     "https://github.com/myorg/myrepo/.github/workflows/ci.yaml@refs/heads/main"
 #
 
 set -euo pipefail
@@ -103,8 +104,10 @@ validate_subject() {
   fi
 
   # Check basic GitHub format
-  if [[ ! "$subject" =~ ^https://github\.com/[^/]+/[^/]+/\.github/workflows/.*@refs/heads/.+ ]]; then
-    err "Invalid subject format. Expected: https://github.com/ORG/REPO/.github/workflows/FILE@refs/heads/BRANCH"
+  local github_pattern='^https://github\.com/[^/]+/[^/]+/\.github/workflows/.*@refs/heads/.+'
+  if [[ ! "$subject" =~ $github_pattern ]]; then
+    err "Invalid subject format." \
+      "Expected: https://github.com/ORG/REPO/.github/workflows/FILE@refs/heads/BRANCH"
   fi
 
   # Warn if using non-standard branch

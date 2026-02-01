@@ -1,0 +1,766 @@
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceFramework
+metadata:
+  name: pci-dss
+  labels:
+    app.kubernetes.io/part-of: mantl-compliance
+spec:
+  name: PCI DSS v4.0
+  version: "4.0"
+  description: |
+    Payment Card Industry Data Security Standard (PCI DSS) v4.0 compliance framework
+    for protecting cardholder data (CHD) and sensitive authentication data (SAD).
+  categories:
+    - name: requirement-1
+      displayName: "Requirement 1: Install and Maintain Network Security Controls"
+      controls:
+        - id: pci-1.1.1
+          name: Network security control processes defined
+          description: All security policies and operational procedures identified in Requirement 1 are documented, kept up to date, in use, and known to all affected parties
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Network security policies
+
+        - id: pci-1.2.1
+          name: Network security controls configured
+          description: Configuration standards for network security controls are defined, implemented, and maintained
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Network policy configuration
+            - type: logs
+              description: Network policy enforcement logs
+
+        - id: pci-1.2.5
+          name: Deny all traffic by default
+          description: All services, protocols, and ports allowed are identified, approved, and have a defined business need
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Default deny network policies
+            - type: attestation
+              description: Allowed services documentation
+
+        - id: pci-1.3.1
+          name: Inbound traffic restricted to CDE
+          description: Inbound traffic to the cardholder data environment is restricted to only traffic that is necessary
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: CDE ingress policies
+            - type: logs
+              description: Traffic flow logs
+
+        - id: pci-1.3.2
+          name: Outbound traffic restricted from CDE
+          description: Outbound traffic from the cardholder data environment is restricted to only traffic that is necessary
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: CDE egress policies
+            - type: logs
+              description: Egress traffic logs
+
+        - id: pci-1.4.1
+          name: NSCs between trusted and untrusted networks
+          description: Network security controls are implemented between all trusted and untrusted networks
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Network segmentation configuration
+
+    - name: requirement-2
+      displayName: "Requirement 2: Apply Secure Configurations to All System Components"
+      controls:
+        - id: pci-2.1.1
+          name: Secure configuration processes defined
+          description: All security policies and operational procedures identified in Requirement 2 are documented
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: System configuration standards
+
+        - id: pci-2.2.1
+          name: Configuration standards developed
+          description: Configuration standards are developed, implemented, and maintained for all system components
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Container security context
+            - type: policy
+              description: Pod security policies
+
+        - id: pci-2.2.2
+          name: Vendor default accounts managed
+          description: Vendor default accounts are managed
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Service account configuration
+            - type: logs
+              description: Account audit logs
+
+        - id: pci-2.2.3
+          name: Primary functions separated
+          description: Primary functions requiring different security levels are managed
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Namespace separation
+            - type: policy
+              description: Workload isolation policies
+
+        - id: pci-2.2.4
+          name: Unnecessary services removed
+          description: Only necessary services, protocols, daemons, and functions are enabled
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Container runtime configuration
+            - type: attestation
+              description: Minimal base images
+
+        - id: pci-2.2.5
+          name: Insecure services secured
+          description: If any insecure services, protocols, or daemons are present, the business justification is documented
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: TLS enforcement
+            - type: logs
+              description: Secure protocol verification
+
+        - id: pci-2.2.6
+          name: System security parameters configured
+          description: System security parameters are configured to prevent misuse
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Security context constraints
+            - type: policy
+              description: Kyverno security policies
+
+    - name: requirement-3
+      displayName: "Requirement 3: Protect Stored Account Data"
+      controls:
+        - id: pci-3.1.1
+          name: Account data protection processes defined
+          description: All security policies and operational procedures are documented
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Data protection policies
+
+        - id: pci-3.2.1
+          name: Account data storage minimized
+          description: Account data storage amount and retention time is limited
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Data retention policies
+            - type: logs
+              description: Data lifecycle logs
+
+        - id: pci-3.4.1
+          name: PAN masked when displayed
+          description: PAN is masked when displayed, displaying only minimal digits
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Data masking configuration
+            - type: attestation
+              description: Display masking verification
+
+        - id: pci-3.5.1
+          name: PAN rendered unreadable when stored
+          description: PAN is rendered unreadable anywhere it is stored using strong cryptography
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Encryption at rest configuration
+            - type: attestation
+              description: Key management documentation
+
+        - id: pci-3.6.1
+          name: Cryptographic keys protected
+          description: Procedures are defined and implemented to protect cryptographic keys
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Key management configuration
+            - type: logs
+              description: Key access audit logs
+
+        - id: pci-3.7.1
+          name: Key management procedures documented
+          description: Key management policies and procedures are implemented
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Key management procedures
+
+    - name: requirement-4
+      displayName: "Requirement 4: Protect Cardholder Data with Strong Cryptography During Transmission"
+      controls:
+        - id: pci-4.1.1
+          name: Transmission security processes defined
+          description: All security policies and operational procedures are documented
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Transmission security policies
+
+        - id: pci-4.2.1
+          name: Strong cryptography for transmission
+          description: Strong cryptography is used during transmission of PAN over open, public networks
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: TLS configuration
+            - type: attestation
+              description: Certificate configuration
+
+        - id: pci-4.2.1.1
+          name: Trusted certificates verified
+          description: Certificates used for PAN transmissions are valid and not expired
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Certificate monitoring
+            - type: logs
+              description: Certificate validation logs
+
+        - id: pci-4.2.2
+          name: PAN secured in end-user messaging
+          description: PAN is secured with strong cryptography whenever sent via end-user messaging
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Messaging encryption
+
+    - name: requirement-5
+      displayName: "Requirement 5: Protect All Systems and Networks from Malicious Software"
+      controls:
+        - id: pci-5.1.1
+          name: Anti-malware processes defined
+          description: All security policies and operational procedures are documented
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Anti-malware policies
+
+        - id: pci-5.2.1
+          name: Anti-malware deployed
+          description: An anti-malware solution is deployed on all system components
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Runtime security configuration
+            - type: logs
+              description: Security scan logs
+
+        - id: pci-5.2.2
+          name: Anti-malware detects known malware
+          description: The deployed anti-malware solution detects all known types of malware
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Container scanning configuration
+            - type: logs
+              description: Malware detection logs
+
+        - id: pci-5.2.3
+          name: Anti-malware performs scans
+          description: The anti-malware solution performs periodic scans and active monitoring
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Scheduled scan configuration
+            - type: logs
+              description: Scan execution logs
+
+        - id: pci-5.3.1
+          name: Anti-malware kept current
+          description: The anti-malware solution is kept current via automatic updates
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Update automation
+            - type: logs
+              description: Update logs
+
+        - id: pci-5.3.2
+          name: Anti-malware cannot be disabled
+          description: The anti-malware solution cannot be disabled or altered by users
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Anti-tamper configuration
+            - type: policy
+              description: Security enforcement policies
+
+    - name: requirement-6
+      displayName: "Requirement 6: Develop and Maintain Secure Systems and Software"
+      controls:
+        - id: pci-6.1.1
+          name: Secure development processes defined
+          description: All security policies and operational procedures are documented
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Secure development lifecycle
+
+        - id: pci-6.2.1
+          name: Custom software developed securely
+          description: Bespoke and custom software is developed securely
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: CI/CD security gates
+            - type: logs
+              description: Security scan results
+
+        - id: pci-6.2.2
+          name: Software reviewed before release
+          description: Bespoke and custom software undergoes review prior to release
+          severity: critical
+          automatable: true
+          evidence:
+            - type: logs
+              description: Code review logs
+            - type: attestation
+              description: Security review sign-off
+
+        - id: pci-6.3.1
+          name: Security vulnerabilities identified
+          description: Security vulnerabilities are identified and managed
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Vulnerability scanning
+            - type: logs
+              description: Vulnerability reports
+
+        - id: pci-6.3.2
+          name: System components protected from vulnerabilities
+          description: System components are protected from known vulnerabilities by installing patches
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Patch management
+            - type: logs
+              description: Patch application logs
+
+        - id: pci-6.4.1
+          name: Web application protected
+          description: For public-facing web applications, threats and vulnerabilities are addressed
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: WAF configuration
+            - type: logs
+              description: WAF logs
+
+    - name: requirement-7
+      displayName: "Requirement 7: Restrict Access to System Components and Cardholder Data by Business Need to Know"
+      controls:
+        - id: pci-7.1.1
+          name: Access control processes defined
+          description: All security policies and operational procedures are documented
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Access control policies
+
+        - id: pci-7.2.1
+          name: Access control model defined
+          description: An access control model is defined and includes granting access as needed
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: RBAC configuration
+            - type: policy
+              description: Access control policies
+
+        - id: pci-7.2.2
+          name: Access assigned based on classification
+          description: Access is assigned to users based on job classification and function
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Role bindings
+            - type: logs
+              description: Access assignment logs
+
+        - id: pci-7.2.3
+          name: Required privileges documented
+          description: Required privileges are approved by authorized personnel
+          severity: high
+          automatable: true
+          evidence:
+            - type: logs
+              description: Privilege request logs
+            - type: attestation
+              description: Approval records
+
+        - id: pci-7.2.4
+          name: Access reviews performed
+          description: All user accounts and related access privileges are reviewed
+          severity: high
+          automatable: true
+          evidence:
+            - type: logs
+              description: Access review logs
+            - type: configuration
+              description: Access review automation
+
+        - id: pci-7.2.5
+          name: Application and system accounts managed
+          description: All application and system accounts are managed
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Service account configuration
+            - type: logs
+              description: Service account audit
+
+    - name: requirement-8
+      displayName: "Requirement 8: Identify Users and Authenticate Access to System Components"
+      controls:
+        - id: pci-8.1.1
+          name: User identification processes defined
+          description: All security policies and operational procedures are documented
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Authentication policies
+
+        - id: pci-8.2.1
+          name: All users assigned unique IDs
+          description: All users are assigned a unique ID before access is allowed
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Identity provider configuration
+            - type: logs
+              description: User provisioning logs
+
+        - id: pci-8.2.2
+          name: Shared accounts not used
+          description: Group, shared, or generic accounts are not used
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Account policies
+            - type: logs
+              description: Account audit logs
+
+        - id: pci-8.3.1
+          name: Strong authentication implemented
+          description: All user access to system components is authenticated
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Authentication configuration
+            - type: logs
+              description: Authentication logs
+
+        - id: pci-8.3.4
+          name: Invalid authentication attempts limited
+          description: Invalid authentication attempts are limited by locking out the user ID
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Account lockout configuration
+            - type: logs
+              description: Lockout event logs
+
+        - id: pci-8.3.6
+          name: Passwords/passphrases meet complexity
+          description: If passwords/passphrases are used as an authentication factor, they meet minimum complexity
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Password policy
+            - type: attestation
+              description: Password requirements
+
+        - id: pci-8.4.1
+          name: MFA implemented for CDE access
+          description: MFA is implemented for all access into the CDE
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: MFA configuration
+            - type: logs
+              description: MFA authentication logs
+
+        - id: pci-8.6.1
+          name: System or application accounts managed
+          description: If accounts used by systems or applications can be used for interactive login, they are managed
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Service account restrictions
+            - type: logs
+              description: Interactive login audit
+
+    - name: requirement-10
+      displayName: "Requirement 10: Log and Monitor All Access to System Components and Cardholder Data"
+      controls:
+        - id: pci-10.1.1
+          name: Logging processes defined
+          description: All security policies and operational procedures are documented
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Logging policies
+
+        - id: pci-10.2.1
+          name: Audit logs enabled
+          description: Audit logs are enabled and active for all system components and cardholder data
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Audit logging configuration
+            - type: logs
+              description: Audit log samples
+
+        - id: pci-10.2.1.1
+          name: User access logged
+          description: All individual user access to cardholder data is logged
+          severity: critical
+          automatable: true
+          evidence:
+            - type: logs
+              description: User access logs
+
+        - id: pci-10.2.1.2
+          name: Administrative actions logged
+          description: All actions taken by any individual with administrative access are logged
+          severity: critical
+          automatable: true
+          evidence:
+            - type: logs
+              description: Admin action logs
+
+        - id: pci-10.2.1.3
+          name: Audit log access logged
+          description: All access to audit logs is logged
+          severity: critical
+          automatable: true
+          evidence:
+            - type: logs
+              description: Audit log access logs
+
+        - id: pci-10.2.1.4
+          name: Invalid access logged
+          description: All invalid logical access attempts are logged
+          severity: critical
+          automatable: true
+          evidence:
+            - type: logs
+              description: Invalid access attempt logs
+
+        - id: pci-10.2.1.5
+          name: Authentication events logged
+          description: All changes to authentication credentials are logged
+          severity: critical
+          automatable: true
+          evidence:
+            - type: logs
+              description: Authentication change logs
+
+        - id: pci-10.3.1
+          name: Read access to audit logs restricted
+          description: Read access to audit log files is restricted to those with job-related need
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Audit log access controls
+            - type: policy
+              description: Log access policies
+
+        - id: pci-10.3.2
+          name: Audit logs protected from modification
+          description: Audit log files are protected to prevent modifications
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Log immutability configuration
+            - type: attestation
+              description: Tamper protection
+
+        - id: pci-10.4.1
+          name: Time synchronization implemented
+          description: Critical systems have the correct and consistent time
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: NTP configuration
+            - type: logs
+              description: Time sync verification
+
+        - id: pci-10.5.1
+          name: Audit logs retained
+          description: Retain audit log history for at least 12 months
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Log retention configuration
+            - type: attestation
+              description: Retention verification
+
+        - id: pci-10.6.1
+          name: Time-sync technology protected
+          description: System clocks and time are protected using time-synchronization technology
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Time sync security
+
+        - id: pci-10.7.1
+          name: Failures detected promptly
+          description: Failures of critical security control systems are detected, alerted, and addressed promptly
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Alerting configuration
+            - type: logs
+              description: Alert logs
+
+    - name: requirement-11
+      displayName: "Requirement 11: Test Security of Systems and Networks Regularly"
+      controls:
+        - id: pci-11.1.1
+          name: Security testing processes defined
+          description: All security policies and operational procedures are documented
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Security testing policies
+
+        - id: pci-11.2.1
+          name: Authorized wireless access points identified
+          description: Authorized and unauthorized wireless access points are managed
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Wireless monitoring
+
+        - id: pci-11.3.1
+          name: Internal vulnerability scans performed
+          description: Internal vulnerability scans are performed
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Vulnerability scanning config
+            - type: logs
+              description: Scan results
+
+        - id: pci-11.3.2
+          name: External vulnerability scans performed
+          description: External vulnerability scans are performed by PCI SSC ASV
+          severity: critical
+          automatable: true
+          evidence:
+            - type: attestation
+              description: ASV scan reports
+
+        - id: pci-11.4.1
+          name: Penetration testing performed
+          description: External and internal penetration testing is performed
+          severity: critical
+          automatable: false
+          evidence:
+            - type: attestation
+              description: Penetration test reports
+
+        - id: pci-11.5.1
+          name: Intrusion detection implemented
+          description: Intrusion-detection and/or intrusion-prevention techniques are implemented
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: IDS/IPS configuration
+            - type: logs
+              description: Detection logs
+
+        - id: pci-11.5.2
+          name: Change detection implemented
+          description: A change-detection mechanism is deployed to alert personnel to unauthorized modification
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: FIM configuration
+            - type: logs
+              description: Change detection logs
+
+        - id: pci-11.6.1
+          name: Payment page security mechanisms
+          description: A change-detection mechanism is deployed for payment pages
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Payment page monitoring

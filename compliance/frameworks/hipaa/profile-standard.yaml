@@ -1,0 +1,133 @@
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceProfile
+metadata:
+  name: hipaa-standard
+  namespace: mantl-compliance
+  labels:
+    app.kubernetes.io/part-of: mantl-compliance
+    framework: hipaa
+spec:
+  framework: hipaa
+  displayName: HIPAA Standard Profile
+  description: |
+    Standard HIPAA compliance profile for organizations handling Protected Health Information (PHI).
+    This profile includes all required and addressable controls from the HIPAA Security Rule.
+
+  # Enable all required controls by default
+  controls:
+    # Administrative Safeguards - All Required
+    - id: hipaa-164.308.a.1.i
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.1.ii.a
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.1.ii.b
+      enabled: true
+      remediation: manual
+    - id: hipaa-164.308.a.1.ii.c
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.3.i
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.3.ii.a
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.3.ii.b
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.4.ii.b
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.4.ii.c
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.5.i
+      enabled: true
+      remediation: manual
+    - id: hipaa-164.308.a.5.ii.b
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.5.ii.c
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.5.ii.d
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.6.i
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.7.i
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.7.ii.a
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.7.ii.b
+      enabled: true
+      remediation: manual
+    - id: hipaa-164.308.a.7.ii.c
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.308.a.7.ii.d
+      enabled: true
+      remediation: manual
+    - id: hipaa-164.308.a.8
+      enabled: true
+      remediation: auto
+
+    # Technical Safeguards - All Critical
+    - id: hipaa-164.312.a.1
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.312.a.2.i
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.312.a.2.ii
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.312.a.2.iv
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.312.b
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.312.c.1
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.312.c.2
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.312.d
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.312.e.1
+      enabled: true
+      remediation: auto
+    - id: hipaa-164.312.e.2.ii
+      enabled: true
+      remediation: auto
+
+  # Namespace selectors for PHI workloads
+  namespaceSelector:
+    matchLabels:
+      hipaa-workload: "true"
+
+  # Schedule for compliance checks
+  schedule:
+    # Run compliance checks every 6 hours
+    interval: 6h
+    # Full audit weekly
+    fullAudit: "0 0 * * 0"
+
+  # Notification settings
+  notifications:
+    slack:
+      channel: "#compliance-alerts"
+      severity: [critical, high]
+    email:
+      recipients:
+        - compliance@example.com
+        - security@example.com
+      severity: [critical]

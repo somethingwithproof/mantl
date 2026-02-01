@@ -1,0 +1,278 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: mantl-platform-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: mantl-observability
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    # ============================================================================
+    # Kubernetes Cluster Health
+    # ============================================================================
+    - name: kubernetes-cluster
+      interval: 30s
+      rules:
+        - alert: KubernetesNodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            category: infrastructure
+          annotations:
+            summary: "Kubernetes node {{ $labels.node }} is not ready"
+            description: "Node {{ $labels.node }} has been unready for more than 5 minutes."
+            runbook_url: "https://runbooks.mantl.io/kubernetes/node-not-ready"
+
+        - alert: KubernetesNodeMemoryPressure
+          expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+          for: 5m
+          labels:
+            severity: warning
+            category: infrastructure
+          annotations:
+            summary: "Kubernetes node {{ $labels.node }} has memory pressure"
+            description: "Node {{ $labels.node }} is experiencing memory pressure."
+
+        - alert: KubernetesNodeDiskPressure
+          expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+          for: 5m
+          labels:
+            severity: warning
+            category: infrastructure
+          annotations:
+            summary: "Kubernetes node {{ $labels.node }} has disk pressure"
+            description: "Node {{ $labels.node }} is experiencing disk pressure."
+
+        - alert: KubernetesClusterCPUOvercommit
+          expr: |
+            sum(kube_pod_container_resource_requests{resource="cpu"}) /
+            sum(kube_node_status_allocatable{resource="cpu"}) > 1.5
+          for: 10m
+          labels:
+            severity: warning
+            category: capacity
+          annotations:
+            summary: "Kubernetes cluster CPU is overcommitted"
+            description: "CPU requests exceed 150% of cluster capacity."
+
+        - alert: KubernetesClusterMemoryOvercommit
+          expr: |
+            sum(kube_pod_container_resource_requests{resource="memory"}) /
+            sum(kube_node_status_allocatable{resource="memory"}) > 1.5
+          for: 10m
+          labels:
+            severity: warning
+            category: capacity
+          annotations:
+            summary: "Kubernetes cluster memory is overcommitted"
+            description: "Memory requests exceed 150% of cluster capacity."
+
+    # ============================================================================
+    # Pod Health
+    # ============================================================================
+    - name: kubernetes-pods
+      interval: 30s
+      rules:
+        - alert: PodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total[15m]) * 60 * 15 > 0
+          for: 5m
+          labels:
+            severity: warning
+            category: application
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is restarting frequently."
+
+        - alert: PodNotReady
+          expr: |
+            sum by (namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown"}) > 0
+          for: 10m
+          labels:
+            severity: warning
+            category: application
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is not ready"
+            description: "Pod {{ $labels.pod }} has been in non-ready state for more than 10 minutes."
+
+        - alert: ContainerOOMKilled
+          expr: |
+            (kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1)
+            and on(pod, namespace) (time() - kube_pod_container_status_last_terminated_exitcode > 0) < 3600
+          labels:
+            severity: warning
+            category: application
+          annotations:
+            summary: "Container {{ $labels.container }} was OOM killed"
+            description: "Container {{ $labels.container }} in pod {{ $labels.pod }} was terminated due to OOM."
+
+        - alert: HighPodCPUUsage
+          expr: |
+            sum by (namespace, pod) (rate(container_cpu_usage_seconds_total[5m])) /
+            sum by (namespace, pod) (kube_pod_container_resource_limits{resource="cpu"}) > 0.9
+          for: 15m
+          labels:
+            severity: warning
+            category: performance
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} CPU usage is high"
+            description: "Pod is using more than 90% of its CPU limit."
+
+        - alert: HighPodMemoryUsage
+          expr: |
+            sum by (namespace, pod) (container_memory_working_set_bytes) /
+            sum by (namespace, pod) (kube_pod_container_resource_limits{resource="memory"}) > 0.9
+          for: 15m
+          labels:
+            severity: warning
+            category: performance
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} memory usage is high"
+            description: "Pod is using more than 90% of its memory limit."
+
+    # ============================================================================
+    # Platform Components
+    # ============================================================================
+    - name: platform-components
+      interval: 30s
+      rules:
+        - alert: ArgoCDSyncFailed
+          expr: argocd_app_info{sync_status!="Synced"} == 1
+          for: 10m
+          labels:
+            severity: warning
+            category: gitops
+          annotations:
+            summary: "ArgoCD application {{ $labels.name }} is out of sync"
+            description: "Application {{ $labels.name }} has been out of sync for more than 10 minutes."
+
+        - alert: ArgoCDHealthDegraded
+          expr: argocd_app_info{health_status!="Healthy"} == 1
+          for: 10m
+          labels:
+            severity: warning
+            category: gitops
+          annotations:
+            summary: "ArgoCD application {{ $labels.name }} health is degraded"
+            description: "Application {{ $labels.name }} health status is {{ $labels.health_status }}."
+
+        - alert: CiliumAgentDown
+          expr: up{job="cilium-agent"} == 0
+          for: 5m
+          labels:
+            severity: critical
+            category: networking
+          annotations:
+            summary: "Cilium agent is down on node {{ $labels.node }}"
+            description: "Cilium agent has been down for more than 5 minutes."
+
+        - alert: CiliumEndpointNotReady
+          expr: cilium_endpoint_state{endpoint_state!="ready"} > 0
+          for: 10m
+          labels:
+            severity: warning
+            category: networking
+          annotations:
+            summary: "Cilium endpoints not ready"
+            description: "There are Cilium endpoints in non-ready state."
+
+        - alert: KyvernoPolicyViolation
+          expr: increase(kyverno_policy_rule_results_total{result="fail"}[5m]) > 0
+          labels:
+            severity: warning
+            category: policy
+          annotations:
+            summary: "Kyverno policy violation detected"
+            description: "Policy {{ $labels.policy_name }} rule {{ $labels.rule_name }} failed."
+
+        - alert: TetragonSecurityEvent
+          expr: increase(tetragon_events_total{type="kprobe"}[5m]) > 100
+          labels:
+            severity: info
+            category: security
+          annotations:
+            summary: "High volume of Tetragon security events"
+            description: "Tetragon is detecting a high volume of security-relevant events."
+
+    # ============================================================================
+    # Observability Stack
+    # ============================================================================
+    - name: observability-stack
+      interval: 30s
+      rules:
+        - alert: PrometheusTargetDown
+          expr: up == 0
+          for: 5m
+          labels:
+            severity: warning
+            category: monitoring
+          annotations:
+            summary: "Prometheus target {{ $labels.job }} is down"
+            description: "Target {{ $labels.instance }} for job {{ $labels.job }} has been down for 5 minutes."
+
+        - alert: PrometheusRuleFailures
+          expr: increase(prometheus_rule_evaluation_failures_total[5m]) > 0
+          labels:
+            severity: warning
+            category: monitoring
+          annotations:
+            summary: "Prometheus rule evaluation failures"
+            description: "Prometheus is failing to evaluate {{ $value }} rules."
+
+        - alert: LokiRequestErrors
+          expr: |
+            rate(loki_request_duration_seconds_count{status_code=~"5.."}[5m]) /
+            rate(loki_request_duration_seconds_count[5m]) > 0.1
+          for: 10m
+          labels:
+            severity: warning
+            category: logging
+          annotations:
+            summary: "Loki is experiencing high error rate"
+            description: "More than 10% of Loki requests are failing."
+
+        - alert: GrafanaDown
+          expr: up{job="grafana"} == 0
+          for: 5m
+          labels:
+            severity: warning
+            category: monitoring
+          annotations:
+            summary: "Grafana is down"
+            description: "Grafana has been down for more than 5 minutes."
+
+    # ============================================================================
+    # SLO Alerts (Error Budget)
+    # ============================================================================
+    - name: slo-alerts
+      interval: 60s
+      rules:
+        - alert: PlatformAvailabilitySLOBreach
+          expr: |
+            (1 - (
+              sum(rate(http_requests_total{code=~"5.."}[30m])) /
+              sum(rate(http_requests_total[30m]))
+            )) < 0.995
+          for: 5m
+          labels:
+            severity: critical
+            category: slo
+          annotations:
+            summary: "Platform availability SLO breach"
+            description: "Platform availability has dropped below 99.5% SLO target."
+
+        - alert: ErrorBudgetBurnRate
+          expr: |
+            (
+              sum(rate(http_requests_total{code=~"5.."}[1h])) /
+              sum(rate(http_requests_total[1h]))
+            ) > (1 - 0.995) * 14.4
+          for: 5m
+          labels:
+            severity: warning
+            category: slo
+          annotations:
+            summary: "High error budget burn rate"
+            description: "Error budget is being consumed at 14.4x the sustainable rate."

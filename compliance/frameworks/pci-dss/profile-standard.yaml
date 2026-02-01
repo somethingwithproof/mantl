@@ -1,0 +1,285 @@
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceProfile
+metadata:
+  name: pci-dss-standard
+  namespace: mantl-compliance
+  labels:
+    app.kubernetes.io/part-of: mantl-compliance
+    framework: pci-dss
+spec:
+  framework: pci-dss
+  displayName: PCI DSS v4.0 Standard Profile
+  description: |
+    Standard PCI DSS v4.0 compliance profile for organizations processing, storing, or
+    transmitting cardholder data. This profile includes all requirements applicable to
+    Kubernetes-based cardholder data environments (CDE).
+
+  # Control enablement with remediation settings
+  controls:
+    # Requirement 1: Network Security Controls
+    - id: pci-1.1.1
+      enabled: true
+      remediation: manual
+    - id: pci-1.2.1
+      enabled: true
+      remediation: auto
+    - id: pci-1.2.5
+      enabled: true
+      remediation: auto
+    - id: pci-1.3.1
+      enabled: true
+      remediation: auto
+    - id: pci-1.3.2
+      enabled: true
+      remediation: auto
+    - id: pci-1.4.1
+      enabled: true
+      remediation: auto
+
+    # Requirement 2: Secure Configurations
+    - id: pci-2.1.1
+      enabled: true
+      remediation: manual
+    - id: pci-2.2.1
+      enabled: true
+      remediation: auto
+    - id: pci-2.2.2
+      enabled: true
+      remediation: auto
+    - id: pci-2.2.3
+      enabled: true
+      remediation: auto
+    - id: pci-2.2.4
+      enabled: true
+      remediation: auto
+    - id: pci-2.2.5
+      enabled: true
+      remediation: auto
+    - id: pci-2.2.6
+      enabled: true
+      remediation: auto
+
+    # Requirement 3: Protect Stored Data
+    - id: pci-3.1.1
+      enabled: true
+      remediation: manual
+    - id: pci-3.2.1
+      enabled: true
+      remediation: auto
+    - id: pci-3.4.1
+      enabled: true
+      remediation: auto
+    - id: pci-3.5.1
+      enabled: true
+      remediation: auto
+    - id: pci-3.6.1
+      enabled: true
+      remediation: auto
+    - id: pci-3.7.1
+      enabled: true
+      remediation: manual
+
+    # Requirement 4: Transmission Security
+    - id: pci-4.1.1
+      enabled: true
+      remediation: manual
+    - id: pci-4.2.1
+      enabled: true
+      remediation: auto
+    - id: pci-4.2.1.1
+      enabled: true
+      remediation: auto
+    - id: pci-4.2.2
+      enabled: true
+      remediation: auto
+
+    # Requirement 5: Anti-Malware
+    - id: pci-5.1.1
+      enabled: true
+      remediation: manual
+    - id: pci-5.2.1
+      enabled: true
+      remediation: auto
+    - id: pci-5.2.2
+      enabled: true
+      remediation: auto
+    - id: pci-5.2.3
+      enabled: true
+      remediation: auto
+    - id: pci-5.3.1
+      enabled: true
+      remediation: auto
+    - id: pci-5.3.2
+      enabled: true
+      remediation: auto
+
+    # Requirement 6: Secure Development
+    - id: pci-6.1.1
+      enabled: true
+      remediation: manual
+    - id: pci-6.2.1
+      enabled: true
+      remediation: auto
+    - id: pci-6.2.2
+      enabled: true
+      remediation: auto
+    - id: pci-6.3.1
+      enabled: true
+      remediation: auto
+    - id: pci-6.3.2
+      enabled: true
+      remediation: auto
+    - id: pci-6.4.1
+      enabled: true
+      remediation: auto
+
+    # Requirement 7: Access Control
+    - id: pci-7.1.1
+      enabled: true
+      remediation: manual
+    - id: pci-7.2.1
+      enabled: true
+      remediation: auto
+    - id: pci-7.2.2
+      enabled: true
+      remediation: auto
+    - id: pci-7.2.3
+      enabled: true
+      remediation: auto
+    - id: pci-7.2.4
+      enabled: true
+      remediation: auto
+    - id: pci-7.2.5
+      enabled: true
+      remediation: auto
+
+    # Requirement 8: User Identification
+    - id: pci-8.1.1
+      enabled: true
+      remediation: manual
+    - id: pci-8.2.1
+      enabled: true
+      remediation: auto
+    - id: pci-8.2.2
+      enabled: true
+      remediation: auto
+    - id: pci-8.3.1
+      enabled: true
+      remediation: auto
+    - id: pci-8.3.4
+      enabled: true
+      remediation: auto
+    - id: pci-8.3.6
+      enabled: true
+      remediation: auto
+    - id: pci-8.4.1
+      enabled: true
+      remediation: auto
+    - id: pci-8.6.1
+      enabled: true
+      remediation: auto
+
+    # Requirement 10: Logging and Monitoring
+    - id: pci-10.1.1
+      enabled: true
+      remediation: manual
+    - id: pci-10.2.1
+      enabled: true
+      remediation: auto
+    - id: pci-10.2.1.1
+      enabled: true
+      remediation: auto
+    - id: pci-10.2.1.2
+      enabled: true
+      remediation: auto
+    - id: pci-10.2.1.3
+      enabled: true
+      remediation: auto
+    - id: pci-10.2.1.4
+      enabled: true
+      remediation: auto
+    - id: pci-10.2.1.5
+      enabled: true
+      remediation: auto
+    - id: pci-10.3.1
+      enabled: true
+      remediation: auto
+    - id: pci-10.3.2
+      enabled: true
+      remediation: auto
+    - id: pci-10.4.1
+      enabled: true
+      remediation: auto
+    - id: pci-10.5.1
+      enabled: true
+      remediation: auto
+    - id: pci-10.6.1
+      enabled: true
+      remediation: auto
+    - id: pci-10.7.1
+      enabled: true
+      remediation: auto
+
+    # Requirement 11: Security Testing
+    - id: pci-11.1.1
+      enabled: true
+      remediation: manual
+    - id: pci-11.2.1
+      enabled: true
+      remediation: auto
+    - id: pci-11.3.1
+      enabled: true
+      remediation: auto
+    - id: pci-11.3.2
+      enabled: true
+      remediation: manual
+    - id: pci-11.4.1
+      enabled: true
+      remediation: manual
+    - id: pci-11.5.1
+      enabled: true
+      remediation: auto
+    - id: pci-11.5.2
+      enabled: true
+      remediation: auto
+    - id: pci-11.6.1
+      enabled: true
+      remediation: auto
+
+  # Namespace selectors for CDE workloads
+  namespaceSelector:
+    matchLabels:
+      pci-scope: "in-scope"
+
+  # Exclude non-CDE namespaces
+  namespaceExclusions:
+    - kube-system
+    - kube-public
+    - kube-node-lease
+
+  # Compliance check schedule
+  schedule:
+    # Run compliance checks every 4 hours for CDE
+    interval: 4h
+    # Full audit daily
+    fullAudit: "0 2 * * *"
+
+  # Notification settings
+  notifications:
+    slack:
+      channel: "#pci-compliance"
+      severity: [critical, high]
+    email:
+      recipients:
+        - pci-compliance@example.com
+        - security@example.com
+        - qsa@example.com
+      severity: [critical]
+    pagerduty:
+      serviceKey: "${PCI_PAGERDUTY_KEY}"
+      severity: [critical]
+
+  # Evidence retention for PCI audits
+  evidenceRetention:
+    duration: 365d  # 1 year minimum for PCI
+    storageClass: secure-storage

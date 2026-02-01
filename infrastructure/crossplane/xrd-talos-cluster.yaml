@@ -1,0 +1,661 @@
+# Crossplane Composite Resource Definition for Talos Kubernetes Clusters
+# Enables GitOps-driven Talos cluster provisioning
+# https://www.talos.dev/ + https://crossplane.io/
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: taloscluster.platform.mantl.io
+  labels:
+    platform.mantl.io/xrd: talos-cluster
+    platform.mantl.io/category: kubernetes
+spec:
+  group: platform.mantl.io
+  names:
+    kind: TalosCluster
+    plural: talosclusters
+    singular: taloscluster
+    shortNames:
+      - tc
+      - talos
+  claimNames:
+    kind: TalosClusterClaim
+    plural: talosclusterclaims
+  connectionSecretKeys:
+    - kubeconfig
+    - talosconfig
+    - ca-cert
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - region
+                - controlPlane
+                - workers
+              properties:
+                # Cluster identification
+                clusterName:
+                  type: string
+                  description: Name of the Talos cluster
+                  pattern: "^[a-z][a-z0-9-]{0,61}[a-z0-9]$"
+
+                # Cloud provider region
+                region:
+                  type: string
+                  description: Cloud region for the cluster
+                  enum:
+                    - us-west-2
+                    - us-east-1
+                    - eu-west-1
+                    - eu-central-1
+                    - ap-northeast-1
+                    - ap-southeast-1
+
+                # Kubernetes version
+                kubernetesVersion:
+                  type: string
+                  description: Kubernetes version to deploy
+                  default: "1.29.0"
+                  pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+
+                # Talos version
+                talosVersion:
+                  type: string
+                  description: Talos Linux version
+                  default: "v1.6.0"
+                  pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+
+                # Network configuration
+                network:
+                  type: object
+                  properties:
+                    vpcCidr:
+                      type: string
+                      description: VPC CIDR block
+                      default: "10.0.0.0/16"
+                    podCidr:
+                      type: string
+                      description: Pod network CIDR
+                      default: "10.244.0.0/16"
+                    serviceCidr:
+                      type: string
+                      description: Service network CIDR
+                      default: "10.96.0.0/12"
+                    cni:
+                      type: string
+                      description: CNI to use
+                      default: "cilium"
+                      enum:
+                        - cilium
+                        - calico
+                        - flannel
+
+                # Control plane configuration
+                controlPlane:
+                  type: object
+                  required:
+                    - replicas
+                  properties:
+                    replicas:
+                      type: integer
+                      description: Number of control plane nodes (should be odd)
+                      minimum: 1
+                      maximum: 7
+                      default: 3
+                    instanceType:
+                      type: string
+                      description: Instance type for control plane nodes
+                      default: "m6i.xlarge"
+                    rootVolumeSize:
+                      type: integer
+                      description: Root volume size in GB
+                      default: 100
+                      minimum: 50
+                    highAvailability:
+                      type: boolean
+                      description: Enable HA configuration with VIP
+                      default: true
+
+                # Worker node pools
+                workers:
+                  type: array
+                  description: Worker node pool configurations
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                      - name
+                      - replicas
+                    properties:
+                      name:
+                        type: string
+                        description: Name of the worker pool
+                        pattern: "^[a-z][a-z0-9-]{0,29}$"
+                      replicas:
+                        type: integer
+                        description: Number of worker nodes
+                        minimum: 0
+                        maximum: 100
+                        default: 3
+                      instanceType:
+                        type: string
+                        description: Instance type for workers
+                        default: "m6i.xlarge"
+                      rootVolumeSize:
+                        type: integer
+                        description: Root volume size in GB
+                        default: 100
+                      dataVolumeSize:
+                        type: integer
+                        description: Data volume size in GB
+                        default: 200
+                      spot:
+                        type: boolean
+                        description: Use spot instances
+                        default: false
+                      gpu:
+                        type: boolean
+                        description: Enable GPU support
+                        default: false
+                      gpuType:
+                        type: string
+                        description: GPU type if GPU is enabled
+                        enum:
+                          - nvidia-a10g
+                          - nvidia-a100
+                          - nvidia-t4
+                      taints:
+                        type: array
+                        description: Taints for the node pool
+                        items:
+                          type: object
+                          properties:
+                            key:
+                              type: string
+                            value:
+                              type: string
+                            effect:
+                              type: string
+                              enum:
+                                - NoSchedule
+                                - PreferNoSchedule
+                                - NoExecute
+                      labels:
+                        type: object
+                        description: Labels for the node pool
+                        additionalProperties:
+                          type: string
+
+                # Talos extensions
+                extensions:
+                  type: array
+                  description: Talos system extensions to install
+                  items:
+                    type: string
+                    enum:
+                      - qemu-guest-agent
+                      - iscsi-tools
+                      - nvidia-container-toolkit
+                      - nvidia-fabricmanager
+                      - kata-containers
+                      - gvisor
+                      - tailscale
+                      - wireguard-tools
+
+                # Security configuration
+                security:
+                  type: object
+                  properties:
+                    encryptSecrets:
+                      type: boolean
+                      description: Enable Kubernetes secret encryption
+                      default: true
+                    wireguardEncryption:
+                      type: boolean
+                      description: Enable WireGuard encryption for pod traffic
+                      default: true
+                    auditLogging:
+                      type: boolean
+                      description: Enable API server audit logging
+                      default: true
+                    podSecurityStandards:
+                      type: string
+                      description: Pod Security Standards level
+                      default: "restricted"
+                      enum:
+                        - privileged
+                        - baseline
+                        - restricted
+
+                # Feature gates
+                features:
+                  type: object
+                  properties:
+                    karpenterAutoscaling:
+                      type: boolean
+                      description: Enable Karpenter for node autoscaling
+                      default: true
+                    ciliumServiceMesh:
+                      type: boolean
+                      description: Enable Cilium service mesh
+                      default: true
+                    tetragonSecurity:
+                      type: boolean
+                      description: Enable Tetragon runtime security
+                      default: true
+                    kyvernoPolicies:
+                      type: boolean
+                      description: Enable Kyverno policy engine
+                      default: true
+
+                # Maintenance windows
+                maintenance:
+                  type: object
+                  properties:
+                    autoUpgrade:
+                      type: boolean
+                      description: Enable automatic Talos upgrades
+                      default: false
+                    upgradeWindow:
+                      type: string
+                      description: Cron expression for upgrade window
+                      default: "0 4 * * SUN"
+                    nodeRotationDays:
+                      type: integer
+                      description: Days before rotating nodes
+                      default: 60
+                      minimum: 7
+                      maximum: 365
+
+            status:
+              type: object
+              properties:
+                clusterEndpoint:
+                  type: string
+                  description: Kubernetes API server endpoint
+                talosEndpoint:
+                  type: string
+                  description: Talos API endpoint
+                controlPlaneReady:
+                  type: integer
+                  description: Number of ready control plane nodes
+                workersReady:
+                  type: integer
+                  description: Number of ready worker nodes
+                phase:
+                  type: string
+                  description: Current cluster phase
+                  enum:
+                    - Provisioning
+                    - Ready
+                    - Upgrading
+                    - Degraded
+                    - Deleting
+                conditions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      status:
+                        type: string
+                      lastTransitionTime:
+                        type: string
+                      reason:
+                        type: string
+                      message:
+                        type: string
+---
+# Composition for Talos Cluster on AWS
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: taloscluster-aws
+  labels:
+    provider: aws
+    platform.mantl.io/composition: talos-cluster
+spec:
+  compositeTypeRef:
+    apiVersion: platform.mantl.io/v1alpha1
+    kind: TalosCluster
+
+  writeConnectionSecretsToNamespace: crossplane-system
+
+  patchSets:
+    - name: common-parameters
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+
+    - name: common-tags
+      patches:
+        - type: FromCompositeFieldPath
+          fromFieldPath: metadata.name
+          toFieldPath: spec.forProvider.tags.ClusterName
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.talosVersion
+          toFieldPath: spec.forProvider.tags["talos.dev/version"]
+
+  resources:
+    # VPC for Talos cluster
+    - name: talos-vpc
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: VPC
+        spec:
+          forProvider:
+            enableDnsHostnames: true
+            enableDnsSupport: true
+            tags:
+              Platform: mantl
+              ManagedBy: crossplane
+              OS: talos-linux
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        - type: PatchSet
+          patchSetName: common-tags
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.network.vpcCidr
+          toFieldPath: spec.forProvider.cidrBlock
+
+    # Internet Gateway
+    - name: talos-igw
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: InternetGateway
+        spec:
+          forProvider:
+            tags:
+              Platform: mantl
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        - type: PatchSet
+          patchSetName: common-tags
+
+    # Private Subnets (one per AZ)
+    - name: talos-private-subnet-a
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: Subnet
+        spec:
+          forProvider:
+            cidrBlock: "10.0.0.0/19"
+            mapPublicIpOnLaunch: false
+            tags:
+              "kubernetes.io/role/internal-elb": "1"
+              Platform: mantl
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        - type: PatchSet
+          patchSetName: common-tags
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.availabilityZone
+          transforms:
+            - type: string
+              string:
+                fmt: "%sa"
+
+    - name: talos-private-subnet-b
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: Subnet
+        spec:
+          forProvider:
+            cidrBlock: "10.0.32.0/19"
+            mapPublicIpOnLaunch: false
+            tags:
+              "kubernetes.io/role/internal-elb": "1"
+              Platform: mantl
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        - type: PatchSet
+          patchSetName: common-tags
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.availabilityZone
+          transforms:
+            - type: string
+              string:
+                fmt: "%sb"
+
+    - name: talos-private-subnet-c
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: Subnet
+        spec:
+          forProvider:
+            cidrBlock: "10.0.64.0/19"
+            mapPublicIpOnLaunch: false
+            tags:
+              "kubernetes.io/role/internal-elb": "1"
+              Platform: mantl
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        - type: PatchSet
+          patchSetName: common-tags
+        - type: FromCompositeFieldPath
+          fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.availabilityZone
+          transforms:
+            - type: string
+              string:
+                fmt: "%sc"
+
+    # Security Group for Talos Control Plane
+    - name: talos-controlplane-sg
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: SecurityGroup
+        spec:
+          forProvider:
+            name: talos-controlplane-sg
+            description: Security group for Talos control plane nodes
+            tags:
+              Platform: mantl
+              Component: talos-controlplane
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        - type: PatchSet
+          patchSetName: common-tags
+
+    # Security Group Rules for Control Plane
+    - name: talos-cp-api-ingress
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: SecurityGroupRule
+        spec:
+          forProvider:
+            type: ingress
+            fromPort: 6443
+            toPort: 6443
+            protocol: tcp
+            cidrBlocks:
+              - "10.0.0.0/8"
+            description: Kubernetes API server
+
+    - name: talos-cp-talosapi-ingress
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: SecurityGroupRule
+        spec:
+          forProvider:
+            type: ingress
+            fromPort: 50000
+            toPort: 50001
+            protocol: tcp
+            cidrBlocks:
+              - "10.0.0.0/8"
+            description: Talos API
+
+    - name: talos-cp-etcd-ingress
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: SecurityGroupRule
+        spec:
+          forProvider:
+            type: ingress
+            fromPort: 2379
+            toPort: 2380
+            protocol: tcp
+            description: etcd cluster communication
+
+    # Security Group for Workers
+    - name: talos-worker-sg
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: SecurityGroup
+        spec:
+          forProvider:
+            name: talos-worker-sg
+            description: Security group for Talos worker nodes
+            tags:
+              Platform: mantl
+              Component: talos-worker
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        - type: PatchSet
+          patchSetName: common-tags
+
+    # NLB for Control Plane
+    - name: talos-controlplane-nlb
+      base:
+        apiVersion: elbv2.aws.upbound.io/v1beta1
+        kind: LB
+        spec:
+          forProvider:
+            internal: false
+            loadBalancerType: network
+            enableCrossZoneLoadBalancing: true
+            tags:
+              Platform: mantl
+              Component: talos-api
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        - type: PatchSet
+          patchSetName: common-tags
+
+    # Target Group for Kubernetes API
+    - name: talos-k8s-api-tg
+      base:
+        apiVersion: elbv2.aws.upbound.io/v1beta1
+        kind: LBTargetGroup
+        spec:
+          forProvider:
+            port: 6443
+            protocol: TCP
+            targetType: instance
+            healthCheck:
+              - enabled: true
+                protocol: TCP
+                port: "6443"
+                healthyThreshold: 2
+                unhealthyThreshold: 2
+                interval: 30
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+
+    # Target Group for Talos API
+    - name: talos-api-tg
+      base:
+        apiVersion: elbv2.aws.upbound.io/v1beta1
+        kind: LBTargetGroup
+        spec:
+          forProvider:
+            port: 50000
+            protocol: TCP
+            targetType: instance
+            healthCheck:
+              - enabled: true
+                protocol: TCP
+                port: "50000"
+                healthyThreshold: 2
+                unhealthyThreshold: 2
+                interval: 30
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+
+    # IAM Role for Talos nodes
+    - name: talos-node-role
+      base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: Role
+        spec:
+          forProvider:
+            assumeRolePolicy: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": "ec2.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                  }
+                ]
+              }
+            tags:
+              Platform: mantl
+              Component: talos
+      patches:
+        - type: PatchSet
+          patchSetName: common-tags
+
+    # IAM Policy for Talos nodes
+    - name: talos-node-policy
+      base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: RolePolicyAttachment
+        spec:
+          forProvider:
+            policyArn: arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+
+    # Instance Profile
+    - name: talos-instance-profile
+      base:
+        apiVersion: iam.aws.upbound.io/v1beta1
+        kind: InstanceProfile
+        spec:
+          forProvider:
+            tags:
+              Platform: mantl
+      patches:
+        - type: PatchSet
+          patchSetName: common-tags
+
+    # Secrets Manager for Talos config
+    - name: talos-secrets
+      base:
+        apiVersion: secretsmanager.aws.upbound.io/v1beta1
+        kind: Secret
+        spec:
+          forProvider:
+            description: Talos cluster secrets
+            tags:
+              Platform: mantl
+              Component: talos-secrets
+      patches:
+        - type: PatchSet
+          patchSetName: common-parameters
+        - type: PatchSet
+          patchSetName: common-tags

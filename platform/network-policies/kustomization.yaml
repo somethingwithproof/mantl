@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Platform Network Policies
+# These CiliumNetworkPolicies provide network isolation for platform components
+
+metadata:
+  name: platform-network-policies
+  labels:
+    app.kubernetes.io/part-of: mantl-platform
+
+resources:
+  - argocd-network-policy.yaml
+  - monitoring-network-policy.yaml
+  - external-secrets-network-policy.yaml
+  - cert-manager-network-policy.yaml
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  mantl.io/component: network-policies

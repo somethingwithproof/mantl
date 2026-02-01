@@ -163,7 +163,9 @@ install_argocd() {
 
     kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
 
-    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    local argocd_manifest="https://raw.githubusercontent.com/argoproj/argo-cd"
+    argocd_manifest="${argocd_manifest}/stable/manifests/install.yaml"
+    kubectl apply -n argocd -f "$argocd_manifest"
 
     log_info "Waiting for ArgoCD to be ready..."
     kubectl wait --for=condition=available --timeout=300s \
@@ -171,7 +173,8 @@ install_argocd() {
 
     # Get admin password
     local admin_password
-    admin_password=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+    admin_password=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+        -o jsonpath="{.data.password}" | base64 -d)
 
     log_success "ArgoCD installed"
     log_info "ArgoCD Admin Password: ${CYAN}${admin_password}${NC}"

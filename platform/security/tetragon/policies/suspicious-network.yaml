@@ -1,0 +1,53 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: suspicious-network-activity
+  labels:
+    app.kubernetes.io/part-of: mantl-security
+    policy-category: network-security
+spec:
+  # Monitor suspicious network connections
+  kprobes:
+    # Monitor TCP connections to external IPs
+    - call: tcp_connect
+      args:
+        - index: 0
+          type: sock
+      selectors:
+        - matchActions:
+            - action: Post
+
+    # Monitor DNS lookups
+    - call: udp_sendmsg
+      args:
+        - index: 0
+          type: sock
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Equal
+              values:
+                - "53"  # DNS port
+          matchActions:
+            - action: Post
+              rateLimit: "10s"
+              rateLimitScope: process
+
+    # Detect reverse shell patterns (bash connecting to network)
+    - call: tcp_connect
+      args:
+        - index: 0
+          type: sock
+      selectors:
+        - matchBinaries:
+            - operator: In
+              values:
+                - /bin/bash
+                - /bin/sh
+                - /usr/bin/bash
+                - /usr/bin/sh
+                - /bin/zsh
+          matchActions:
+            - action: Post

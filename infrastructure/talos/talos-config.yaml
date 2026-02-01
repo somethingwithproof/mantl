@@ -1,0 +1,394 @@
+# Talos Linux Cluster Configuration
+# Immutable, API-driven Kubernetes infrastructure
+# https://www.talos.dev/
+---
+apiVersion: v1alpha1
+kind: ClusterConfig
+metadata:
+  name: mantl-talos-cluster
+  labels:
+    platform.mantl.io/os: talos
+    platform.mantl.io/component: kubernetes
+
+# Cluster configuration
+cluster:
+  # Cluster name
+  clusterName: mantl-talos
+
+  # Cluster network configuration
+  network:
+    # CNI to use - Cilium for zero-trust
+    cni:
+      name: none  # We install Cilium separately
+
+    # DNS domain
+    dnsDomain: cluster.local
+
+    # Pod CIDR
+    podSubnets:
+      - 10.244.0.0/16
+
+    # Service CIDR
+    serviceSubnets:
+      - 10.96.0.0/12
+
+  # API server configuration
+  apiServer:
+    # Extra arguments for kube-apiserver
+    extraArgs:
+      enable-admission-plugins: NodeRestriction,PodSecurity
+      audit-log-path: /var/log/audit/kube-apiserver-audit.log
+      audit-log-maxage: "30"
+      audit-log-maxbackup: "10"
+      audit-log-maxsize: "100"
+      profiling: "false"
+      anonymous-auth: "false"
+
+    # Cert SANs for external access
+    certSANs:
+      - mantl-talos.example.com
+      - localhost
+      - 127.0.0.1
+
+    # Audit policy
+    auditPolicy:
+      apiVersion: audit.k8s.io/v1
+      kind: Policy
+      rules:
+        - level: Metadata
+          resources:
+            - group: ""
+              resources: ["secrets", "configmaps"]
+        - level: RequestResponse
+          resources:
+            - group: ""
+              resources: ["pods", "pods/exec", "pods/portforward"]
+        - level: Request
+          verbs: ["get", "list", "watch"]
+          resources:
+            - group: ""
+              resources: ["*"]
+
+  # Controller manager configuration
+  controllerManager:
+    extraArgs:
+      bind-address: "0.0.0.0"
+      terminated-pod-gc-threshold: "100"
+      profiling: "false"
+
+  # Scheduler configuration
+  scheduler:
+    extraArgs:
+      bind-address: "0.0.0.0"
+      profiling: "false"
+
+  # Etcd configuration
+  etcd:
+    # Use encrypted etcd
+    extraArgs:
+      quota-backend-bytes: "8589934592"  # 8GB
+      auto-compaction-retention: "1"
+      auto-compaction-mode: periodic
+
+  # Proxy configuration (disabled, using Cilium)
+  proxy:
+    disabled: true
+
+  # CoreDNS configuration
+  coreDNS:
+    disabled: false
+
+  # Extra manifests to apply
+  extraManifests:
+    - https://raw.githubusercontent.com/cilium/cilium/v1.15.0/install/kubernetes/quick-install.yaml
+
+  # Inline manifests
+  inlineManifests:
+    - name: cilium-config
+      contents: |
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: cilium-config
+          namespace: kube-system
+        data:
+          enable-hubble: "true"
+          hubble-listen-address: ":4244"
+
+  # Admin kubeconfig generation
+  adminKubeconfig:
+    certLifetime: 8760h  # 1 year
+
+  # Discovery configuration
+  discovery:
+    enabled: true
+    registries:
+      kubernetes:
+        disabled: false
+      service:
+        disabled: true
+
+  # Secret encryption configuration
+  secretboxEncryptionSecret: ""  # Will be generated
+
+  # Allow scheduling on control plane
+  allowSchedulingOnControlPlanes: false
+
+---
+# Machine configuration template for control plane nodes
+apiVersion: v1alpha1
+kind: MachineConfig
+metadata:
+  name: mantl-controlplane
+  labels:
+    node-role.kubernetes.io/control-plane: ""
+
+machine:
+  type: controlplane
+
+  # Talos version
+  install:
+    disk: /dev/sda
+    image: ghcr.io/siderolabs/installer:v1.6.0
+    bootloader: true
+    wipe: false
+    extensions:
+      # QEMU guest agent for cloud VMs
+      - image: ghcr.io/siderolabs/qemu-guest-agent:8.2.0
+      # iSCSI for Longhorn/Rook
+      - image: ghcr.io/siderolabs/iscsi-tools:v0.1.4
+      # Kata containers for secure workloads
+      - image: ghcr.io/siderolabs/kata-containers:3.2.0
+
+  # Network configuration
+  network:
+    hostname: ""  # Set per-node
+    interfaces:
+      - interface: eth0
+        dhcp: true
+        vip:
+          ip: 10.0.0.10  # Virtual IP for HA
+    nameservers:
+      - 1.1.1.1
+      - 8.8.8.8
+
+  # Time configuration
+  time:
+    disabled: false
+    servers:
+      - time.cloudflare.com
+      - time.google.com
+
+  # Kernel configuration
+  kernel:
+    modules:
+      # Required for Cilium
+      - name: br_netfilter
+      - name: xt_socket
+      - name: xt_mark
+      - name: xt_connmark
+      # Required for encryption
+      - name: wireguard
+
+  # Sysctls for Kubernetes
+  sysctls:
+    net.core.somaxconn: "32768"
+    net.core.netdev_max_backlog: "16384"
+    net.ipv4.tcp_max_syn_backlog: "8192"
+    net.ipv4.tcp_slow_start_after_idle: "0"
+    net.ipv4.tcp_tw_reuse: "1"
+    net.ipv4.ip_local_port_range: "1024 65535"
+    net.ipv4.tcp_rmem: "4096 87380 134217728"
+    net.ipv4.tcp_wmem: "4096 65536 134217728"
+    net.netfilter.nf_conntrack_max: "1048576"
+    fs.inotify.max_user_instances: "8192"
+    fs.inotify.max_user_watches: "524288"
+
+  # Kubelet configuration
+  kubelet:
+    image: ghcr.io/siderolabs/kubelet:v1.29.0
+    clusterDNS:
+      - 10.96.0.10
+    extraArgs:
+      rotate-server-certificates: "true"
+      feature-gates: GracefulNodeShutdown=true
+    extraMounts:
+      - destination: /var/lib/longhorn
+        type: bind
+        source: /var/lib/longhorn
+        options:
+          - bind
+          - rshared
+          - rw
+    nodeIP:
+      validSubnets:
+        - 10.0.0.0/8
+
+  # Security features
+  features:
+    rbac: true
+    stableHostname: true
+    kubernetesTalosAPIAccess:
+      enabled: true
+      allowedRoles:
+        - os:admin
+      allowedKubernetesNamespaces:
+        - kube-system
+
+  # Pod security
+  pods:
+    - apiVersion: v1
+      kind: Pod
+      metadata:
+        name: node-problem-detector
+        namespace: kube-system
+
+  # Registry mirrors
+  registries:
+    mirrors:
+      docker.io:
+        endpoints:
+          - https://registry-1.docker.io
+      gcr.io:
+        endpoints:
+          - https://gcr.io
+      ghcr.io:
+        endpoints:
+          - https://ghcr.io
+
+  # Files to create on the node
+  files:
+    - content: |
+        [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.kata]
+          runtime_type = "io.containerd.kata.v2"
+      path: /etc/containerd/conf.d/kata.toml
+      op: create
+
+  # Environment variables
+  env:
+    GRPC_GO_LOG_VERBOSITY_LEVEL: "99"
+    GRPC_GO_LOG_SEVERITY_LEVEL: "info"
+
+  # CA certificates
+  certSANs:
+    - 10.0.0.10
+    - mantl-talos.example.com
+
+  # Logging
+  logging:
+    destinations:
+      - endpoint: tcp://logs.example.com:1234
+        format: json_lines
+
+---
+# Machine configuration template for worker nodes
+apiVersion: v1alpha1
+kind: MachineConfig
+metadata:
+  name: mantl-worker
+  labels:
+    node-role.kubernetes.io/worker: ""
+
+machine:
+  type: worker
+
+  # Talos installation
+  install:
+    disk: /dev/sda
+    image: ghcr.io/siderolabs/installer:v1.6.0
+    bootloader: true
+    wipe: false
+    extensions:
+      - image: ghcr.io/siderolabs/qemu-guest-agent:8.2.0
+      - image: ghcr.io/siderolabs/iscsi-tools:v0.1.4
+      - image: ghcr.io/siderolabs/nvidia-container-toolkit:535.129.03-v1.14.3
+      - image: ghcr.io/siderolabs/nvidia-fabricmanager:535.129.03
+
+  # Network
+  network:
+    hostname: ""
+    interfaces:
+      - interface: eth0
+        dhcp: true
+    nameservers:
+      - 1.1.1.1
+      - 8.8.8.8
+
+  # Time sync
+  time:
+    disabled: false
+    servers:
+      - time.cloudflare.com
+
+  # Kernel modules
+  kernel:
+    modules:
+      - name: br_netfilter
+      - name: xt_socket
+      - name: xt_mark
+      - name: wireguard
+      - name: nvidia
+      - name: nvidia_uvm
+      - name: nvidia_modeset
+
+  # Sysctls
+  sysctls:
+    net.core.somaxconn: "32768"
+    net.ipv4.ip_local_port_range: "1024 65535"
+    net.netfilter.nf_conntrack_max: "1048576"
+    fs.inotify.max_user_instances: "8192"
+    fs.inotify.max_user_watches: "524288"
+    vm.max_map_count: "262144"  # For Elasticsearch
+
+  # Kubelet
+  kubelet:
+    image: ghcr.io/siderolabs/kubelet:v1.29.0
+    clusterDNS:
+      - 10.96.0.10
+    extraArgs:
+      rotate-server-certificates: "true"
+      feature-gates: GracefulNodeShutdown=true
+    extraMounts:
+      - destination: /var/lib/longhorn
+        type: bind
+        source: /var/lib/longhorn
+        options:
+          - bind
+          - rshared
+          - rw
+
+  # Security features
+  features:
+    rbac: true
+
+  # Registry mirrors
+  registries:
+    mirrors:
+      docker.io:
+        endpoints:
+          - https://registry-1.docker.io
+
+---
+# Talos-specific ClusterPolicy for Kyverno
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-talos-node-labels
+  annotations:
+    policies.kyverno.io/title: Require Talos Node Labels
+    policies.kyverno.io/description: Ensures pods are scheduled on Talos nodes
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-talos-label
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Pods should target Talos Linux nodes"
+        pattern:
+          spec:
+            nodeSelector:
+              "(kubernetes.io/os)": linux

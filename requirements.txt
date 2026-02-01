@@ -1,16 +1,25 @@
 # Core Python dependencies for development and docs
 # Pin strategy: direct pins for reproducibility; keep aligned with CI runners.
-# Note: pytest version should match requirements-test.txt. We plan to unify under a single file soon.
+#
+# Test dependencies are in requirements-test.txt - install both for development:
+#   pip install -r requirements.txt -r requirements-test.txt
+
+# Documentation
 alabaster==1.0.0
-# Change concurrently with the required ansible version in sample.yml - update comment in sample.yml as needed
+Sphinx==9.1.0
+
+# Configuration Management
+# Change concurrently with the required ansible version in sample.yml
 ansible==13.2.0
-pytest==8.4.2
-pytest-cov==7.0.0
-PyYAML==6.0.3
-Sphinx==7.4.7
 ansible-lint==25.12.2
+
+# Utilities
 netaddr==1.3.0
+PyYAML==6.0.3
+
+# Development Tools
 pre-commit==4.5.1
 black==25.12.0
 ruff==0.14.10
 yamllint==1.37.1
+mypy==1.14.0

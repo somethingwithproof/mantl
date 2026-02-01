@@ -1,0 +1,401 @@
+# Talos Linux AWS Machine Templates
+# For use with Cluster API and Sidero
+# https://www.talos.dev/v1.6/talos-guides/install/cloud-platforms/aws/
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: mantl-talos-controlplane
+  namespace: default
+  labels:
+    cluster.x-k8s.io/cluster-name: mantl-talos
+    platform.mantl.io/os: talos
+spec:
+  template:
+    spec:
+      instanceType: m6i.xlarge
+      iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ""  # Talos doesn't use SSH
+
+      # Talos AMI
+      ami:
+        id: ""  # Will be set dynamically based on region
+        # Talos AMIs are published per-region
+        # See: https://www.talos.dev/v1.6/talos-guides/install/cloud-platforms/aws/
+
+      # Root volume configuration
+      rootVolume:
+        size: 100
+        type: gp3
+        iops: 3000
+        throughput: 125
+        encrypted: true
+
+      # Additional volumes for etcd
+      nonRootVolumes:
+        - deviceName: /dev/xvdb
+          size: 50
+          type: gp3
+          iops: 3000
+          encrypted: true
+
+      # Network configuration
+      subnet:
+        filters:
+          - name: tag:kubernetes.io/cluster/mantl-talos
+            values:
+              - shared
+          - name: tag:kubernetes.io/role/internal-elb
+            values:
+              - "1"
+
+      # Security groups
+      additionalSecurityGroups:
+        - filters:
+            - name: tag:Name
+              values:
+                - mantl-talos-controlplane-sg
+
+      # Instance metadata options
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpPutResponseHopLimit: 2
+        httpTokens: required  # IMDSv2 required
+
+      # Placement
+      placementGroupName: mantl-controlplane-pg
+      placementGroupPartition: 0
+
+      # Spot instances (optional, disabled for control plane)
+      spotMarketOptions: null
+
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: mantl-talos-worker-general
+  namespace: default
+  labels:
+    cluster.x-k8s.io/cluster-name: mantl-talos
+    platform.mantl.io/os: talos
+    workload-type: general
+spec:
+  template:
+    spec:
+      instanceType: m6i.2xlarge
+      iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ""
+
+      # Talos AMI
+      ami:
+        id: ""
+
+      # Root volume
+      rootVolume:
+        size: 200
+        type: gp3
+        iops: 3000
+        throughput: 250
+        encrypted: true
+
+      # Data volume for containers/pods
+      nonRootVolumes:
+        - deviceName: /dev/xvdb
+          size: 500
+          type: gp3
+          iops: 6000
+          throughput: 500
+          encrypted: true
+
+      # Network
+      subnet:
+        filters:
+          - name: tag:kubernetes.io/cluster/mantl-talos
+            values:
+              - shared
+          - name: tag:kubernetes.io/role/internal-elb
+            values:
+              - "1"
+
+      additionalSecurityGroups:
+        - filters:
+            - name: tag:Name
+              values:
+                - mantl-talos-worker-sg
+
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpPutResponseHopLimit: 2
+        httpTokens: required
+
+      # Spot instances for cost savings
+      spotMarketOptions:
+        maxPrice: ""  # Use on-demand price cap
+
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: mantl-talos-worker-gpu
+  namespace: default
+  labels:
+    cluster.x-k8s.io/cluster-name: mantl-talos
+    platform.mantl.io/os: talos
+    workload-type: gpu
+spec:
+  template:
+    spec:
+      instanceType: g5.2xlarge  # NVIDIA A10G
+      iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ""
+
+      ami:
+        id: ""  # Talos with NVIDIA drivers
+
+      rootVolume:
+        size: 200
+        type: gp3
+        iops: 3000
+        encrypted: true
+
+      nonRootVolumes:
+        - deviceName: /dev/xvdb
+          size: 1000  # Large for ML datasets
+          type: gp3
+          iops: 10000
+          throughput: 1000
+          encrypted: true
+
+      subnet:
+        filters:
+          - name: tag:kubernetes.io/cluster/mantl-talos
+            values:
+              - shared
+
+      additionalSecurityGroups:
+        - filters:
+            - name: tag:Name
+              values:
+                - mantl-talos-worker-sg
+
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpPutResponseHopLimit: 2
+        httpTokens: required
+
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: mantl-talos-worker-memory
+  namespace: default
+  labels:
+    cluster.x-k8s.io/cluster-name: mantl-talos
+    platform.mantl.io/os: talos
+    workload-type: memory-optimized
+spec:
+  template:
+    spec:
+      instanceType: r6i.2xlarge  # Memory optimized
+      iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ""
+
+      ami:
+        id: ""
+
+      rootVolume:
+        size: 200
+        type: gp3
+        iops: 3000
+        encrypted: true
+
+      nonRootVolumes:
+        - deviceName: /dev/xvdb
+          size: 500
+          type: gp3
+          iops: 6000
+          encrypted: true
+
+      subnet:
+        filters:
+          - name: tag:kubernetes.io/cluster/mantl-talos
+            values:
+              - shared
+
+      additionalSecurityGroups:
+        - filters:
+            - name: tag:Name
+              values:
+                - mantl-talos-worker-sg
+
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpPutResponseHopLimit: 2
+        httpTokens: required
+
+      spotMarketOptions:
+        maxPrice: ""
+
+---
+# Cluster API Machine Deployment for workers
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: mantl-talos-workers-general
+  namespace: default
+  labels:
+    cluster.x-k8s.io/cluster-name: mantl-talos
+spec:
+  clusterName: mantl-talos
+  replicas: 3
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: mantl-talos
+      pool: general
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: mantl-talos
+        pool: general
+    spec:
+      clusterName: mantl-talos
+      version: v1.29.0
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+          kind: TalosConfigTemplate
+          name: mantl-talos-workers
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+        kind: AWSMachineTemplate
+        name: mantl-talos-worker-general
+
+---
+# Talos config template for workers
+apiVersion: bootstrap.cluster.x-k8s.io/v1alpha3
+kind: TalosConfigTemplate
+metadata:
+  name: mantl-talos-workers
+  namespace: default
+spec:
+  template:
+    spec:
+      generateType: worker
+      talosVersion: v1.6.0
+
+---
+# Control plane configuration
+apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+kind: TalosControlPlane
+metadata:
+  name: mantl-talos-controlplane
+  namespace: default
+spec:
+  version: v1.29.0
+  replicas: 3
+  infrastructureTemplate:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+    kind: AWSMachineTemplate
+    name: mantl-talos-controlplane
+  controlPlaneConfig:
+    controlplane:
+      generateType: controlplane
+      talosVersion: v1.6.0
+
+---
+# AWS Cluster configuration
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSCluster
+metadata:
+  name: mantl-talos
+  namespace: default
+spec:
+  region: us-west-2
+  sshKeyName: ""
+
+  # Network configuration
+  network:
+    vpc:
+      cidrBlock: 10.0.0.0/16
+      availabilityZoneUsageLimit: 3
+      availabilityZoneSelection: Ordered
+    subnets:
+      - cidrBlock: 10.0.0.0/19
+        availabilityZone: us-west-2a
+        isPublic: false
+      - cidrBlock: 10.0.32.0/19
+        availabilityZone: us-west-2b
+        isPublic: false
+      - cidrBlock: 10.0.64.0/19
+        availabilityZone: us-west-2c
+        isPublic: false
+      - cidrBlock: 10.0.96.0/19
+        availabilityZone: us-west-2a
+        isPublic: true
+      - cidrBlock: 10.0.128.0/19
+        availabilityZone: us-west-2b
+        isPublic: true
+      - cidrBlock: 10.0.160.0/19
+        availabilityZone: us-west-2c
+        isPublic: true
+    cni:
+      cniIngressRules:
+        - description: Cilium VXLAN
+          protocol: udp
+          fromPort: 8472
+          toPort: 8472
+        - description: Cilium health
+          protocol: tcp
+          fromPort: 4240
+          toPort: 4240
+        - description: Hubble
+          protocol: tcp
+          fromPort: 4244
+          toPort: 4244
+        - description: WireGuard
+          protocol: udp
+          fromPort: 51871
+          toPort: 51871
+
+  # Control plane load balancer
+  controlPlaneLoadBalancer:
+    scheme: internet-facing
+    crossZoneLoadBalancing: true
+    healthCheckProtocol: TCP
+
+  # S3 bucket for ignition/bootstrap
+  s3Bucket:
+    controlPlaneIAMInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
+    nodesIAMInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
+
+  # Identity reference for AWS credentials
+  identityRef:
+    kind: AWSClusterControllerIdentity
+    name: default
+
+---
+# Main Cluster resource
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  name: mantl-talos
+  namespace: default
+  labels:
+    platform.mantl.io/os: talos
+    platform.mantl.io/kubernetes-version: v1.29.0
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.244.0.0/16
+    services:
+      cidrBlocks:
+        - 10.96.0.0/12
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1alpha3
+    kind: TalosControlPlane
+    name: mantl-talos-controlplane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+    kind: AWSCluster
+    name: mantl-talos
