@@ -49,7 +49,7 @@ variable "single_nat_gateway" {
 variable "cluster_endpoint_public_access" {
   description = "Enable public access to cluster API endpoint"
   type        = bool
-  default     = true
+  default     = false
 }
 
 ################################################################################
@@ -121,7 +121,7 @@ variable "workload_node_desired_size" {
 variable "route53_zone_arns" {
   description = "ARNs of Route53 hosted zones for External DNS and cert-manager"
   type        = list(string)
-  default     = ["arn:aws:route53:::hostedzone/*"]
+  default     = []
 }
 
 ################################################################################
@@ -131,11 +131,11 @@ variable "route53_zone_arns" {
 variable "ssm_parameter_arns" {
   description = "ARNs of SSM parameters for External Secrets"
   type        = list(string)
-  default     = ["arn:aws:ssm:*:*:parameter/*"]
+  default     = []
 }
 
 variable "secrets_manager_arns" {
   description = "ARNs of Secrets Manager secrets for External Secrets"
   type        = list(string)
-  default     = ["arn:aws:secretsmanager:*:*:secret:*"]
+  default     = []
 }

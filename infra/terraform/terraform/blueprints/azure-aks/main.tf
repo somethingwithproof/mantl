@@ -23,5 +23,11 @@ module "aks" {
   agents_vm_size      = "Standard_D4s_v5"
 }
 
-output "kube_config" { value = module.aks.kube_config }
-output "host" { value = module.aks.host }
+output "kube_config" {
+  value     = module.aks.kube_config
+  sensitive = true
+}
+output "host" {
+  value     = module.aks.host
+  sensitive = true
+}

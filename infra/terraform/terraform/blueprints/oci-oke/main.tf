@@ -63,7 +63,7 @@ resource "oci_core_security_list" "oke_security_list" {
 
   ingress_security_rules {
     protocol = "6" # TCP
-    source   = "0.0.0.0/0"
+    source   = var.admin_cidr
     tcp_options {
       min = 6443
       max = 6443
@@ -121,7 +121,7 @@ resource "oci_containerengine_cluster" "oke_cluster" {
   vcn_id             = oci_core_vcn.oke_vcn.id
 
   endpoint_config {
-    is_public_ip_enabled = true
+    is_public_ip_enabled = false
     subnet_id            = oci_core_subnet.oke_api_subnet.id
   }
 

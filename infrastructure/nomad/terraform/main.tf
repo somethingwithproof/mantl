@@ -89,6 +89,11 @@ variable "consul_version" {
   default     = "1.17.1"
 }
 
+variable "kms_key_arns" {
+  description = "ARNs of KMS keys that Nomad nodes can use for encryption"
+  type        = list(string)
+}
+
 # Data sources
 data "aws_availability_zones" "available" {
   state = "available"
@@ -392,7 +397,7 @@ resource "aws_iam_role_policy" "nomad" {
           "kms:Encrypt",
           "kms:GenerateDataKey",
         ]
-        Resource = "*"
+        Resource = var.kms_key_arns
       }
     ]
   })
