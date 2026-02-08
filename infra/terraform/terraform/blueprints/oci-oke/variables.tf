@@ -2,22 +2,26 @@
 variable "tenancy_ocid" {
   description = "OCI tenancy OCID"
   type        = string
+  sensitive   = true
 }
 
 variable "user_ocid" {
   description = "OCI user OCID"
   type        = string
+  sensitive   = true
 }
 
 variable "fingerprint" {
   description = "OCI API key fingerprint"
   type        = string
+  sensitive   = true
 }
 
 variable "private_key_path" {
   description = "Path to OCI API private key"
   type        = string
   default     = "~/.oci/oci_api_key.pem"
+  sensitive   = true
 }
 
 variable "region" {

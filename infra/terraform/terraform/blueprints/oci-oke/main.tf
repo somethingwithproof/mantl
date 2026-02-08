@@ -322,7 +322,7 @@ resource "oci_containerengine_cluster" "oke_cluster" {
   vcn_id             = oci_core_vcn.oke_vcn.id
 
   endpoint_config {
-    is_public_ip_enabled = !var.enable_private_endpoint
+    is_public_ip_enabled = false
     subnet_id            = oci_core_subnet.api_endpoint_subnet.id
   }
 
