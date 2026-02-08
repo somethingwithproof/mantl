@@ -364,7 +364,7 @@ jobs:
       contents: write      # For uploading to release
       actions: read        # For reading workflow info
       attestations: write  # For uploading attestations
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.build-python.outputs.hashes }}
       upload-assets: true
@@ -379,7 +379,7 @@ jobs:
       contents: write
       actions: read
       attestations: write
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.build-javascript.outputs.hashes }}
       upload-assets: true
@@ -394,7 +394,7 @@ jobs:
       contents: write
       actions: read
       attestations: write
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
       base64-subjects: ${{ needs.build-rust.outputs.hashes }}
       upload-assets: true
