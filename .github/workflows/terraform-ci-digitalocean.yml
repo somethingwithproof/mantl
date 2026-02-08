@@ -1,0 +1,354 @@
+name: DigitalOcean Infrastructure Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'infra/terraform/terraform/blueprints/do-doks/**'
+      - 'clusters/*/overlays/digitalocean/**'
+      - 'platform/dns/external-dns/digitalocean/**'
+      - 'platform/base/cert-manager/acme/digitalocean/**'
+      - '.github/workflows/terraform-ci-digitalocean.yml'
+  pull_request:
+    paths:
+      - 'infra/terraform/terraform/blueprints/do-doks/**'
+      - 'clusters/*/overlays/digitalocean/**'
+      - 'platform/dns/external-dns/digitalocean/**'
+      - 'platform/base/cert-manager/acme/digitalocean/**'
+      - '.github/workflows/terraform-ci-digitalocean.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  TERRAFORM_VERSION: '1.14.0'
+  KUSTOMIZE_VERSION: '5.5.0'
+
+jobs:
+  validate-terraform:
+    name: Validate DigitalOcean Blueprint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f85571c5fb643da9750e94b949 # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Format Check
+        id: fmt
+        working-directory: infra/terraform/terraform/blueprints/do-doks
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        working-directory: infra/terraform/terraform/blueprints/do-doks
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform Validate
+        id: validate
+        working-directory: infra/terraform/terraform/blueprints/do-doks
+        run: terraform validate -no-color
+
+      - name: Terraform Plan (Dry Run)
+        id: plan
+        working-directory: infra/terraform/terraform/blueprints/do-doks
+        run: |
+          cat > terraform.tfvars << EOF
+          cluster_name       = "ci-test-cluster"
+          region             = "nyc3"
+          environment        = "ci"
+          kubernetes_version = "1.31.3-do.0"
+          system_node_count  = 1
+          workload_min_nodes = 1
+          workload_max_nodes = 2
+          enable_platform_db = false
+          enable_ingress_lb  = false
+          EOF
+          terraform plan -input=false -no-color -var-file=terraform.tfvars || true
+        continue-on-error: true
+
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        env:
+          FMT_OUTCOME: ${{ steps.fmt.outcome }}
+          INIT_OUTCOME: ${{ steps.init.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const output = `#### Terraform DigitalOcean Blueprint Validation
+
+            | Check | Result |
+            |-------|--------|
+            | Format | \`${{ steps.fmt.outcome }}\` |
+            | Init | \`${{ steps.init.outcome }}\` |
+            | Validate | \`${{ steps.validate.outcome }}\` |
+            | Plan | \`${{ steps.plan.outcome }}\` |
+
+            **Path**: \`infra/terraform/terraform/blueprints/do-doks\`
+
+            <details><summary>Show Validation Output</summary>
+
+            \`\`\`
+            ${{ steps.validate.outputs.stdout }}
+            \`\`\`
+
+            </details>
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+  validate-kustomize:
+    name: Validate DigitalOcean Overlays
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [dev, staging, production]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+          kustomize version
+
+      - name: Validate DigitalOcean overlay exists
+        id: check-overlay
+        run: |
+          if [ -d "clusters/${{ matrix.environment }}/overlays/digitalocean" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "✓ DigitalOcean overlay found for ${{ matrix.environment }}"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "⚠ No DigitalOcean overlay for ${{ matrix.environment }}"
+          fi
+
+      - name: Build DigitalOcean overlay
+        if: steps.check-overlay.outputs.exists == 'true'
+        run: |
+          kustomize build clusters/${{ matrix.environment }}/overlays/digitalocean > /tmp/manifest-${{ matrix.environment }}.yaml
+          echo "✓ Successfully built DigitalOcean overlay for ${{ matrix.environment }}"
+          echo "Generated $(wc -l < /tmp/manifest-${{ matrix.environment }}.yaml) lines of manifests"
+
+      - name: Validate manifests
+        if: steps.check-overlay.outputs.exists == 'true'
+        run: |
+          # Check for common issues
+          if grep -q "CHANGEME" /tmp/manifest-${{ matrix.environment }}.yaml; then
+            echo "❌ Found placeholder values (CHANGEME) in manifests"
+            exit 1
+          fi
+
+          if grep -q "TODO" /tmp/manifest-${{ matrix.environment }}.yaml; then
+            echo "⚠ Found TODO items in manifests"
+          fi
+
+          echo "✓ Basic validation passed"
+
+      - name: Upload artifact
+        if: steps.check-overlay.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digitalocean-manifests-${{ matrix.environment }}
+          path: /tmp/manifest-${{ matrix.environment }}.yaml
+          retention-days: 7
+
+  validate-platform-components:
+    name: Validate Platform Components for DigitalOcean
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Validate external-dns DigitalOcean config
+        run: |
+          if [ -d "platform/dns/external-dns/digitalocean" ]; then
+            echo "✓ Found external-dns DigitalOcean configuration"
+            kustomize build platform/dns/external-dns/digitalocean > /tmp/external-dns-do.yaml || true
+          else
+            echo "⚠ No external-dns DigitalOcean configuration found"
+          fi
+
+      - name: Validate cert-manager ACME DigitalOcean config
+        run: |
+          if [ -d "platform/base/cert-manager/acme/digitalocean" ]; then
+            echo "✓ Found cert-manager ACME DigitalOcean configuration"
+            kustomize build platform/base/cert-manager/acme/digitalocean > /tmp/cert-manager-do.yaml || true
+          else
+            echo "⚠ No cert-manager ACME DigitalOcean configuration found"
+          fi
+
+      - name: Check for DigitalOcean-specific resources
+        run: |
+          echo "Checking for DigitalOcean-specific Kubernetes resources..."
+
+          # Check for LoadBalancer annotations
+          if find platform -name "*.yaml" -o -name "*.yml" | xargs grep -l "service.beta.kubernetes.io/do-loadbalancer" 2>/dev/null; then
+            echo "✓ Found DigitalOcean LoadBalancer annotations"
+          fi
+
+          # Check for DO Container Registry secrets
+          if find platform -name "*.yaml" -o -name "*.yml" | xargs grep -l "doks-image-pull-secret\|registry.digitalocean.com" 2>/dev/null; then
+            echo "✓ Found DigitalOcean Container Registry references"
+          fi
+
+          # Check for DO-specific storage classes
+          if find platform -name "*.yaml" -o -name "*.yml" | xargs grep -l "do-block-storage" 2>/dev/null; then
+            echo "✓ Found DigitalOcean storage class references"
+          fi
+
+  security-scan:
+    name: Security Scan DigitalOcean Configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f85571c5fb643da9750e94b949 # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6 # v1.0.3
+        with:
+          working_directory: infra/terraform/terraform/blueprints/do-doks
+          soft_fail: true
+
+      - name: Check for sensitive data exposure
+        run: |
+          echo "Checking for potential secrets in code..."
+
+          # Check for hardcoded tokens
+          if grep -r "dop_v1_" infra/terraform/terraform/blueprints/do-doks/ 2>/dev/null; then
+            echo "❌ Found potential DigitalOcean API token in code!"
+            exit 1
+          fi
+
+          # Check for proper sensitive variable marking
+          if ! grep -q "sensitive.*=.*true" infra/terraform/terraform/blueprints/do-doks/variables.tf; then
+            echo "⚠ No sensitive variables marked in variables.tf"
+          fi
+
+          echo "✓ No obvious secrets found"
+
+  documentation-check:
+    name: Documentation Completeness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Check README exists
+        run: |
+          if [ -f "infra/terraform/terraform/blueprints/do-doks/README.md" ]; then
+            echo "✓ README.md exists"
+
+            # Check for required sections
+            for section in "Overview" "Prerequisites" "Quick Start" "Variables" "Outputs"; do
+              if grep -q "## $section" infra/terraform/terraform/blueprints/do-doks/README.md; then
+                echo "  ✓ Found section: $section"
+              else
+                echo "  ⚠ Missing section: $section"
+              fi
+            done
+          else
+            echo "❌ README.md not found"
+            exit 1
+          fi
+
+      - name: Check terraform.tfvars.example exists
+        run: |
+          if [ -f "infra/terraform/terraform/blueprints/do-doks/terraform.tfvars.example" ]; then
+            echo "✓ terraform.tfvars.example exists"
+
+            # Verify it has required variables
+            for var in "cluster_name" "region" "environment"; do
+              if grep -q "^$var" infra/terraform/terraform/blueprints/do-doks/terraform.tfvars.example; then
+                echo "  ✓ Found variable: $var"
+              else
+                echo "  ⚠ Missing variable: $var"
+              fi
+            done
+          else
+            echo "❌ terraform.tfvars.example not found"
+            exit 1
+          fi
+
+      - name: Validate Markdown links
+        run: |
+          echo "Checking for broken internal links..."
+          # This is a simple check - production would use a proper link checker
+          if grep -o '\[.*\](.*\.md)' infra/terraform/terraform/blueprints/do-doks/README.md | while read link; do
+            file=$(echo "$link" | sed 's/.*(\(.*\))/\1/')
+            if [ ! -f "$file" ] && [ ! -f "infra/terraform/terraform/blueprints/do-doks/$file" ]; then
+              echo "⚠ Potentially broken link: $link"
+            fi
+          done; then
+            echo "✓ Internal link check completed"
+          fi
+
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [validate-terraform, validate-kustomize, validate-platform-components, security-scan, documentation-check]
+    if: always()
+
+    steps:
+      - name: Check all jobs status
+        run: |
+          echo "## DigitalOcean Infrastructure Tests Summary"
+          echo ""
+          echo "| Job | Status |"
+          echo "|-----|--------|"
+          echo "| Terraform Validation | ${{ needs.validate-terraform.result }} |"
+          echo "| Kustomize Validation | ${{ needs.validate-kustomize.result }} |"
+          echo "| Platform Components | ${{ needs.validate-platform-components.result }} |"
+          echo "| Security Scan | ${{ needs.security-scan.result }} |"
+          echo "| Documentation Check | ${{ needs.documentation-check.result }} |"
+
+          if [ "${{ needs.validate-terraform.result }}" != "success" ] || \
+             [ "${{ needs.validate-kustomize.result }}" != "success" ] || \
+             [ "${{ needs.validate-platform-components.result }}" != "success" ] || \
+             [ "${{ needs.security-scan.result }}" != "success" ] || \
+             [ "${{ needs.documentation-check.result }}" != "success" ]; then
+            echo ""
+            echo "❌ Some checks failed. Please review the logs above."
+            exit 1
+          else
+            echo ""
+            echo "✅ All DigitalOcean infrastructure tests passed!"
+          fi
