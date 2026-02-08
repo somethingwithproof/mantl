@@ -169,12 +169,9 @@ install_argocd() {
     kubectl wait --for=condition=available --timeout=300s \
         deployment/argocd-server -n argocd
 
-    # Get admin password
-    local admin_password
-    admin_password=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
-
     log_success "ArgoCD installed"
-    log_info "ArgoCD Admin Password: ${CYAN}${admin_password}${NC}"
+    log_info "To retrieve the ArgoCD admin password, run:"
+    log_info "  ${CYAN}kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath=\"{.data.password}\" | base64 -d${NC}"
     log_info "Access ArgoCD: kubectl port-forward svc/argocd-server -n argocd 8080:443"
 }
 
