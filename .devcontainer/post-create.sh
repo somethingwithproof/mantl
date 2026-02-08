@@ -35,11 +35,17 @@ rm argocd-linux-amd64
 curl -s https://fluxcd.io/install.sh | sudo bash
 
 # Install Kustomize
-curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" -o install_kustomize.sh
+chmod +x install_kustomize.sh
+./install_kustomize.sh
 sudo mv kustomize /usr/local/bin/
+rm install_kustomize.sh
 
 # Install Tilt for local development
-curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tilt-dev/tilt/master/scripts/install.sh -o install_tilt.sh
+chmod +x install_tilt.sh
+./install_tilt.sh
+rm install_tilt.sh
 
 # Install k9s (Kubernetes TUI)
 wget https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz

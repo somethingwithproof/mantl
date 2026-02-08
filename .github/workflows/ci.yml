@@ -93,10 +93,10 @@ jobs:
         run: pip install safety pip-audit
 
       - name: Check dependencies for vulnerabilities (safety)
-        run: safety check --json || true
+        run: safety check --json
 
       - name: Audit dependencies (pip-audit)
-        run: pip-audit || true
+        run: pip-audit
 
   terraform:
     runs-on: ubuntu-latest
@@ -111,7 +111,6 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Terraform validate
-        continue-on-error: true
         run: |
           find infra/terraform -type d -maxdepth 2 -mindepth 1 -print0 | \
             xargs -0 -I {} sh -c 'cd {} && terraform init -backend=false -no-color && terraform validate -no-color'
@@ -140,14 +139,14 @@ jobs:
         uses: aquasecurity/tfsec-action@v1.0.3
         with:
           working_directory: '.'
-          soft_fail: true
+          soft_fail: false
 
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: '.'
           quiet: true
-          soft_fail: true
+          soft_fail: false
 
   sbom:
     runs-on: ubuntu-latest

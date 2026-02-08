@@ -8,6 +8,12 @@ variable "use_modern_gce_network" {
   default     = false
 }
 
+variable "allowed_cidrs" {
+  description = "Source IP ranges allowed to access external firewall ports. Must be explicitly set."
+  type        = list(string)
+  default     = []
+}
+
 # Custom-mode network with managed subnetwork
 resource "google_compute_network" "mi_network_modern" {
   count                   = var.use_modern_gce_network ? 1 : 0
