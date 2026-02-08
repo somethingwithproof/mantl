@@ -435,6 +435,7 @@ output "host" {
 output "key_vault_id" {
   description = "Azure Key Vault ID for secrets"
   value       = azurerm_key_vault.main.id
+  sensitive   = true
 }
 
 output "external_dns_identity_client_id" {
