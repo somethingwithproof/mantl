@@ -3,7 +3,7 @@
 # Note: pytest version should match requirements-test.txt. We plan to unify under a single file soon.
 alabaster==1.0.0
 # Change concurrently with the required ansible version in sample.yml - update comment in sample.yml as needed
-ansible==13.3.0
+ansible==13.4.0
 pytest==8.4.2
 pytest-cov==7.0.0
 PyYAML==6.0.3
