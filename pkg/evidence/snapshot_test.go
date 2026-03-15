@@ -162,6 +162,27 @@ func TestCaptureResource_Args(t *testing.T) {
 			namespace: "my.namespace",
 			wantErr:   "invalid namespace",
 		},
+		{
+			name:      "empty kind is rejected",
+			kind:      "",
+			resName:   "",
+			namespace: "default",
+			wantErr:   "invalid resource kind",
+		},
+		{
+			name:      "kind with semicolon is rejected",
+			kind:      "Deployment;ls",
+			resName:   "",
+			namespace: "default",
+			wantErr:   "invalid resource kind",
+		},
+		{
+			name:      "namespace with underscore is rejected",
+			kind:      "Deployment",
+			resName:   "my-app",
+			namespace: "my_namespace",
+			wantErr:   "invalid namespace",
+		},
 	}
 
 	for _, tt := range tests {

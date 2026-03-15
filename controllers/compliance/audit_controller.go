@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"regexp"
+	"time"
 
 	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"github.com/thomasvincent/mantl/pkg/evidence"
@@ -23,6 +25,10 @@ type ComplianceAuditReconciler struct {
 	EvidenceBucket string
 	FrameworkDir   string
 }
+
+var validS3BucketRe = regexp.MustCompile(`^[a-z0-9][a-z0-9.\-]{1,61}[a-z0-9]$`)
+
+const maxUploadRetries = 3
 
 // +kubebuilder:rbac:groups=compliance.mantl.io,resources=complianceaudits,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=compliance.mantl.io,resources=complianceaudits/status,verbs=get;update;patch
@@ -48,6 +54,12 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	l.Info("Starting Compliance Audit", "Profile", audit.Spec.Profile, "Framework", profile.Spec.Framework)
+
+	if !validS3BucketRe.MatchString(r.EvidenceBucket) {
+		audit.Status.Phase = "Failed"
+		r.Status().Update(ctx, &audit)
+		return ctrl.Result{}, fmt.Errorf("invalid evidence bucket name %q", r.EvidenceBucket)
+	}
 
 	// 3. Update status to Running
 	audit.Status.Phase = "Running"
@@ -82,17 +94,30 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		for _, res := range control.EvidenceResources {
 			l.Info("Capturing evidence", "Control", control.ID, "Kind", res.Kind)
 
-			snap, err := evidence.CaptureResource(res.Kind, res.Name, res.Namespace)
+			snap, err := evidence.CaptureResourceWithContext(ctx, res.Kind, res.Name, res.Namespace)
 			if err != nil {
 				l.Error(err, "Failed to capture evidence", "kind", res.Kind)
 				failedCount++
 				continue
 			}
 
-			// 6. Upload to S3
-			_, err = evidence.UploadToS3(ctx, snap, r.EvidenceBucket)
-			if err != nil {
-				l.Error(err, "Failed to upload evidence to S3", "kind", res.Kind)
+			// 6. Upload to S3 with retry and timeout
+			var uploadErr error
+			for attempt := 0; attempt < maxUploadRetries; attempt++ {
+				if attempt > 0 {
+					backoff := time.Duration(1<<uint(attempt)) * time.Second
+					l.Info("Retrying S3 upload", "attempt", attempt+1, "kind", res.Kind, "error", uploadErr)
+					time.Sleep(backoff)
+				}
+				uploadCtx, uploadCancel := context.WithTimeout(ctx, 30*time.Second)
+				_, uploadErr = evidence.UploadToS3(uploadCtx, snap, r.EvidenceBucket)
+				uploadCancel()
+				if uploadErr == nil {
+					break
+				}
+			}
+			if uploadErr != nil {
+				l.Error(uploadErr, "Failed to upload evidence to S3 after retries", "kind", res.Kind, "maxRetries", maxUploadRetries)
 				failedCount++
 				continue
 			}
@@ -117,7 +142,12 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	l.Info("Compliance Audit finalized", "Phase", audit.Status.Phase, "FindingCount", findingCount, "FailedCount", failedCount)
+	l.Info("Compliance Audit finalized",
+		"phase", audit.Status.Phase,
+		"findingCount", findingCount,
+		"failedCount", failedCount,
+		"duration", end.Time.Sub(audit.Status.StartTime.Time).String(),
+	)
 
 	return ctrl.Result{}, nil
 }

@@ -83,7 +83,19 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
 	}
 
 	tenantFile := filepath.Join(outputDir, fmt.Sprintf("%s.yaml", tenant.Name))
-	
+
+	absOut, err := filepath.Abs(outputDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve output directory: %w", err)
+	}
+	absFile, err := filepath.Abs(tenantFile)
+	if err != nil {
+		return fmt.Errorf("failed to resolve tenant file path: %w", err)
+	}
+	if !strings.HasPrefix(absFile, absOut+string(filepath.Separator)) {
+		return fmt.Errorf("tenant name %q results in path outside output directory", tenant.Name)
+	}
+
 	// Create Namespace
 	namespace := map[string]interface{}{
 		"apiVersion": "v1",
@@ -128,7 +140,7 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
 		content += string(rbData)
 	}
 
-	return ioutil.WriteFile(tenantFile, []byte(content), 0644)
+	return ioutil.WriteFile(tenantFile, []byte(content), 0600)
 }
 
 // syncWavePriority assigns ArgoCD sync-wave numbers to known infrastructure
@@ -186,5 +198,17 @@ func renderApp(outputDir, name, path string) error {
 		return fmt.Errorf("failed to render application %s: %w", name, err)
 	}
 
-	return ioutil.WriteFile(filepath.Join(outputDir, fmt.Sprintf("%s.yaml", name)), data, 0644)
+	outPath := filepath.Join(outputDir, fmt.Sprintf("%s.yaml", name))
+	absOut, err := filepath.Abs(outputDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve output directory: %w", err)
+	}
+	absFile, err := filepath.Abs(outPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve output file path: %w", err)
+	}
+	if !strings.HasPrefix(absFile, absOut+string(filepath.Separator)) {
+		return fmt.Errorf("app name %q results in path outside output directory", name)
+	}
+	return ioutil.WriteFile(outPath, data, 0600)
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -17,6 +18,8 @@ type ExecutionDAG struct {
 	SpecFile string
 	BuildDir string
 }
+
+var validKindClusterNameRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 
 // ProvisionInfra handles the creation of the underlying infrastructure.
 func (d *ExecutionDAG) ProvisionInfra(provider string, clusterName string) error {
@@ -62,8 +65,12 @@ func (d *ExecutionDAG) ProvisionInfra(provider string, clusterName string) error
 
 // CreateLocalCluster spins up a Kubernetes cluster using Kind.
 func (d *ExecutionDAG) CreateLocalCluster(name string) error {
+	if !validKindClusterNameRe.MatchString(name) || len(name) > 253 {
+		return fmt.Errorf("invalid cluster name %q", name)
+	}
+
 	fmt.Printf("Executing: kind create cluster --name %s\n", name)
-	
+
 	// Check if cluster already exists
 	checkCmd := exec.Command("kind", "get", "clusters")
 	output, checkErr := checkCmd.Output()
@@ -71,9 +78,11 @@ func (d *ExecutionDAG) CreateLocalCluster(name string) error {
 		// Non-fatal: kind may not have any clusters yet; log and proceed to create.
 		fmt.Printf("  Warning: 'kind get clusters' failed (%s), proceeding with creation.\n", checkErr.Error())
 	}
-	if strings.Contains(string(output), name) {
-		fmt.Printf("  Cluster '%s' already exists, skipping creation.\n", name)
-		return nil
+	for _, line := range strings.Split(strings.TrimSpace(string(output)), "\n") {
+		if strings.TrimSpace(line) == name {
+			fmt.Printf("  Cluster '%s' already exists, skipping creation.\n", name)
+			return nil
+		}
 	}
 
 	cmd := exec.Command("kind", "create", "cluster", "--name", name)
@@ -162,9 +171,8 @@ func (d *ExecutionDAG) VerifyConvergence() error {
 
 			parts := strings.Split(strOutput, "=")
 			if len(parts) != 2 {
-				// The jsonpath template always emits exactly one "=" separator;
-				// any other count means the API returned an unexpected format.
-				return fmt.Errorf("unexpected output from kubectl get applications: %q", strOutput)
+				fmt.Printf("  Unexpected output format, retrying... (%q)\n", strOutput)
+				continue
 			}
 
 			syncStatuses := strings.Fields(parts[0])
