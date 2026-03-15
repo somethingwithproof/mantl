@@ -1,12 +1,17 @@
 package evidence
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 // Snapshot represents a piece of point-in-time evidence.
@@ -42,8 +47,31 @@ func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
 	}, nil
 }
 
-// StoreEvidence handles the upload to object storage (stubbed for now).
-func StoreEvidence(s *Snapshot, bucket string) (string, error) {
-	fmt.Printf("Evidence stored: %s (Hash: %s)\n", s.Resource, s.ContentHash)
-	return fmt.Sprintf("s3://%s/evidence/%s/%s.json", bucket, s.Resource, s.CapturedAt.Format(time.RFC3339)), nil
+// UploadToS3 uploads the snapshot data to an S3 bucket.
+func UploadToS3(ctx context.Context, s *Snapshot, bucket string) (string, error) {
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		return "", fmt.Errorf("unable to load SDK config: %w", err)
+	}
+
+	client := s3.NewFromConfig(cfg)
+
+	key := fmt.Sprintf("evidence/%s/%s.json", s.Resource, s.CapturedAt.Format(time.RFC3339))
+
+	_, err = client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(bucket),
+		Key:         aws.String(key),
+		Body:        strings.NewReader(s.Data),
+		ContentType: aws.String("application/json"),
+		Metadata: map[string]string{
+			"mantl-content-hash": s.ContentHash,
+			"mantl-captured-at":  s.CapturedAt.Format(time.RFC3339),
+		},
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("failed to upload evidence to S3: %w", err)
+	}
+
+	return fmt.Sprintf("s3://%s/%s", bucket, key), nil
 }
