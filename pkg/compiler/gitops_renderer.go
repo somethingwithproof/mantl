@@ -17,7 +17,7 @@ import (
 var featureAppMap = map[string]string{
 	"Observability":       "platform/observability",
 	"Security":            "platform/security/base",
-	"Secrets":             "platform/secrets",
+	"Secrets":             "platform/secrets/base",
 	"Compliance":          "deploy/operator/base",
 	"ProgressiveDelivery": "platform/progressive-delivery/base",
 }
