@@ -19,7 +19,7 @@ var featureAppMap = map[string]string{
 	"Security":            "platform/security/base",
 	"Secrets":             "platform/secrets",
 	"Compliance":          "deploy/operator/base",
-	"ProgressiveDelivery": "platform/progressive-delivery",
+	"ProgressiveDelivery": "platform/progressive-delivery/base",
 }
 
 // RenderGitOps generates the ArgoCD application manifests for the platform.
