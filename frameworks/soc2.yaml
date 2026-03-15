@@ -6,8 +6,15 @@ controls:
   policies:
   - require-labels
   - disallow-default-namespace
+  evidenceResources:
+  - kind: rolebindings
+    namespace: "" # All namespaces
+  - kind: clusterrolebindings
 - id: CC7.1
   description: "Detects and monitors for unauthorized system changes."
   policies:
   - restrict-image-registries
   - validate-image-signatures
+  evidenceResources:
+  - kind: clusterpolicies
+    group: kyverno.io

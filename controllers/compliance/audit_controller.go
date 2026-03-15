@@ -3,6 +3,8 @@ package compliance
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 	"time"
 
 	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
@@ -12,13 +14,15 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 )
 
 // ComplianceAuditReconciler reconciles a ComplianceAudit object
 type ComplianceAuditReconciler struct {
 	client.Client
-	Scheme       *runtime.Scheme
+	Scheme         *runtime.Scheme
 	EvidenceBucket string
+	FrameworkDir   string
 }
 
 // +kubebuilder:rbac:groups=compliance.mantl.io,resources=complianceaudits,verbs=get;list;watch;create;update;patch;delete
@@ -37,9 +41,16 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, nil
 	}
 
-	l.Info("Starting Compliance Audit", "Profile", audit.Spec.Profile)
+	// 2. Fetch the associated Profile to find the Framework
+	var profile v1alpha1.ComplianceProfile
+	if err := r.Get(ctx, client.ObjectKey{Name: audit.Spec.Profile}, &profile); err != nil {
+		l.Error(err, "Failed to find ComplianceProfile", "profile", audit.Spec.Profile)
+		return ctrl.Result{}, err
+	}
 
-	// 2. Update status to Running
+	l.Info("Starting Compliance Audit", "Profile", audit.Spec.Profile, "Framework", profile.Spec.Framework)
+
+	// 3. Update status to Running
 	audit.Status.Phase = "Running"
 	now := metav1.Now()
 	audit.Status.StartTime = &now
@@ -47,39 +58,57 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	// 3. Trigger Evidence Collection (Simulated for one resource)
-	// In reality, we'd loop over all resources mapped in the profile
-	l.Info("Collecting evidence for audit", "Resource", "NetworkPolicies")
-	
-	snap, err := evidence.CaptureResource("networkpolicies", "", "")
+	// 4. Load the Framework mapping file
+	frameworkFile := filepath.Join(r.FrameworkDir, fmt.Sprintf("%s.yaml", profile.Spec.Framework))
+	data, err := ioutil.ReadFile(frameworkFile)
 	if err != nil {
-		l.Error(err, "Failed to capture evidence")
+		l.Error(err, "Failed to read framework file", "file", frameworkFile)
 		audit.Status.Phase = "Failed"
 		r.Status().Update(ctx, &audit)
 		return ctrl.Result{}, err
 	}
 
-	// 4. Upload to S3
-	uri, err := evidence.UploadToS3(ctx, snap, r.EvidenceBucket)
-	if err != nil {
-		l.Error(err, "Failed to upload evidence to S3")
+	var framework Framework
+	if err := yaml.Unmarshal(data, &framework); err != nil {
+		l.Error(err, "Failed to unmarshal framework yaml")
 		audit.Status.Phase = "Failed"
 		r.Status().Update(ctx, &audit)
 		return ctrl.Result{}, err
 	}
 
-	// 5. Finalize Audit
+	// 5. Iterate through all controls and capture evidence
+	findingCount := 0
+	for _, control := range framework.Controls {
+		for _, res := range control.EvidenceResources {
+			l.Info("Capturing evidence", "Control", control.ID, "Kind", res.Kind)
+			
+			snap, err := evidence.CaptureResource(res.Kind, "", res.Namespace)
+			if err != nil {
+				l.Error(err, "Failed to capture evidence", "kind", res.Kind)
+				continue
+			}
+
+			// 6. Upload to S3
+			_, err = evidence.UploadToS3(ctx, snap, r.EvidenceBucket)
+			if err != nil {
+				l.Error(err, "Failed to upload evidence to S3", "kind", res.Kind)
+				continue
+			}
+			findingCount++
+		}
+	}
+
+	// 7. Finalize Audit
 	audit.Status.Phase = "Completed"
 	end := metav1.Now()
 	audit.Status.EndTime = &end
-	audit.Status.EvidenceURI = uri
-	audit.Status.FindingCount = 1 // Simplified
+	audit.Status.FindingCount = int32(findingCount)
 	
 	if err := r.Status().Update(ctx, &audit); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	l.Info("Compliance Audit completed successfully", "Evidence", uri)
+	l.Info("Compliance Audit completed successfully", "FindingCount", findingCount)
 
 	return ctrl.Result{}, nil
 }

@@ -19,9 +19,17 @@ type Framework struct {
 	Name     string `json:"name"`
 	Version  string `json:"version"`
 	Controls []struct {
-		ID       string   `json:"id"`
-		Policies []string `json:"policies"`
+		ID                string             `json:"id"`
+		Policies          []string           `json:"policies"`
+		EvidenceResources []EvidenceResource `json:"evidenceResources"`
 	} `json:"controls"`
+}
+
+// EvidenceResource defines a Kubernetes resource to be captured as evidence.
+type EvidenceResource struct {
+	Kind      string `json:"kind"`
+	Namespace string `json:"namespace,omitempty"`
+	Group     string `json:"group,omitempty"`
 }
 
 // ComplianceProfileReconciler reconciles a ComplianceProfile object
