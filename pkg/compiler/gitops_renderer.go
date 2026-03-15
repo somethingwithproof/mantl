@@ -42,7 +42,7 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 	}
 
 	if cluster.Spec.Features.Compliance {
-		if err := renderApp(gitopsDir, "compliance-operator", "compliance/operator"); err != nil {
+		if err := renderApp(gitopsDir, "compliance-operator", "deploy/operator/base"); err != nil {
 			return err
 		}
 	}
