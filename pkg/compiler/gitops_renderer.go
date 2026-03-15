@@ -16,7 +16,7 @@ import (
 // and their corresponding manifest paths in the repository.
 var featureAppMap = map[string]string{
 	"Observability":       "platform/observability",
-	"Security":            "platform/security",
+	"Security":            "platform/security/base",
 	"Secrets":             "platform/secrets",
 	"Compliance":          "deploy/operator/base",
 	"ProgressiveDelivery": "platform/progressive-delivery",
