@@ -3,18 +3,32 @@ package compliance
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
 
 	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/yaml"
 )
+
+// Framework defines the structure of our compliance mapping files.
+type Framework struct {
+	Name     string `json:"name"`
+	Version  string `json:"version"`
+	Controls []struct {
+		ID       string   `json:"id"`
+		Policies []string `json:"policies"`
+	} `json:"controls"`
+}
 
 // ComplianceProfileReconciler reconciles a ComplianceProfile object
 type ComplianceProfileReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme       *runtime.Scheme
+	FrameworkDir string
 }
 
 // +kubebuilder:rbac:groups=compliance.mantl.io,resources=complianceprofiles,verbs=get;list;watch;create;update;patch;delete
@@ -22,7 +36,7 @@ type ComplianceProfileReconciler struct {
 // +kubebuilder:rbac:groups=kyverno.io,resources=clusterpolicies,verbs=get;list;watch;create;update;patch;delete
 
 func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := log.FromContext(ctx)
+	l := log.FromContext(ctx)
 
 	// 1. Fetch the ComplianceProfile
 	var profile v1alpha1.ComplianceProfile
@@ -30,39 +44,42 @@ func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log.Info("Reconciling ComplianceProfile", "Name", profile.Name)
+	l.Info("Reconciling ComplianceProfile", "Name", profile.Name, "Framework", profile.Spec.Framework)
 
-	// 2. Logic to map Framework -> Controls -> Kyverno Policies
-	// In a real implementation, this would look up the Framework spec
-	// and generate/apply Kyverno ClusterPolicies mapped to its controls.
-	// We'll simulate the mapping phase here.
-
-	mappedPolicies := []string{"disallow-default-namespace", "require-labels", "restrict-image-registries"}
-	log.Info("Mapped profile to Kyverno policies", "policies", mappedPolicies)
-
-	// Here we would apply those policies to the cluster via the client.
-	// For this implementation, we will log the expansion and proceed.
-	for _, p := range mappedPolicies {
-		log.Info("Would enforce policy", "policyName", p)
+	// 2. Load the Framework mapping file
+	frameworkFile := filepath.Join(r.FrameworkDir, fmt.Sprintf("%s.yaml", profile.Spec.Framework))
+	data, err := ioutil.ReadFile(frameworkFile)
+	if err != nil {
+		l.Error(err, "Failed to read framework file", "file", frameworkFile)
+		return ctrl.Result{}, err
 	}
 
-	// 3. Update the Status to active
-	// This represents that the controller has successfully compiled
-	// the abstract profile into concrete technical enforcement.
-	// profile.Status.State = "Active"
-	// profile.Status.ActivePolicies = int32(len(mappedPolicies))
-	// if err := r.Status().Update(ctx, &profile); err != nil {
-	// 	return ctrl.Result{}, err
-	// }
+	var framework Framework
+	if err := yaml.Unmarshal(data, &framework); err != nil {
+		l.Error(err, "Failed to unmarshal framework yaml")
+		return ctrl.Result{}, err
+	}
 
-	log.Info("ComplianceProfile reconciled successfully")
+	// 3. Map controls to concrete policies
+	var policiesToEnforce []string
+	for _, control := range framework.Controls {
+		policiesToEnforce = append(policiesToEnforce, control.Policies...)
+	}
+
+	l.Info("Dynamic mapping complete", "framework", framework.Name, "policyCount", len(policiesToEnforce))
+
+	// 4. Update status
+	profile.Status.State = "Active"
+	profile.Status.ActivePolicies = int32(len(policiesToEnforce))
+	if err := r.Status().Update(ctx, &profile); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ComplianceProfileReconciler) SetupWithManager(mgr ctrl.Session) error {
-	// To actually watch for changes to the generated Kyverno policies, we would add:
-	// .Owns(&kyverno.ClusterPolicy{})
+func (r *ComplianceProfileReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.ComplianceProfile{}).
 		Complete(r)
