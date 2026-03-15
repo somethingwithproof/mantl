@@ -5,10 +5,22 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 
 	"github.com/thomasvincent/mantl/apis/platform/v1alpha1"
 	"sigs.k8s.io/yaml"
 )
+
+// featureAppMap defines the mapping between the MantlCluster Features struct field names
+// and their corresponding manifest paths in the repository.
+var featureAppMap = map[string]string{
+	"Observability":       "platform/observability",
+	"Security":            "platform/security",
+	"Secrets":             "platform/secrets",
+	"Compliance":          "deploy/operator/base",
+	"ProgressiveDelivery": "platform/progressive-delivery",
+}
 
 // RenderGitOps generates the ArgoCD application manifests for the platform.
 func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
@@ -22,28 +34,24 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 		return err
 	}
 
-	// 2. Generate Addon Applications based on features
-	if cluster.Spec.Features.Observability {
-		if err := renderApp(gitopsDir, "observability-stack", "platform/observability"); err != nil {
-			return err
-		}
-	}
+	// 2. Dynamically generate Addon Applications based on features using reflection
+	// This makes the code DRY: adding a new feature field to the API automatically
+	// picks up the mapping if it exists in featureAppMap.
+	features := cluster.Spec.Features
+	v := reflect.ValueOf(features)
+	t := v.Type()
 
-	if cluster.Spec.Features.Security {
-		if err := renderApp(gitopsDir, "security-policies", "platform/security"); err != nil {
-			return err
-		}
-	}
+	for i := 0; i < v.NumField(); i++ {
+		fieldName := t.Field(i).Name
+		isEnabled := v.Field(i).Bool()
 
-	if cluster.Spec.Features.Secrets {
-		if err := renderApp(gitopsDir, "external-secrets", "platform/secrets"); err != nil {
-			return err
-		}
-	}
-
-	if cluster.Spec.Features.Compliance {
-		if err := renderApp(gitopsDir, "compliance-operator", "deploy/operator/base"); err != nil {
-			return err
+		if isEnabled {
+			if path, exists := featureAppMap[fieldName]; exists {
+				appName := fmt.Sprintf("addon-%s", strings.ToLower(fieldName))
+				if err := renderApp(gitopsDir, appName, path); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
