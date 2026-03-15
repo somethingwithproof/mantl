@@ -33,8 +33,11 @@ foreach ([
     'AUTH_KEY', 'SECURE_AUTH_KEY', 'LOGGED_IN_KEY', 'NONCE_KEY',
     'AUTH_SALT', 'SECURE_AUTH_SALT', 'LOGGED_IN_SALT', 'NONCE_SALT',
 ] as $key) {
-    if ($value = env($key)) {
+    $value = env($key);
+    if ($value) {
         define($key, $value);
+    } elseif (WP_ENV === 'production') {
+        throw new \RuntimeException('Required security key not set: ' . $key);
     }
 }
 
@@ -46,14 +49,19 @@ define('FORCE_SSL_ADMIN', env('FORCE_SSL_ADMIN') ?: false);
 // Set memory limits conservatively
 @ini_set('memory_limit', '256M');
 
-// Debug
-define('WP_DEBUG', WP_ENV !== 'production');
-define('SCRIPT_DEBUG', WP_DEBUG);
-
-// Environment-specific settings
+// Environment-specific settings (environment files own WP_DEBUG)
+if (!in_array(WP_ENV, ['development', 'staging', 'production'], true)) {
+    throw new \RuntimeException('Invalid WP_ENV value: ' . WP_ENV);
+}
 if (file_exists(__DIR__.'/environments/'.WP_ENV.'.php')) {
     require __DIR__.'/environments/'.WP_ENV.'.php';
 }
+
+// Debug fallback if environment file did not define WP_DEBUG
+if (!defined('WP_DEBUG')) {
+    define('WP_DEBUG', false);
+}
+define('SCRIPT_DEBUG', WP_DEBUG);
 
 // Absolute path to WordPress directory
 define('ABSPATH', dirname(__DIR__).'/web/wp/');

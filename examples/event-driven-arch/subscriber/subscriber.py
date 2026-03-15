@@ -51,9 +51,9 @@ PROCESSING_DURATION = Histogram(
     ['event_type']
 )
 
-QUEUE_DEPTH = Gauge(
-    'event_queue_depth',
-    'Number of pending messages in queue'
+FETCH_BATCH_SIZE = Gauge(
+    'event_fetch_batch_size',
+    'Number of messages fetched in current pull batch'
 )
 
 # Global state
@@ -210,7 +210,7 @@ async def main():
                 msgs = await psub.fetch(batch=10, timeout=5)
 
                 if msgs:
-                    QUEUE_DEPTH.set(len(msgs))
+                    FETCH_BATCH_SIZE.set(len(msgs))
 
                     # Process messages concurrently
                     tasks = [
@@ -220,13 +220,13 @@ async def main():
                     await asyncio.gather(*tasks, return_exceptions=True)
 
                 else:
-                    # No messages, update queue depth
-                    QUEUE_DEPTH.set(0)
+                    # No messages, reset fetch batch size
+                    FETCH_BATCH_SIZE.set(0)
                     await asyncio.sleep(1)
 
             except nats.errors.TimeoutError:
                 # No messages available, continue
-                QUEUE_DEPTH.set(0)
+                FETCH_BATCH_SIZE.set(0)
                 continue
 
             except Exception as e:

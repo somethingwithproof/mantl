@@ -73,8 +73,8 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=os.getenv("CORS_ALLOWED_ORIGINS", "*").split(","),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -300,7 +300,7 @@ async def predict(request: PredictionRequest):
                 status="error"
             ).inc()
             logger.error(f"Prediction failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/api/v1/predict/batch", response_model=BatchPredictionResponse)
 async def predict_batch(request: BatchPredictionRequest):
@@ -366,7 +366,7 @@ async def predict_batch(request: BatchPredictionRequest):
                 status="error"
             ).inc()
             logger.error(f"Batch prediction failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Batch prediction failed: {str(e)}")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
 if __name__ == "__main__":
     import uvicorn

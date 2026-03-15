@@ -20,7 +20,7 @@ import sys
 import time
 import os
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from prometheus_client import Counter, Histogram, Gauge, push_to_gateway
 from prometheus_client import CollectorRegistry
 
@@ -32,7 +32,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configuration from environment
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/db")
+DATABASE_URL = os.environ["DATABASE_URL"]
 S3_BUCKET = os.getenv("S3_BUCKET", "mantl-data")
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
 PARALLEL_WORKERS = int(os.getenv("PARALLEL_WORKERS", "4"))
@@ -93,7 +93,7 @@ class BatchProcessor:
     def __init__(self):
         self.db_pool: Optional[asyncpg.Pool] = None
         self.s3_client = boto3.client('s3')
-        self.checkpoint_key = f"checkpoints/{JOB_NAME}/{datetime.now().strftime('%Y-%m-%d')}.json"
+        self.checkpoint_key = f"checkpoints/{JOB_NAME}/{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.json"
 
     async def initialize(self):
         """Initialize database connection pool"""
@@ -137,7 +137,7 @@ class BatchProcessor:
             import json
             checkpoint = {
                 'last_id': last_processed_id,
-                'timestamp': datetime.now().isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'job_name': JOB_NAME
             }
             self.s3_client.put_object(
@@ -257,7 +257,7 @@ class BatchProcessor:
                 logger.info(f"Processing batch #{batch_number}: {len(batch)} records")
 
                 # Split batch among workers
-                chunk_size = len(batch) // PARALLEL_WORKERS
+                chunk_size = max(1, len(batch) // PARALLEL_WORKERS)
                 chunks = [
                     batch[i:i + chunk_size]
                     for i in range(0, len(batch), chunk_size)

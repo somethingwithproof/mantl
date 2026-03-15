@@ -243,12 +243,9 @@ func TestBuildResourceID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resourceID := tt.kind
-			if tt.resName != "" {
-				resourceID = tt.kind + "/" + tt.resName
-			}
-			if resourceID != tt.wantPrefix {
-				t.Errorf("resourceID = %q, want %q", resourceID, tt.wantPrefix)
+			got := BuildResourceID(tt.kind, tt.resName)
+			if got != tt.wantPrefix {
+				t.Errorf("BuildResourceID(%q, %q) = %q, want %q", tt.kind, tt.resName, got, tt.wantPrefix)
 			}
 		})
 	}

@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, Histogram, make_asgi_app
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from pydantic import BaseModel, Field
+from decimal import Decimal
+from pydantic import BaseModel, Field, condecimal
 from typing import List, Optional
 import asyncpg
 import os
@@ -49,7 +50,7 @@ class Product(BaseModel):
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=1000)
-    price: float = Field(..., gt=0)
+    price: condecimal(max_digits=10, decimal_places=2, gt=Decimal(0))
     category: str = Field(..., min_length=1, max_length=100)
     stock: int = Field(..., ge=0)
     sku: str = Field(..., min_length=1, max_length=50)
@@ -73,7 +74,7 @@ class Product(BaseModel):
 class ProductCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    price: float
+    price: condecimal(max_digits=10, decimal_places=2)
     category: str
     stock: int
     sku: str
@@ -82,7 +83,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[condecimal(max_digits=10, decimal_places=2)] = None
     category: Optional[str] = None
     stock: Optional[int] = None
     sku: Optional[str] = None
@@ -101,8 +102,8 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure properly in production
-    allow_credentials=True,
+    allow_origins=os.getenv("CORS_ALLOWED_ORIGINS", "*").split(","),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

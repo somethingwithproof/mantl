@@ -122,17 +122,21 @@ func CaptureResourceWithContext(ctx context.Context, kind, name, namespace strin
 	hash := sha256.Sum256(output)
 	hashStr := hex.EncodeToString(hash[:])
 
-	resourceID := kind
-	if name != "" {
-		resourceID = fmt.Sprintf("%s/%s", kind, name)
-	}
-
 	return &Snapshot{
-		Resource:    resourceID,
+		Resource:    BuildResourceID(kind, name),
 		CapturedAt:  time.Now().UTC(),
 		ContentHash: hashStr,
 		Data:        string(output),
 	}, nil
+}
+
+// BuildResourceID returns a resource identifier in the form "kind/name".
+// If name is empty, only the kind is returned.
+func BuildResourceID(kind, name string) string {
+	if name != "" {
+		return fmt.Sprintf("%s/%s", kind, name)
+	}
+	return kind
 }
 
 // DefaultServerSideEncryption is the S3 encryption method used when none is

@@ -76,7 +76,7 @@ type ComplianceAuditSpec struct {
 
 // ComplianceAuditStatus defines the observed state of a Compliance Audit
 type ComplianceAuditStatus struct {
-	Phase       string      `json:"phase,omitempty"` // Pending, Running, Completed, Failed
+	Phase       string      `json:"phase,omitempty"` // Pending, Running, Completed, PartiallyCompleted, Failed, NoEvidence
 	StartTime   *metav1.Time `json:"startTime,omitempty"`
 	EndTime     *metav1.Time `json:"endTime,omitempty"`
 	FindingCount int32       `json:"findingCount,omitempty"`
