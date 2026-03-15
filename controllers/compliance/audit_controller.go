@@ -36,7 +36,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if audit.Status.Phase == "Completed" || audit.Status.Phase == "Failed" {
+	if audit.Status.Phase == "Completed" || audit.Status.Phase == "PartiallyCompleted" || audit.Status.Phase == "Failed" {
 		return ctrl.Result{}, nil
 	}
 
@@ -77,13 +77,15 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// 5. Iterate through all controls and capture evidence
 	findingCount := 0
+	failedCount := 0
 	for _, control := range framework.Controls {
 		for _, res := range control.EvidenceResources {
 			l.Info("Capturing evidence", "Control", control.ID, "Kind", res.Kind)
-			
+
 			snap, err := evidence.CaptureResource(res.Kind, res.Name, res.Namespace)
 			if err != nil {
 				l.Error(err, "Failed to capture evidence", "kind", res.Kind)
+				failedCount++
 				continue
 			}
 
@@ -91,23 +93,31 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 			_, err = evidence.UploadToS3(ctx, snap, r.EvidenceBucket)
 			if err != nil {
 				l.Error(err, "Failed to upload evidence to S3", "kind", res.Kind)
+				failedCount++
 				continue
 			}
 			findingCount++
 		}
 	}
 
-	// 7. Finalize Audit
-	audit.Status.Phase = "Completed"
+	// 7. Finalize Audit — phase reflects whether all captures succeeded.
+	switch {
+	case failedCount > 0 && findingCount > 0:
+		audit.Status.Phase = "PartiallyCompleted"
+	case failedCount > 0 && findingCount == 0:
+		audit.Status.Phase = "Failed"
+	default:
+		audit.Status.Phase = "Completed"
+	}
 	end := metav1.Now()
 	audit.Status.EndTime = &end
 	audit.Status.FindingCount = int32(findingCount)
-	
+
 	if err := r.Status().Update(ctx, &audit); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	l.Info("Compliance Audit completed successfully", "FindingCount", findingCount)
+	l.Info("Compliance Audit finalized", "Phase", audit.Status.Phase, "FindingCount", findingCount, "FailedCount", failedCount)
 
 	return ctrl.Result{}, nil
 }

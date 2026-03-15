@@ -66,7 +66,11 @@ func (d *ExecutionDAG) CreateLocalCluster(name string) error {
 	
 	// Check if cluster already exists
 	checkCmd := exec.Command("kind", "get", "clusters")
-	output, _ := checkCmd.Output()
+	output, checkErr := checkCmd.Output()
+	if checkErr != nil {
+		// Non-fatal: kind may not have any clusters yet; log and proceed to create.
+		fmt.Printf("  Warning: 'kind get clusters' failed (%s), proceeding with creation.\n", checkErr.Error())
+	}
 	if strings.Contains(string(output), name) {
 		fmt.Printf("  Cluster '%s' already exists, skipping creation.\n", name)
 		return nil
@@ -158,8 +162,9 @@ func (d *ExecutionDAG) VerifyConvergence() error {
 
 			parts := strings.Split(strOutput, "=")
 			if len(parts) != 2 {
-				fmt.Println("  Waiting for application status...")
-				continue
+				// The jsonpath template always emits exactly one "=" separator;
+				// any other count means the API returned an unexpected format.
+				return fmt.Errorf("unexpected output from kubectl get applications: %q", strOutput)
 			}
 
 			syncStatuses := strings.Fields(parts[0])

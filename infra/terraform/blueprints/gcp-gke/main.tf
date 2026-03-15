@@ -21,7 +21,7 @@ module "gke" {
   ip_range_pods     = var.ip_range_pods
   ip_range_services = var.ip_range_services
   release_channel   = "REGULAR"
-  enable_private_endpoint = false
+  enable_private_endpoint = var.enable_private_endpoint
   enable_private_nodes    = true
   remove_default_node_pool = true
   node_pools = [{

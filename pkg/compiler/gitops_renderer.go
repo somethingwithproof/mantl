@@ -36,12 +36,12 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 
 	// 2. Dynamically generate Addon Applications based on features using reflection
 	features := cluster.Spec.Features
-	v := reflect.ValueOf(features)
-	t := v.Type()
+	featuresValue := reflect.ValueOf(features)
+	featuresType := featuresValue.Type()
 
-	for i := 0; i < v.NumField(); i++ {
-		fieldName := t.Field(i).Name
-		isEnabled := v.Field(i).Bool()
+	for i := 0; i < featuresValue.NumField(); i++ {
+		fieldName := featuresType.Field(i).Name
+		isEnabled := featuresValue.Field(i).Bool()
 
 		if isEnabled {
 			if path, exists := featureAppMap[fieldName]; exists {
@@ -131,14 +131,34 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
 	return ioutil.WriteFile(tenantFile, []byte(content), 0644)
 }
 
+// syncWavePriority assigns ArgoCD sync-wave numbers to known infrastructure
+// components. Lower waves deploy first; anything not listed defaults to "3".
+var syncWavePriority = map[string]string{
+	"cert-manager":     "1",
+	"external-secrets": "1",
+	"kyverno":          "2",
+	"monitoring":       "2",
+}
+
 // renderApp is a helper to generate a standard ArgoCD Application manifest.
 func renderApp(outputDir, name, path string) error {
+	wave := "3"
+	for component, w := range syncWavePriority {
+		if strings.Contains(name, component) {
+			wave = w
+			break
+		}
+	}
+
 	app := map[string]interface{}{
 		"apiVersion": "argoproj.io/v1alpha1",
 		"kind":       "Application",
 		"metadata": map[string]interface{}{
 			"name":      name,
 			"namespace": "argocd",
+			"annotations": map[string]interface{}{
+				"argocd.argoproj.io/sync-wave": wave,
+			},
 		},
 		"spec": map[string]interface{}{
 			"project": "default",
@@ -163,7 +183,7 @@ func renderApp(outputDir, name, path string) error {
 
 	data, err := yaml.Marshal(app)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to render application %s: %w", name, err)
 	}
 
 	return ioutil.WriteFile(filepath.Join(outputDir, fmt.Sprintf("%s.yaml", name)), data, 0644)

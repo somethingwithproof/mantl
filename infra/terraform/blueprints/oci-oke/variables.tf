@@ -2,18 +2,30 @@ variable "tenancy_ocid" {
   description = "OCI tenancy OCID"
   type        = string
   sensitive   = true
+  validation {
+    condition     = length(var.tenancy_ocid) > 0
+    error_message = "tenancy_ocid must not be empty"
+  }
 }
 
 variable "user_ocid" {
   description = "OCI user OCID"
   type        = string
   sensitive   = true
+  validation {
+    condition     = length(var.user_ocid) > 0
+    error_message = "user_ocid must not be empty"
+  }
 }
 
 variable "fingerprint" {
   description = "OCI API key fingerprint"
   type        = string
   sensitive   = true
+  validation {
+    condition     = length(var.fingerprint) > 0
+    error_message = "fingerprint must not be empty"
+  }
 }
 
 variable "private_key_path" {

@@ -70,11 +70,13 @@ func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
 // CaptureResourceWithContext is like CaptureResource but accepts a
 // caller-provided context for deadline and cancellation control.
 func CaptureResourceWithContext(ctx context.Context, kind, name, namespace string) (*Snapshot, error) {
-	if !allowedEvidenceKinds[kind] {
-		return nil, fmt.Errorf("resource kind %q is not permitted for evidence collection", kind)
-	}
+	// Defense-in-depth: reject syntactically invalid kinds before checking the
+	// allowlist, so future allowlist additions that violate the pattern are caught.
 	if !validKubeKindRe.MatchString(kind) {
 		return nil, fmt.Errorf("invalid resource kind %q", kind)
+	}
+	if !allowedEvidenceKinds[kind] {
+		return nil, fmt.Errorf("resource kind %q is not permitted for evidence collection", kind)
 	}
 	if name != "" {
 		if len(name) > maxKubeNameLen {
@@ -144,10 +146,11 @@ func UploadToS3(ctx context.Context, s *Snapshot, bucket string) (string, error)
 	key := fmt.Sprintf("evidence/%s/%s.json", s.Resource, s.CapturedAt.Format(time.RFC3339))
 
 	_, err = client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      aws.String(bucket),
-		Key:         aws.String(key),
-		Body:        strings.NewReader(s.Data),
-		ContentType: aws.String("application/json"),
+		Bucket:               aws.String(bucket),
+		Key:                  aws.String(key),
+		Body:                 strings.NewReader(s.Data),
+		ContentType:          aws.String("application/json"),
+		ServerSideEncryption: aws.String("AES256"),
 		Metadata: map[string]string{
 			"mantl-content-hash": s.ContentHash,
 			"mantl-captured-at":  s.CapturedAt.Format(time.RFC3339),

@@ -10,6 +10,7 @@ output "cluster_name" {
 output "cluster_endpoint" {
   description = "EKS cluster API endpoint"
   value       = module.eks.cluster_endpoint
+  sensitive   = true
 }
 
 output "cluster_certificate_authority_data" {
@@ -21,6 +22,7 @@ output "cluster_certificate_authority_data" {
 output "cluster_oidc_issuer_url" {
   description = "OIDC issuer URL for the cluster"
   value       = module.eks.cluster_oidc_issuer_url
+  sensitive   = true
 }
 
 output "cluster_oidc_provider_arn" {

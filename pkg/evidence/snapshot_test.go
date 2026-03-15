@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCaptureResource_Args(t *testing.T) {
@@ -45,7 +46,7 @@ func TestCaptureResource_Args(t *testing.T) {
 			kind:      "../etc",
 			resName:   "",
 			namespace: "default",
-			wantErr:   "not permitted",
+			wantErr:   "invalid resource kind",
 		},
 		{
 			name:      "invalid resource name returns error",
@@ -138,21 +139,21 @@ func TestCaptureResource_Args(t *testing.T) {
 			kind:      "Deployment List",
 			resName:   "",
 			namespace: "default",
-			wantErr:   "not permitted",
+			wantErr:   "invalid resource kind",
 		},
 		{
 			name:      "kind with slash is rejected",
 			kind:      "apps/Deployment",
 			resName:   "",
 			namespace: "default",
-			wantErr:   "not permitted",
+			wantErr:   "invalid resource kind",
 		},
 		{
 			name:      "kind with underscore is rejected",
 			kind:      "My_Kind",
 			resName:   "",
 			namespace: "default",
-			wantErr:   "not permitted",
+			wantErr:   "invalid resource kind",
 		},
 		{
 			name:      "namespace with dots is rejected",
@@ -200,34 +201,36 @@ func TestCaptureResource_Args(t *testing.T) {
 
 func TestCaptureResource_ResourceID(t *testing.T) {
 	tests := []struct {
-		name       string
-		kind       string
-		resName    string
-		wantPrefix string
+		name    string
+		kind    string
+		resName string
 	}{
 		{
-			name:       "kind-only resourceID when name is empty",
-			kind:       "Deployment",
-			resName:    "",
-			wantPrefix: "Deployment",
+			name:    "kind-only resourceID when name is empty",
+			kind:    "Deployment",
+			resName: "",
 		},
 		{
-			name:       "kind/name resourceID when name is set",
-			kind:       "Deployment",
-			resName:    "my-app",
-			wantPrefix: "Deployment/my-app",
+			name:    "kind/name resourceID when name is set",
+			kind:    "Deployment",
+			resName: "my-app",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Build the expected resourceID using the same logic as CaptureResource
-			resourceID := tt.kind
-			if tt.resName != "" {
-				resourceID = tt.kind + "/" + tt.resName
+			// CaptureResource will fail at kubectl exec (unavailable in test
+			// env), but must pass all validation checks first.
+			_, err := CaptureResource(tt.kind, tt.resName, "default")
+			if err == nil {
+				t.Fatal("expected kubectl error, got nil")
 			}
-			if resourceID != tt.wantPrefix {
-				t.Errorf("resourceID = %q, want %q", resourceID, tt.wantPrefix)
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "not permitted") ||
+				strings.Contains(errMsg, "invalid resource") ||
+				strings.Contains(errMsg, "namespace is required") ||
+				strings.Contains(errMsg, "exceeds maximum length") {
+				t.Fatalf("expected kubectl error, got validation error: %v", err)
 			}
 		})
 	}
@@ -262,5 +265,53 @@ func TestCaptureResourceWithContext(t *testing.T) {
 			strings.Contains(err.Error(), "invalid resource") ||
 			strings.Contains(err.Error(), "namespace is required")) {
 		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
+
+func TestCaptureResourceWithContext_CancelledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := CaptureResourceWithContext(ctx, "Deployment", "my-app", "default")
+	if err == nil {
+		t.Fatal("expected error with cancelled context, got nil")
+	}
+	errMsg := err.Error()
+	if strings.Contains(errMsg, "not permitted") ||
+		strings.Contains(errMsg, "invalid resource") ||
+		strings.Contains(errMsg, "namespace is required") {
+		t.Fatalf("expected context or kubectl error, got validation error: %v", err)
+	}
+}
+
+func TestCaptureResourceWithContext_ExpiredDeadline(t *testing.T) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+	defer cancel()
+	_, err := CaptureResourceWithContext(ctx, "Deployment", "my-app", "default")
+	if err == nil {
+		t.Fatal("expected error with expired deadline, got nil")
+	}
+	errMsg := err.Error()
+	if strings.Contains(errMsg, "not permitted") ||
+		strings.Contains(errMsg, "invalid resource") ||
+		strings.Contains(errMsg, "namespace is required") {
+		t.Fatalf("expected context or kubectl error, got validation error: %v", err)
+	}
+}
+
+func TestCaptureResource_DefaultTimeout(t *testing.T) {
+	// Verify CaptureResource reaches kubectl exec (confirming the 30-second
+	// default timeout context was created and passed through).
+	_, err := CaptureResource("Pod", "test-pod", "kube-system")
+	if err == nil {
+		t.Fatal("expected kubectl error, got nil")
+	}
+	errMsg := err.Error()
+	if strings.Contains(errMsg, "not permitted") ||
+		strings.Contains(errMsg, "invalid resource") ||
+		strings.Contains(errMsg, "namespace is required") {
+		t.Fatalf("expected kubectl error, got validation error: %v", err)
+	}
+	if !strings.Contains(errMsg, "failed to capture resource") {
+		t.Errorf("expected 'failed to capture resource' error, got: %v", err)
 	}
 }

@@ -242,7 +242,12 @@ create_backup() {
   # Backup ArgoCD applications if they exist
   if kubectl get applications.argoproj.io -n argocd >/dev/null 2>&1; then
     kubectl get applications.argoproj.io -n argocd -o yaml > "$BACKUP_FILE" 2>/dev/null || true
-    debug "Backup created: $BACKUP_FILE"
+    if [[ ! -f "$BACKUP_FILE" ]] || [[ ! -s "$BACKUP_FILE" ]]; then
+      warn "Backup file was not created or is empty: $BACKUP_FILE"
+      BACKUP_FILE=""
+    else
+      debug "Backup created: $BACKUP_FILE"
+    fi
   else
     debug "No existing ArgoCD applications to backup"
   fi
