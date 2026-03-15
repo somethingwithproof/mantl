@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
-	"time"
 
 	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"github.com/thomasvincent/mantl/pkg/evidence"
@@ -43,7 +42,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// 2. Fetch the associated Profile to find the Framework
 	var profile v1alpha1.ComplianceProfile
-	if err := r.Get(ctx, client.ObjectKey{Name: audit.Spec.Profile}, &profile); err != nil {
+	if err := r.Get(ctx, client.ObjectKey{Name: audit.Spec.Profile, Namespace: audit.Namespace}, &profile); err != nil {
 		l.Error(err, "Failed to find ComplianceProfile", "profile", audit.Spec.Profile)
 		return ctrl.Result{}, err
 	}
@@ -82,7 +81,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		for _, res := range control.EvidenceResources {
 			l.Info("Capturing evidence", "Control", control.ID, "Kind", res.Kind)
 			
-			snap, err := evidence.CaptureResource(res.Kind, "", res.Namespace)
+			snap, err := evidence.CaptureResource(res.Kind, res.Name, res.Namespace)
 			if err != nil {
 				l.Error(err, "Failed to capture evidence", "kind", res.Kind)
 				continue

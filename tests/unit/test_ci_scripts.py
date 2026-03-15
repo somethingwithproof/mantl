@@ -22,21 +22,27 @@ class TestCIScripts:
         """Verify CI directory exists."""
         assert ci_dir.exists(), f"CI directory not found: {ci_dir}"
 
-    def test_validate_kustomize_script_exists(self, ci_dir: Path) -> None:
-        """Verify validate-kustomize.sh script exists."""
+    def test_validate_kustomize_dev_script_exists(self, ci_dir: Path) -> None:
+        """Verify validate-kustomize-dev.sh script exists."""
         if not ci_dir.exists():
             pytest.skip("CI directory not found")
 
-        script = ci_dir / "validate-kustomize.sh"
-        assert script.exists(), "validate-kustomize.sh not found"
+        script = ci_dir / "validate-kustomize-dev.sh"
+        assert script.exists(), "validate-kustomize-dev.sh not found"
 
-    def test_validate_terraform_script_exists(self, ci_dir: Path) -> None:
-        """Verify validate-terraform.sh script exists."""
-        if not ci_dir.exists():
-            pytest.skip("CI directory not found")
+    def test_makefile_has_kustomize_validate_target(self, project_root: Path) -> None:
+        """Verify Makefile has kustomize-validate target."""
+        makefile = project_root / "Makefile"
+        assert makefile.exists(), "Makefile not found"
+        content = makefile.read_text()
+        assert "kustomize-validate:" in content, "kustomize-validate target not found in Makefile"
 
-        script = ci_dir / "validate-terraform.sh"
-        assert script.exists(), "validate-terraform.sh not found"
+    def test_makefile_has_terraform_validate_target(self, project_root: Path) -> None:
+        """Verify Makefile has terraform-validate target."""
+        makefile = project_root / "Makefile"
+        assert makefile.exists(), "Makefile not found"
+        content = makefile.read_text()
+        assert "terraform-validate:" in content, "terraform-validate target not found in Makefile"
 
     def test_scripts_are_executable(self, ci_dir: Path) -> None:
         """Verify CI scripts are executable."""

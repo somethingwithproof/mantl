@@ -15,17 +15,12 @@ spec:
   networking:
     domain: platform.internal.company.com
     exposure: private
-  security:
-    complianceProfiles:
-      - soc2-type2-v2017
-      - pci-dss-v4
-    enforcementMode: block
-  addons:
-    observability:
-      enabled: true
-      retentionDays: 30
-    secrets:
-      provider: aws-secrets-manager
+  features:
+    observability: true
+    progressiveDelivery: false
+    security: true
+    secrets: true
+    compliance: true
   tenants:
     - name: data-science
       admins:

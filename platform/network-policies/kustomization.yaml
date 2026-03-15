@@ -4,11 +4,6 @@ kind: Kustomization
 # Platform Network Policies
 # These CiliumNetworkPolicies provide network isolation for platform components
 
-metadata:
-  name: platform-network-policies
-  labels:
-    app.kubernetes.io/part-of: mantl-platform
-
 resources:
   - argocd-network-policy.yaml
   - monitoring-network-policy.yaml

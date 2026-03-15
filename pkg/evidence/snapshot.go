@@ -23,10 +23,20 @@ type Snapshot struct {
 }
 
 // CaptureResource uses kubectl to get a JSON representation of a resource.
+// When name is empty, all resources of the given kind are listed. When
+// namespace is also empty, the listing spans all namespaces.
 func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
-	args := []string{"get", kind, name, "-o", "json"}
+	args := []string{"get", kind}
+	if name != "" {
+		args = append(args, name)
+	}
+	args = append(args, "-o", "json")
 	if namespace != "" {
 		args = append(args, "-n", namespace)
+	} else if name == "" {
+		// Listing without a namespace scope would be limited to the default
+		// namespace; span all namespaces so evidence is complete.
+		args = append(args, "--all-namespaces")
 	}
 
 	cmd := exec.Command("kubectl", args...)
@@ -35,12 +45,16 @@ func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
 		return nil, fmt.Errorf("failed to capture resource: %w (output: %s)", err, string(output))
 	}
 
-	// Calculate SHA256 hash
 	hash := sha256.Sum256(output)
 	hashStr := hex.EncodeToString(hash[:])
 
+	resourceID := kind
+	if name != "" {
+		resourceID = fmt.Sprintf("%s/%s", kind, name)
+	}
+
 	return &Snapshot{
-		Resource:    fmt.Sprintf("%s/%s", kind, name),
+		Resource:    resourceID,
 		CapturedAt:  time.Now(),
 		ContentHash: hashStr,
 		Data:        string(output),

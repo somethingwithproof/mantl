@@ -4,12 +4,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-metadata:
-  name: nomad-infrastructure
-  labels:
-    app.kubernetes.io/name: nomad
-    app.kubernetes.io/part-of: mantl-platform
-
 # Note: Nomad doesn't use Kubernetes resources directly
 # This kustomization manages Nomad-in-Kubernetes deployments
 # for hybrid orchestration scenarios

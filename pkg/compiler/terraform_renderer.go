@@ -16,13 +16,24 @@ type TFVars map[string]interface{}
 // RenderTerraform generates the terraform.tfvars.json file for the given spec.
 func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
 	// 1. Prepare variables based on the spec
+	// Map profile size to environment name
+	envMap := map[string]string{
+		"small":  "dev",
+		"medium": "staging",
+		"full":   "prod",
+	}
+	environment := envMap[cluster.Spec.Profile.Size]
+	if environment == "" {
+		environment = cluster.Spec.Profile.Size
+	}
+
 	vars := TFVars{
-		"cluster_name":          cluster.Name,
-		"region":                cluster.Spec.Provider.Region,
-		"kubernetes_version":    cluster.Spec.Kubernetes.Version,
-		"vpc_id":                cluster.Spec.Networking.VpcID,
-		"domain":                cluster.Spec.Networking.Domain,
-		"environment":           cluster.Spec.Profile.Size,
+		"cluster_name":       cluster.Name,
+		"region":             cluster.Spec.Provider.Region,
+		"kubernetes_version": cluster.Spec.Kubernetes.Version,
+		"vpc_id":             cluster.Spec.Networking.VpcID,
+		"domain":             cluster.Spec.Networking.Domain,
+		"environment":        environment,
 	}
 
 	// 2. Map provider-specific variables

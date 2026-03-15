@@ -77,9 +77,9 @@ test: ## Run all tests
 	@echo "${GREEN}Running tests...${RESET}"
 	@pytest -v tests/
 	@echo "${GREEN}Validating Kustomize builds...${RESET}"
-	@./ci/validate-kustomize.sh
+	@$(MAKE) kustomize-validate
 	@echo "${GREEN}Validating Terraform...${RESET}"
-	@./ci/validate-terraform.sh
+	@$(MAKE) terraform-validate
 
 test-unit: ## Run unit tests only
 	@echo "${GREEN}Running unit tests...${RESET}"
