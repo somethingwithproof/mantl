@@ -1,11 +1,13 @@
 package evidence
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -13,6 +15,30 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
+
+// allowedEvidenceKinds lists resource kinds permitted for evidence collection.
+// Secret and ConfigMap are excluded to prevent credential exfiltration.
+var allowedEvidenceKinds = map[string]bool{
+	"CronJob":             true,
+	"DaemonSet":           true,
+	"Deployment":          true,
+	"Ingress":             true,
+	"Job":                 true,
+	"LimitRange":          true,
+	"NetworkPolicy":       true,
+	"Pod":                 true,
+	"PodDisruptionBudget": true,
+	"ReplicaSet":          true,
+	"ResourceQuota":       true,
+	"Role":                true,
+	"RoleBinding":         true,
+	"Service":             true,
+	"ServiceAccount":      true,
+	"StatefulSet":         true,
+}
+
+var validKubeNameRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9.-]*$`)
+var validNamespaceRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
 // Snapshot represents a piece of point-in-time evidence.
 type Snapshot struct {
@@ -23,26 +49,38 @@ type Snapshot struct {
 }
 
 // CaptureResource uses kubectl to get a JSON representation of a resource.
-// When name is empty, all resources of the given kind are listed. When
-// namespace is also empty, the listing spans all namespaces.
+// kind must be in the allowedEvidenceKinds set, and namespace is required
+// to prevent unscoped cluster-wide collection.
 func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
-	args := []string{"get", kind}
+	if !allowedEvidenceKinds[kind] {
+		return nil, fmt.Errorf("resource kind %q is not permitted for evidence collection", kind)
+	}
+	if !validKubeNameRe.MatchString(kind) {
+		return nil, fmt.Errorf("invalid resource kind %q", kind)
+	}
+	if name != "" && !validKubeNameRe.MatchString(name) {
+		return nil, fmt.Errorf("invalid resource name %q", name)
+	}
+	if namespace == "" {
+		return nil, fmt.Errorf("namespace is required for evidence collection")
+	}
+	if !validNamespaceRe.MatchString(namespace) {
+		return nil, fmt.Errorf("invalid namespace %q", namespace)
+	}
+
+	// Place our flags before "--" so user-controlled kind/name are treated
+	// strictly as positional arguments by kubectl.
+	args := []string{"get", "-o", "json", "-n", namespace, "--", kind}
 	if name != "" {
 		args = append(args, name)
 	}
-	args = append(args, "-o", "json")
-	if namespace != "" {
-		args = append(args, "-n", namespace)
-	} else if name == "" {
-		// Listing without a namespace scope would be limited to the default
-		// namespace; span all namespaces so evidence is complete.
-		args = append(args, "--all-namespaces")
-	}
 
 	cmd := exec.Command("kubectl", args...)
-	output, err := cmd.CombinedOutput()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to capture resource: %w (output: %s)", err, string(output))
+		return nil, fmt.Errorf("failed to capture resource: %w (stderr: %s)", err, stderr.String())
 	}
 
 	hash := sha256.Sum256(output)
@@ -55,7 +93,7 @@ func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
 
 	return &Snapshot{
 		Resource:    resourceID,
-		CapturedAt:  time.Now(),
+		CapturedAt:  time.Now().UTC(),
 		ContentHash: hashStr,
 		Data:        string(output),
 	}, nil

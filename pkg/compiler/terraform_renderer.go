@@ -24,7 +24,7 @@ func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
 	}
 	environment := envMap[cluster.Spec.Profile.Size]
 	if environment == "" {
-		environment = cluster.Spec.Profile.Size
+		return fmt.Errorf("unsupported profile size %q: expected one of small, medium, full", cluster.Spec.Profile.Size)
 	}
 
 	vars := TFVars{
