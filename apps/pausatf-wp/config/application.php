@@ -59,7 +59,7 @@ if (file_exists(__DIR__.'/environments/'.WP_ENV.'.php')) {
 
 // Debug fallback if environment file did not define WP_DEBUG
 if (!defined('WP_DEBUG')) {
-    define('WP_DEBUG', false);
+    define('WP_DEBUG', WP_ENV !== 'production');
 }
 define('SCRIPT_DEBUG', WP_DEBUG);
 

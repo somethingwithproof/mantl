@@ -32,10 +32,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Configuration from environment
-DATABASE_URL = os.environ["DATABASE_URL"]
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL environment variable is required")
+
 S3_BUCKET = os.getenv("S3_BUCKET", "mantl-data")
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", "1000"))
-PARALLEL_WORKERS = int(os.getenv("PARALLEL_WORKERS", "4"))
+if not S3_BUCKET:
+    raise RuntimeError("S3_BUCKET environment variable must not be empty")
+
+BATCH_SIZE = max(1, min(int(os.getenv("BATCH_SIZE", "1000")), 50000))
+PARALLEL_WORKERS = max(1, min(int(os.getenv("PARALLEL_WORKERS", "4")), 32))
 PUSHGATEWAY_URL = os.getenv("PUSHGATEWAY_URL", "http://prometheus-pushgateway:9091")
 JOB_NAME = os.getenv("JOB_NAME", "batch-processor")
 

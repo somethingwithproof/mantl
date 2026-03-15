@@ -37,6 +37,7 @@ CONSUMER_NAME = os.getenv("CONSUMER_NAME", "order-processor")
 DURABLE_NAME = os.getenv("DURABLE_NAME", "order-processor-durable")
 FILTER_SUBJECT = os.getenv("FILTER_SUBJECT", "EVENTS.order_*")
 METRICS_PORT = int(os.getenv("METRICS_PORT", "9090"))
+FETCH_BATCH_COUNT = max(1, min(int(os.getenv("FETCH_BATCH_SIZE", "10")), 100))
 
 # Prometheus metrics
 EVENTS_RECEIVED = Counter(
@@ -52,7 +53,7 @@ PROCESSING_DURATION = Histogram(
 )
 
 FETCH_BATCH_SIZE = Gauge(
-    'event_fetch_batch_size',
+    'event_queue_depth',
     'Number of messages fetched in current pull batch'
 )
 
@@ -207,7 +208,7 @@ async def main():
         while not shutdown_requested:
             try:
                 # Fetch batch of messages
-                msgs = await psub.fetch(batch=10, timeout=5)
+                msgs = await psub.fetch(batch=FETCH_BATCH_COUNT, timeout=5)
 
                 if msgs:
                     FETCH_BATCH_SIZE.set(len(msgs))

@@ -144,7 +144,7 @@ async def publish_event(event: Event):
             "source": event.source,
             "type": event.type,
             "datacontenttype": "application/json",
-            "time": datetime.now(timezone.utc).isoformat(),
+            "time": datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
             "correlationid": correlation_id,
             "data": event.data
         }

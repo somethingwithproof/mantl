@@ -132,7 +132,11 @@ func CaptureResourceWithContext(ctx context.Context, kind, name, namespace strin
 
 // BuildResourceID returns a resource identifier in the form "kind/name".
 // If name is empty, only the kind is returned.
+// Slashes in kind or name are replaced with underscores to prevent
+// ambiguous identifiers.
 func BuildResourceID(kind, name string) string {
+	kind = strings.ReplaceAll(kind, "/", "_")
+	name = strings.ReplaceAll(name, "/", "_")
 	if name != "" {
 		return fmt.Sprintf("%s/%s", kind, name)
 	}

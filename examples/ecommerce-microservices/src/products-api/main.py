@@ -74,7 +74,7 @@ class Product(BaseModel):
 class ProductCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    price: condecimal(max_digits=10, decimal_places=2)
+    price: condecimal(max_digits=10, decimal_places=2, gt=Decimal(0))
     category: str
     stock: int
     sku: str
@@ -83,7 +83,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[condecimal(max_digits=10, decimal_places=2)] = None
+    price: Optional[condecimal(max_digits=10, decimal_places=2, gt=Decimal(0))] = None
     category: Optional[str] = None
     stock: Optional[int] = None
     sku: Optional[str] = None
@@ -100,10 +100,22 @@ app = FastAPI(
 )
 
 # CORS middleware
+def _parse_cors_origins() -> list[str]:
+    raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    if not raw:
+        return []
+    origins = [o.strip() for o in raw.split(",") if o.strip()]
+    for origin in origins:
+        if origin != "*" and not origin.startswith(("http://", "https://")):
+            raise RuntimeError(f"Invalid CORS origin: {origin}")
+    if "*" in origins:
+        logger.warning("CORS_ALLOWED_ORIGINS contains wildcard; restrict in production")
+    return origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ALLOWED_ORIGINS", "*").split(","),
-    allow_credentials=False,
+    allow_origins=_parse_cors_origins(),
+    allow_credentials=os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true",
     allow_methods=["*"],
     allow_headers=["*"],
 )
