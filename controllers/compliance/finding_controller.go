@@ -2,7 +2,6 @@ package compliance
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"

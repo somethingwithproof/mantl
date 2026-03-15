@@ -49,7 +49,10 @@ func (d *ExecutionDAG) ProvisionInfra(provider string, clusterName string) error
 	}
 
 	// 4. Apply
-	absBuildDir, _ := filepath.Abs(d.BuildDir)
+	absBuildDir, err := filepath.Abs(d.BuildDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path for build dir %q: %w", d.BuildDir, err)
+	}
 	tfVarsPath := filepath.Join(absBuildDir, "terraform.tfvars.json")
 	
 	fmt.Printf("  Applying configuration with vars: %s\n", tfVarsPath)
@@ -87,10 +90,15 @@ func (d *ExecutionDAG) InstallArgoCD() error {
 	fmt.Println("Executing: Installing ArgoCD...")
 
 	// 1. Create namespace
-	exec.Command("kubectl", "create", "namespace", "argocd").Run()
+	nsCmd := exec.Command("kubectl", "create", "namespace", "argocd")
+	if nsOut, nsErr := nsCmd.CombinedOutput(); nsErr != nil {
+		if !strings.Contains(string(nsOut), "already exists") {
+			return fmt.Errorf("failed to create argocd namespace: %w", nsErr)
+		}
+	}
 
-	// 2. Apply install manifest
-	installUrl := "https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
+	// 2. Apply install manifest (Pinned to specific version for reproducibility)
+	installUrl := "https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.3/manifests/install.yaml"
 	cmd := exec.Command("kubectl", "apply", "-n", "argocd", "-f", installUrl)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -101,7 +109,9 @@ func (d *ExecutionDAG) InstallArgoCD() error {
 	// 3. Wait for ArgoCD to be ready
 	fmt.Println("  Waiting for ArgoCD deployments to be ready...")
 	waitCmd := exec.Command("kubectl", "wait", "--for=condition=available", "--timeout=300s", "deployment", "-n", "argocd", "--all")
-	waitCmd.Run()
+	if err := waitCmd.Run(); err != nil {
+		return fmt.Errorf("argo-cd failed to become ready: %w", err)
+	}
 
 	return nil
 }

@@ -72,14 +72,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Register Finding controller
-	if err = (&compliance.FindingReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Finding")
-		os.Exit(1)
-	}
+	// TODO: Register Finding controller once PolicyReport type is added to the scheme.
+	// The FindingReconciler requires a .For() watch source (e.g. policyv1alpha2.PolicyReport)
+	// which is not yet registered in the scheme.
 
 	// Register ComplianceAudit controller
 	if err = (&compliance.ComplianceAuditReconciler{

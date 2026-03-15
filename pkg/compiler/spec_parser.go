@@ -2,7 +2,7 @@ package compiler
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/thomasvincent/mantl/apis/platform/v1alpha1"
 	"sigs.k8s.io/yaml"
@@ -10,7 +10,7 @@ import (
 
 // ParseSpec reads the MantlCluster YAML spec from a file and unmarshals it.
 func ParseSpec(filePath string) (*v1alpha1.MantlCluster, error) {
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read spec file: %w", err)
 	}

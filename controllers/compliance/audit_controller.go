@@ -3,9 +3,9 @@ package compliance
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
-	"time"
+	"strings"
 
 	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"github.com/thomasvincent/mantl/pkg/evidence"
@@ -43,7 +43,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// 2. Fetch the associated Profile to find the Framework
 	var profile v1alpha1.ComplianceProfile
-	if err := r.Get(ctx, client.ObjectKey{Name: audit.Spec.Profile}, &profile); err != nil {
+	if err := r.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: audit.Spec.Profile}, &profile); err != nil {
 		l.Error(err, "Failed to find ComplianceProfile", "profile", audit.Spec.Profile)
 		return ctrl.Result{}, err
 	}
@@ -59,12 +59,29 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// 4. Load the Framework mapping file
+	if !validFrameworkName.MatchString(profile.Spec.Framework) {
+		audit.Status.Phase = "Failed"
+		if statusErr := r.Status().Update(ctx, &audit); statusErr != nil {
+			l.Error(statusErr, "Failed to update audit status to Failed")
+		}
+		return ctrl.Result{}, fmt.Errorf("invalid framework name: %q", profile.Spec.Framework)
+	}
 	frameworkFile := filepath.Join(r.FrameworkDir, fmt.Sprintf("%s.yaml", profile.Spec.Framework))
-	data, err := ioutil.ReadFile(frameworkFile)
+	frameworkFile = filepath.Clean(frameworkFile)
+	if !strings.HasPrefix(frameworkFile, filepath.Clean(r.FrameworkDir)+string(os.PathSeparator)) {
+		audit.Status.Phase = "Failed"
+		if statusErr := r.Status().Update(ctx, &audit); statusErr != nil {
+			l.Error(statusErr, "Failed to update audit status to Failed")
+		}
+		return ctrl.Result{}, fmt.Errorf("invalid framework name: path traversal detected")
+	}
+	data, err := os.ReadFile(frameworkFile)
 	if err != nil {
 		l.Error(err, "Failed to read framework file", "file", frameworkFile)
 		audit.Status.Phase = "Failed"
-		r.Status().Update(ctx, &audit)
+		if statusErr := r.Status().Update(ctx, &audit); statusErr != nil {
+			l.Error(statusErr, "Failed to update audit status to Failed")
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -72,17 +89,19 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err := yaml.Unmarshal(data, &framework); err != nil {
 		l.Error(err, "Failed to unmarshal framework yaml")
 		audit.Status.Phase = "Failed"
-		r.Status().Update(ctx, &audit)
+		if statusErr := r.Status().Update(ctx, &audit); statusErr != nil {
+			l.Error(statusErr, "Failed to update audit status to Failed")
+		}
 		return ctrl.Result{}, err
 	}
 
 	// 5. Iterate through all controls and capture evidence
-	findingCount := 0
+	evidenceCount := 0
 	for _, control := range framework.Controls {
 		for _, res := range control.EvidenceResources {
 			l.Info("Capturing evidence", "Control", control.ID, "Kind", res.Kind)
 			
-			snap, err := evidence.CaptureResource(res.Kind, "", res.Namespace)
+			snap, err := evidence.CaptureResource(res.Kind, res.Name, res.Namespace)
 			if err != nil {
 				l.Error(err, "Failed to capture evidence", "kind", res.Kind)
 				continue
@@ -94,7 +113,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 				l.Error(err, "Failed to upload evidence to S3", "kind", res.Kind)
 				continue
 			}
-			findingCount++
+			evidenceCount++
 		}
 	}
 
@@ -102,13 +121,13 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	audit.Status.Phase = "Completed"
 	end := metav1.Now()
 	audit.Status.EndTime = &end
-	audit.Status.FindingCount = int32(findingCount)
-	
+	audit.Status.EvidenceCount = int32(evidenceCount)
+
 	if err := r.Status().Update(ctx, &audit); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	l.Info("Compliance Audit completed successfully", "FindingCount", findingCount)
+	l.Info("Compliance Audit completed successfully", "EvidenceCount", evidenceCount)
 
 	return ctrl.Result{}, nil
 }

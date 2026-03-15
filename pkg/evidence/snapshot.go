@@ -24,7 +24,11 @@ type Snapshot struct {
 
 // CaptureResource uses kubectl to get a JSON representation of a resource.
 func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
-	args := []string{"get", kind, name, "-o", "json"}
+	args := []string{"get", kind}
+	if name != "" {
+		args = append(args, name)
+	}
+	args = append(args, "-o", "json")
 	if namespace != "" {
 		args = append(args, "-n", namespace)
 	}

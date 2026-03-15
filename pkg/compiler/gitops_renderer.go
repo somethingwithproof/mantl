@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -101,7 +100,10 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
 		},
 	}
 
-	nsData, _ := yaml.Marshal(namespace)
+	nsData, err := yaml.Marshal(namespace)
+	if err != nil {
+		return fmt.Errorf("failed to marshal namespace for tenant %s: %w", tenant.Name, err)
+	}
 	content := string(nsData) + "---\n"
 
 	// Create RoleBinding for admins
@@ -129,11 +131,14 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
 			})
 		}
 
-		rbData, _ := yaml.Marshal(rb)
+		rbData, err := yaml.Marshal(rb)
+		if err != nil {
+			return fmt.Errorf("failed to marshal rolebinding for tenant %s: %w", tenant.Name, err)
+		}
 		content += string(rbData)
 	}
 
-	return ioutil.WriteFile(tenantFile, []byte(content), 0644)
+	return os.WriteFile(tenantFile, []byte(content), 0644)
 }
 
 // renderPlatformConfig generates a global ConfigMap with platform-wide settings.
@@ -158,7 +163,7 @@ func renderPlatformConfig(outputDir string, cluster *v1alpha1.MantlCluster) erro
 		return err
 	}
 
-	return ioutil.WriteFile(filepath.Join(outputDir, "mantl-config.yaml"), data, 0644)
+	return os.WriteFile(filepath.Join(outputDir, "mantl-config.yaml"), data, 0644)
 }
 
 // renderApp is a helper to generate a standard ArgoCD Application manifest.
@@ -196,5 +201,5 @@ func renderApp(outputDir, name, path string) error {
 		return err
 	}
 
-	return ioutil.WriteFile(filepath.Join(outputDir, fmt.Sprintf("%s.yaml", name)), data, 0644)
+	return os.WriteFile(filepath.Join(outputDir, fmt.Sprintf("%s.yaml", name)), data, 0644)
 }

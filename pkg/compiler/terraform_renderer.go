@@ -3,7 +3,6 @@ package compiler
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -49,7 +48,7 @@ func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
 
 	// 5. Write to file
 	outputPath := filepath.Join(outputDir, "terraform.tfvars.json")
-	if err := ioutil.WriteFile(outputPath, data, 0644); err != nil {
+	if err := os.WriteFile(outputPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write terraform variables file: %w", err)
 	}
 

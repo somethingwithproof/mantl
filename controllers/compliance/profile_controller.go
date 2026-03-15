@@ -3,8 +3,10 @@ package compliance
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -13,6 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 )
+
+// validFrameworkName restricts framework names to safe characters.
+var validFrameworkName = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
 // Framework defines the structure of our compliance mapping files.
 type Framework struct {
@@ -28,6 +33,7 @@ type Framework struct {
 // EvidenceResource defines a Kubernetes resource to be captured as evidence.
 type EvidenceResource struct {
 	Kind      string `json:"kind"`
+	Name      string `json:"name,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
 	Group     string `json:"group,omitempty"`
 }
@@ -55,8 +61,15 @@ func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	l.Info("Reconciling ComplianceProfile", "Name", profile.Name, "Framework", profile.Spec.Framework)
 
 	// 2. Load the Framework mapping file
+	if !validFrameworkName.MatchString(profile.Spec.Framework) {
+		return ctrl.Result{}, fmt.Errorf("invalid framework name: %q", profile.Spec.Framework)
+	}
 	frameworkFile := filepath.Join(r.FrameworkDir, fmt.Sprintf("%s.yaml", profile.Spec.Framework))
-	data, err := ioutil.ReadFile(frameworkFile)
+	frameworkFile = filepath.Clean(frameworkFile)
+	if !strings.HasPrefix(frameworkFile, filepath.Clean(r.FrameworkDir)+string(os.PathSeparator)) {
+		return ctrl.Result{}, fmt.Errorf("invalid framework name: path traversal detected")
+	}
+	data, err := os.ReadFile(frameworkFile)
 	if err != nil {
 		l.Error(err, "Failed to read framework file", "file", frameworkFile)
 		return ctrl.Result{}, err

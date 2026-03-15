@@ -79,7 +79,7 @@ type ComplianceAuditStatus struct {
 	Phase       string      `json:"phase,omitempty"` // Pending, Running, Completed, Failed
 	StartTime   *metav1.Time `json:"startTime,omitempty"`
 	EndTime     *metav1.Time `json:"endTime,omitempty"`
-	FindingCount int32       `json:"findingCount,omitempty"`
+	EvidenceCount int32      `json:"evidenceCount,omitempty"`
 	EvidenceURI  string      `json:"evidenceUri,omitempty"`
 }
 
