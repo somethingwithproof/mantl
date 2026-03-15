@@ -35,8 +35,6 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 	}
 
 	// 2. Dynamically generate Addon Applications based on features using reflection
-	// This makes the code DRY: adding a new feature field to the API automatically
-	// picks up the mapping if it exists in featureAppMap.
 	features := cluster.Spec.Features
 	v := reflect.ValueOf(features)
 	t := v.Type()
@@ -55,7 +53,82 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 		}
 	}
 
+	// 3. Generate Tenant manifests
+	if len(cluster.Spec.Tenants) > 0 {
+		tenantsDir := filepath.Join(outputDir, "tenants")
+		if err := os.MkdirAll(tenantsDir, 0755); err != nil {
+			return err
+		}
+
+		for _, tenant := range cluster.Spec.Tenants {
+			if err := renderTenant(tenantsDir, tenant); err != nil {
+				return err
+			}
+		}
+
+		// Create an ArgoCD application to manage all tenants
+		if err := renderApp(gitopsDir, "platform-tenants", "tenants"); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+// renderTenant generates Namespace and RBAC RoleBindings for a tenant.
+func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
+	ns := tenant.Namespace
+	if ns == "" {
+		ns = tenant.Name
+	}
+
+	tenantFile := filepath.Join(outputDir, fmt.Sprintf("%s.yaml", tenant.Name))
+	
+	// Create Namespace
+	namespace := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "Namespace",
+		"metadata": map[string]interface{}{
+			"name": ns,
+			"labels": map[string]interface{}{
+				"mantl.io/tenant": tenant.Name,
+			},
+		},
+	}
+
+	nsData, _ := yaml.Marshal(namespace)
+	content := string(nsData) + "---\n"
+
+	// Create RoleBinding for admins
+	if len(tenant.Admins) > 0 {
+		rb := map[string]interface{}{
+			"apiVersion": "rbac.authorization.k8s.io/v1",
+			"kind":       "RoleBinding",
+			"metadata": map[string]interface{}{
+				"name":      fmt.Sprintf("%s-admin", tenant.Name),
+				"namespace": ns,
+			},
+			"roleRef": map[string]interface{}{
+				"apiGroup": "rbac.authorization.k8s.io",
+				"kind":     "ClusterRole",
+				"name":     "admin",
+			},
+			"subjects": make([]map[string]interface{}, 0),
+		}
+
+		for _, admin := range tenant.Admins {
+			rb["subjects"] = append(rb["subjects"].([]map[string]interface{}), map[string]interface{}{
+				"kind":     "User",
+				"name":     admin,
+				"apiGroup": "rbac.authorization.k8s.io",
+			})
+		}
+
+		rbData, _ := yaml.Marshal(rb)
+		content += string(rbData)
+	}
+
+	return ioutil.WriteFile(tenantFile, []byte(content), 0644)
 }
 
 // renderApp is a helper to generate a standard ArgoCD Application manifest.

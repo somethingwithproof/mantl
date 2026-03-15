@@ -21,6 +21,21 @@ type MantlClusterSpec struct {
 
 	// Features to enable on the platform
 	Features FeatureSpec `json:"features"`
+
+	// Tenants to onboard to the cluster
+	Tenants []TenantSpec `json:"tenants,omitempty"`
+}
+
+// TenantSpec defines a platform tenant (team/app)
+type TenantSpec struct {
+	// Name of the tenant
+	Name string `json:"name"`
+
+	// Namespace for the tenant (defaults to tenant name if empty)
+	Namespace string `json:"namespace,omitempty"`
+
+	// Admins for the tenant (mapped to RBAC)
+	Admins []string `json:"admins,omitempty"`
 }
 
 // ProviderSpec defines the cloud provider configuration

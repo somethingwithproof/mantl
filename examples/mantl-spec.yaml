@@ -26,3 +26,12 @@ spec:
       retentionDays: 30
     secrets:
       provider: aws-secrets-manager
+  tenants:
+    - name: data-science
+      admins:
+        - alice@example.com
+        - bob@example.com
+    - name: payments-api
+      namespace: payments
+      admins:
+        - charlie@example.com
