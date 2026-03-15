@@ -33,9 +33,11 @@ func main() {
 	var enableLeaderElection bool
 	var probeAddr string
 	var frameworkDir string
+	var evidenceBucket string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&frameworkDir, "framework-dir", "/etc/compliance/frameworks", "The directory containing framework mapping files.")
+	flag.StringVar(&evidenceBucket, "evidence-bucket", "", "The S3 bucket to store compliance evidence.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -60,12 +62,32 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Register ComplianceProfile controller
 	if err = (&compliance.ComplianceProfileReconciler{
 		Client:       mgr.GetClient(),
 		Scheme:       mgr.GetScheme(),
 		FrameworkDir: frameworkDir,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ComplianceProfile")
+		os.Exit(1)
+	}
+
+	// Register Finding controller
+	if err = (&compliance.FindingReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Finding")
+		os.Exit(1)
+	}
+
+	// Register ComplianceAudit controller
+	if err = (&compliance.ComplianceAuditReconciler{
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		EvidenceBucket: evidenceBucket,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ComplianceAudit")
 		os.Exit(1)
 	}
 
