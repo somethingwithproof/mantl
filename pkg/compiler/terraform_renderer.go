@@ -15,6 +15,10 @@ type TFVars map[string]interface{}
 
 // RenderTerraform generates the terraform.tfvars.json file for the given spec.
 func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
+	if cluster == nil {
+		return fmt.Errorf("cluster must not be nil")
+	}
+
 	// 1. Prepare variables based on the spec
 	// Map profile size to environment name
 	envMap := map[string]string{

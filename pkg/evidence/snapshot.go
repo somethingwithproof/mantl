@@ -38,6 +38,12 @@ var allowedEvidenceKinds = map[string]bool{
 	"StatefulSet":         true,
 }
 
+const (
+	maxKubeNameLen   = 253 // RFC 1123 DNS subdomain max length
+	maxNamespaceLen  = 63  // Kubernetes namespace max length
+	defaultCaptureTimeout = 30 * time.Second
+)
+
 var validKubeKindRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9.-]*$`)
 var validKubeNameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 var validNamespaceRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
@@ -53,18 +59,36 @@ type Snapshot struct {
 // CaptureResource uses kubectl to get a JSON representation of a resource.
 // kind must be in the allowedEvidenceKinds set, and namespace is required
 // to prevent unscoped cluster-wide collection.
+// Uses a default 30-second timeout. For caller-controlled deadlines, use
+// CaptureResourceWithContext.
 func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), defaultCaptureTimeout)
+	defer cancel()
+	return CaptureResourceWithContext(ctx, kind, name, namespace)
+}
+
+// CaptureResourceWithContext is like CaptureResource but accepts a
+// caller-provided context for deadline and cancellation control.
+func CaptureResourceWithContext(ctx context.Context, kind, name, namespace string) (*Snapshot, error) {
 	if !allowedEvidenceKinds[kind] {
 		return nil, fmt.Errorf("resource kind %q is not permitted for evidence collection", kind)
 	}
 	if !validKubeKindRe.MatchString(kind) {
 		return nil, fmt.Errorf("invalid resource kind %q", kind)
 	}
-	if name != "" && !validKubeNameRe.MatchString(name) {
-		return nil, fmt.Errorf("invalid resource name %q", name)
+	if name != "" {
+		if len(name) > maxKubeNameLen {
+			return nil, fmt.Errorf("resource name exceeds maximum length of %d", maxKubeNameLen)
+		}
+		if !validKubeNameRe.MatchString(name) {
+			return nil, fmt.Errorf("invalid resource name %q", name)
+		}
 	}
 	if namespace == "" {
 		return nil, fmt.Errorf("namespace is required for evidence collection")
+	}
+	if len(namespace) > maxNamespaceLen {
+		return nil, fmt.Errorf("namespace exceeds maximum length of %d", maxNamespaceLen)
 	}
 	if !validNamespaceRe.MatchString(namespace) {
 		return nil, fmt.Errorf("invalid namespace %q", namespace)
@@ -77,9 +101,6 @@ func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
 		args = append(args, name)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
 	slog.Info("capturing resource evidence", "kind", kind, "name", name, "namespace", namespace)
 
 	cmd := exec.CommandContext(ctx, "kubectl", args...)
@@ -88,6 +109,7 @@ func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
 	output, err := cmd.Output()
 	if err != nil {
 		stderrStr := stderr.String()
+		slog.Error("kubectl capture failed", "kind", kind, "name", name, "namespace", namespace, "error", err, "stderr", stderrStr)
 		if stderrStr == "" {
 			stderrStr = "(no stderr output)"
 		}

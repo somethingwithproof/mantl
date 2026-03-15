@@ -151,11 +151,11 @@ func TestRenderTerraform_AllTFVarsFields(t *testing.T) {
 func TestRenderTerraform_NilCluster(t *testing.T) {
 	dir := t.TempDir()
 
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatal("expected panic for nil cluster, got none")
-		}
-	}()
-
-	_ = RenderTerraform(nil, dir)
+	err := RenderTerraform(nil, dir)
+	if err == nil {
+		t.Fatal("expected error for nil cluster, got nil")
+	}
+	if got := err.Error(); !strings.Contains(got, "cluster must not be nil") {
+		t.Errorf("error = %q, want it to contain \"cluster must not be nil\"", got)
+	}
 }
