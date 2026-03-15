@@ -127,6 +127,9 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// 7. Finalize Audit — phase reflects whether all captures succeeded.
 	switch {
+	case findingCount == 0 && failedCount == 0:
+		l.Info("No evidence resources found in framework controls")
+		audit.Status.Phase = "NoEvidence"
 	case failedCount > 0 && findingCount > 0:
 		audit.Status.Phase = "PartiallyCompleted"
 	case failedCount > 0 && findingCount == 0:
@@ -137,6 +140,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	end := metav1.Now()
 	audit.Status.EndTime = &end
 	audit.Status.FindingCount = int32(findingCount)
+	audit.Status.FailedCount = int32(failedCount)
 
 	if err := r.Status().Update(ctx, &audit); err != nil {
 		return ctrl.Result{}, err
