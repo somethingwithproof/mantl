@@ -29,6 +29,12 @@ func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
 	if cluster.Spec.Provider.Kind == "aws" {
 		vars["account_id"] = cluster.Spec.Provider.AccountID
 	}
+	if cluster.Spec.Provider.Kind == "gcp" {
+		vars["project_id"] = cluster.Spec.Provider.AccountID // Using AccountID field for GCP Project
+	}
+	if cluster.Spec.Provider.Kind == "azure" {
+		vars["resource_group_name"] = fmt.Sprintf("rg-%s", cluster.Name)
+	}
 
 	// 3. Serialize to JSON
 	data, err := json.MarshalIndent(vars, "", "  ")
