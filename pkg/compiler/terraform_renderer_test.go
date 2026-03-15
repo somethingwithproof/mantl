@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,14 +55,15 @@ func TestRenderTerraform_MappedSizes(t *testing.T) {
 				t.Fatalf("RenderTerraform(%q) returned error: %v", tt.size, err)
 			}
 
-			data, err := os.ReadFile(filepath.Join(dir, "terraform.tfvars.json"))
+			outPath := filepath.Join(dir, "terraform.tfvars.json")
+			data, err := os.ReadFile(outPath)
 			if err != nil {
-				t.Fatalf("failed to read output file: %v", err)
+				t.Fatalf("failed to read output file %q: %v", outPath, err)
 			}
 
 			var vars map[string]interface{}
 			if err := json.Unmarshal(data, &vars); err != nil {
-				t.Fatalf("failed to parse output JSON: %v", err)
+				t.Fatalf("failed to parse output JSON: %v\ndata: %s", err, data)
 			}
 
 			if got := vars["environment"]; got != tt.wantEnv {
@@ -79,7 +81,7 @@ func TestRenderTerraform_UnmappedSize(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for unmapped size \"xlarge\", got nil")
 	}
-	if got := err.Error(); !containsStr(got, "unsupported profile size") {
+	if got := err.Error(); !strings.Contains(got, "unsupported profile size") {
 		t.Errorf("error = %q, want it to contain \"unsupported profile size\"", got)
 	}
 }
@@ -92,20 +94,68 @@ func TestRenderTerraform_EmptySize(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for empty size, got nil")
 	}
-	if got := err.Error(); !containsStr(got, "unsupported profile size") {
+	if got := err.Error(); !strings.Contains(got, "unsupported profile size") {
 		t.Errorf("error = %q, want it to contain \"unsupported profile size\"", got)
 	}
 }
 
-func containsStr(s, substr string) bool {
-	return len(s) >= len(substr) && findSubstr(s, substr)
+func TestRenderTerraform_InvalidDirectory(t *testing.T) {
+	cluster := newTestCluster("small")
+
+	err := RenderTerraform(cluster, "/dev/null/impossible")
+	if err == nil {
+		t.Fatal("expected error for invalid directory path, got nil")
+	}
 }
 
-func findSubstr(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
+func TestRenderTerraform_AllTFVarsFields(t *testing.T) {
+	dir := t.TempDir()
+	cluster := newTestCluster("small")
+
+	if err := RenderTerraform(cluster, dir); err != nil {
+		t.Fatalf("RenderTerraform returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, "terraform.tfvars.json"))
+	if err != nil {
+		t.Fatalf("failed to read output: %v", err)
+	}
+
+	var vars map[string]interface{}
+	if err := json.Unmarshal(data, &vars); err != nil {
+		t.Fatalf("failed to parse JSON: %v", err)
+	}
+
+	expected := map[string]string{
+		"cluster_name":       "test-cluster",
+		"region":             "us-east-1",
+		"kubernetes_version": "1.29",
+		"vpc_id":             "vpc-abc123",
+		"domain":             "example.com",
+		"environment":        "dev",
+		"account_id":         "123456789012",
+	}
+
+	for key, want := range expected {
+		got, ok := vars[key]
+		if !ok {
+			t.Errorf("missing key %q in tfvars output", key)
+			continue
+		}
+		if got != want {
+			t.Errorf("%s = %q, want %q", key, got, want)
 		}
 	}
-	return false
+}
+
+func TestRenderTerraform_NilCluster(t *testing.T) {
+	dir := t.TempDir()
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for nil cluster, got none")
+		}
+	}()
+
+	_ = RenderTerraform(nil, dir)
 }

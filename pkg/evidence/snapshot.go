@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -37,7 +38,8 @@ var allowedEvidenceKinds = map[string]bool{
 	"StatefulSet":         true,
 }
 
-var validKubeNameRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9.-]*$`)
+var validKubeKindRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9.-]*$`)
+var validKubeNameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 var validNamespaceRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
 // Snapshot represents a piece of point-in-time evidence.
@@ -55,7 +57,7 @@ func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
 	if !allowedEvidenceKinds[kind] {
 		return nil, fmt.Errorf("resource kind %q is not permitted for evidence collection", kind)
 	}
-	if !validKubeNameRe.MatchString(kind) {
+	if !validKubeKindRe.MatchString(kind) {
 		return nil, fmt.Errorf("invalid resource kind %q", kind)
 	}
 	if name != "" && !validKubeNameRe.MatchString(name) {
@@ -75,12 +77,21 @@ func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
 		args = append(args, name)
 	}
 
-	cmd := exec.Command("kubectl", args...)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	slog.Info("capturing resource evidence", "kind", kind, "name", name, "namespace", namespace)
+
+	cmd := exec.CommandContext(ctx, "kubectl", args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("failed to capture resource: %w (stderr: %s)", err, stderr.String())
+		stderrStr := stderr.String()
+		if stderrStr == "" {
+			stderrStr = "(no stderr output)"
+		}
+		return nil, fmt.Errorf("failed to capture resource: %w (stderr: %s)", err, stderrStr)
 	}
 
 	hash := sha256.Sum256(output)
