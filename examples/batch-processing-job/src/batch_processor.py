@@ -19,6 +19,7 @@ import signal
 import sys
 import time
 import os
+import re
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from prometheus_client import Counter, Histogram, Gauge, push_to_gateway
@@ -35,15 +36,31 @@ logger = logging.getLogger(__name__)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL environment variable is required")
+if not DATABASE_URL.startswith(("postgresql://", "postgres://")):
+    raise RuntimeError("DATABASE_URL must use postgresql:// or postgres:// scheme")
 
 S3_BUCKET = os.getenv("S3_BUCKET", "mantl-data")
 if not S3_BUCKET:
     raise RuntimeError("S3_BUCKET environment variable must not be empty")
+if not re.fullmatch(r'[a-z0-9][a-z0-9.\-]{1,61}[a-z0-9]', S3_BUCKET):
+    raise RuntimeError(f"S3_BUCKET name is invalid: {S3_BUCKET!r}")
 
-BATCH_SIZE = max(1, min(int(os.getenv("BATCH_SIZE", "1000")), 50000))
-PARALLEL_WORKERS = max(1, min(int(os.getenv("PARALLEL_WORKERS", "4")), 32))
+
+def _parse_int_env(name: str, default: int, min_val: int, max_val: int) -> int:
+    raw = os.getenv(name, str(default))
+    try:
+        value = int(raw)
+    except ValueError:
+        raise RuntimeError(f"{name} must be a valid integer, got: {raw!r}")
+    return max(min_val, min(value, max_val))
+
+
+BATCH_SIZE = _parse_int_env("BATCH_SIZE", 1000, 1, 50000)
+PARALLEL_WORKERS = _parse_int_env("PARALLEL_WORKERS", 4, 1, 32)
 PUSHGATEWAY_URL = os.getenv("PUSHGATEWAY_URL", "http://prometheus-pushgateway:9091")
 JOB_NAME = os.getenv("JOB_NAME", "batch-processor")
+if not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_\-]*', JOB_NAME):
+    raise RuntimeError(f"JOB_NAME contains invalid characters: {JOB_NAME!r}")
 
 # Prometheus metrics
 registry = CollectorRegistry()

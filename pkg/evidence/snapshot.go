@@ -135,8 +135,11 @@ func CaptureResourceWithContext(ctx context.Context, kind, name, namespace strin
 // Slashes in kind or name are replaced with underscores to prevent
 // ambiguous identifiers.
 func BuildResourceID(kind, name string) string {
-	kind = strings.ReplaceAll(kind, "/", "_")
-	name = strings.ReplaceAll(name, "/", "_")
+	if kind == "" {
+		return ""
+	}
+	kind = strings.ReplaceAll(kind, "/", "__")
+	name = strings.ReplaceAll(name, "/", "__")
 	if name != "" {
 		return fmt.Sprintf("%s/%s", kind, name)
 	}

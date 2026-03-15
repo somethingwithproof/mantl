@@ -74,13 +74,29 @@ app = FastAPI(
 def _parse_cors_origins() -> list[str]:
     raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
     if not raw:
+        logger.warning(
+            "CORS_ALLOWED_ORIGINS is not set; all cross-origin requests will be rejected"
+        )
         return []
     origins = [o.strip() for o in raw.split(",") if o.strip()]
     for origin in origins:
         if origin != "*" and not origin.startswith(("http://", "https://")):
             raise RuntimeError(f"Invalid CORS origin: {origin}")
+    creds_raw = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower()
+    if creds_raw not in ("true", "false"):
+        raise RuntimeError(
+            f"CORS_ALLOW_CREDENTIALS must be 'true' or 'false', got: {creds_raw!r}"
+        )
+    allow_credentials = creds_raw == "true"
+    if "*" in origins and allow_credentials:
+        raise RuntimeError(
+            "CORS_ALLOWED_ORIGINS=* with CORS_ALLOW_CREDENTIALS=true is unsafe; "
+            "specify an explicit origin allowlist"
+        )
     if "*" in origins:
-        logger.warning("CORS_ALLOWED_ORIGINS contains wildcard; restrict in production")
+        raise RuntimeError(
+            "CORS_ALLOWED_ORIGINS=* is not allowed; specify explicit origin allowlist"
+        )
     return origins
 
 app.add_middleware(
