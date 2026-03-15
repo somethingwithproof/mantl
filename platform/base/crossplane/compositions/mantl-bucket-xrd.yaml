@@ -1,0 +1,38 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xmantlbuckets.platform.mantl.io
+spec:
+  group: platform.mantl.io
+  names:
+    kind: XMantlBucket
+    plural: xmantlbuckets
+  claimNames:
+    kind: MantlBucket
+    plural: mantlbuckets
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    region:
+                      type: string
+                    versioning:
+                      type: boolean
+                      default: true
+                  required:
+                    - region
+            status:
+              type: object
+              properties:
+                bucketName:
+                  type: string

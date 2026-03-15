@@ -1,0 +1,28 @@
+apiVersion: platform.mantl.io/v1alpha1
+kind: MantlCluster
+metadata:
+  name: prod-us-east
+spec:
+  provider:
+    kind: aws
+    region: us-east-1
+    accountId: "123456789012"
+  kubernetes:
+    distribution: eks
+    version: "1.31"
+  profile:
+    size: full
+  networking:
+    domain: platform.internal.company.com
+    exposure: private
+  security:
+    complianceProfiles:
+      - soc2-type2-v2017
+      - pci-dss-v4
+    enforcementMode: block
+  addons:
+    observability:
+      enabled: true
+      retentionDays: 30
+    secrets:
+      provider: aws-secrets-manager
