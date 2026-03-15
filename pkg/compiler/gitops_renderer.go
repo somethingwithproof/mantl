@@ -34,6 +34,11 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 		return err
 	}
 
+	// 1.1 Generate Platform Config ConfigMap
+	if err := renderPlatformConfig(gitopsDir, cluster); err != nil {
+		return err
+	}
+
 	// 2. Dynamically generate Addon Applications based on features using reflection
 	features := cluster.Spec.Features
 	v := reflect.ValueOf(features)
@@ -129,6 +134,31 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
 	}
 
 	return ioutil.WriteFile(tenantFile, []byte(content), 0644)
+}
+
+// renderPlatformConfig generates a global ConfigMap with platform-wide settings.
+func renderPlatformConfig(outputDir string, cluster *v1alpha1.MantlCluster) error {
+	cm := map[string]interface{}{
+		"apiVersion": "v1",
+		"kind":       "ConfigMap",
+		"metadata": map[string]interface{}{
+			"name":      "mantl-config",
+			"namespace": "argocd", // Placed in argocd for easy reference
+		},
+		"data": map[string]string{
+			"clusterName": cluster.Name,
+			"domain":      cluster.Spec.Networking.Domain,
+			"region":      cluster.Spec.Provider.Region,
+			"environment": cluster.Spec.Profile.Size,
+		},
+	}
+
+	data, err := yaml.Marshal(cm)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(filepath.Join(outputDir, "mantl-config.yaml"), data, 0644)
 }
 
 // renderApp is a helper to generate a standard ArgoCD Application manifest.
