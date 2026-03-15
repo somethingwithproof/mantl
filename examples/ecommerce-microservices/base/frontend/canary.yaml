@@ -1,0 +1,75 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: frontend
+  namespace: ecommerce
+spec:
+  # Target deployment to manage
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+
+  # Service mesh or ingress provider
+  provider: kubernetes
+
+  # Progressive rollout configuration
+  service:
+    port: 80
+    targetPort: 8080
+
+  # Analysis configuration
+  analysis:
+    # Schedule interval (how often to run analysis)
+    interval: 1m
+
+    # Number of checks before promoting
+    threshold: 10
+
+    # Max traffic percentage routed to canary
+    maxWeight: 50
+
+    # Traffic increment step
+    stepWeight: 10
+
+    # Metrics to evaluate during analysis
+    metrics:
+    # Request success rate
+    - name: request-success-rate
+      thresholdRange:
+        min: 99
+      interval: 1m
+
+    # Request duration
+    - name: request-duration
+      thresholdRange:
+        max: 500
+      interval: 1m
+
+    # Custom metric: frontend page load time (if available)
+    - name: frontend-page-load-time
+      thresholdRange:
+        max: 2000  # 2 seconds
+      interval: 1m
+      query: |
+        histogram_quantile(0.99,
+          sum(rate(http_request_duration_milliseconds_bucket{
+            job="frontend"
+          }[1m])) by (le)
+        )
+
+  # Webhooks for notifications
+  webhooks:
+  - name: load-test
+    type: rollout
+    url: http://flagger-loadtester.mantl-system/
+    timeout: 15s
+    metadata:
+      type: cmd
+      cmd: "hey -z 1m -q 10 -c 2 http://frontend.ecommerce/"
+
+  - name: notify-slack
+    type: post-rollout
+    url: http://flagger-slack-notifier.mantl-system/
+    metadata:
+      message: "Frontend canary deployment"

@@ -220,6 +220,40 @@ func TestCaptureResource_Args(t *testing.T) {
 	}
 }
 
+func TestBuildResourceID(t *testing.T) {
+	tests := []struct {
+		name       string
+		kind       string
+		resName    string
+		wantPrefix string
+	}{
+		{
+			name:       "kind-only resourceID when name is empty",
+			kind:       "Deployment",
+			resName:    "",
+			wantPrefix: "Deployment",
+		},
+		{
+			name:       "kind/name resourceID when name is set",
+			kind:       "Deployment",
+			resName:    "my-app",
+			wantPrefix: "Deployment/my-app",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resourceID := tt.kind
+			if tt.resName != "" {
+				resourceID = tt.kind + "/" + tt.resName
+			}
+			if resourceID != tt.wantPrefix {
+				t.Errorf("resourceID = %q, want %q", resourceID, tt.wantPrefix)
+			}
+		})
+	}
+}
+
 func TestCaptureResource_ResourceID(t *testing.T) {
 	tests := []struct {
 		name    string

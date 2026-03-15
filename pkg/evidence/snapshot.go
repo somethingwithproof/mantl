@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
 // allowedEvidenceKinds lists resource kinds permitted for evidence collection.
@@ -134,8 +135,21 @@ func CaptureResourceWithContext(ctx context.Context, kind, name, namespace strin
 	}, nil
 }
 
-// UploadToS3 uploads the snapshot data to an S3 bucket.
+// DefaultServerSideEncryption is the S3 encryption method used when none is
+// specified. Override via UploadToS3WithEncryption for buckets that require
+// aws:kms.
+const DefaultServerSideEncryption = s3types.ServerSideEncryptionAes256
+
+// UploadToS3 uploads the snapshot data to an S3 bucket using the default
+// server-side encryption (AES256). For buckets that require a different
+// encryption method (e.g. aws:kms), use UploadToS3WithEncryption.
 func UploadToS3(ctx context.Context, s *Snapshot, bucket string) (string, error) {
+	return UploadToS3WithEncryption(ctx, s, bucket, DefaultServerSideEncryption)
+}
+
+// UploadToS3WithEncryption uploads the snapshot data to an S3 bucket with the
+// specified server-side encryption method (e.g. "AES256" or "aws:kms").
+func UploadToS3WithEncryption(ctx context.Context, s *Snapshot, bucket string, encryption s3types.ServerSideEncryption) (string, error) {
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return "", fmt.Errorf("unable to load SDK config: %w", err)
@@ -150,7 +164,7 @@ func UploadToS3(ctx context.Context, s *Snapshot, bucket string) (string, error)
 		Key:                  aws.String(key),
 		Body:                 strings.NewReader(s.Data),
 		ContentType:          aws.String("application/json"),
-		ServerSideEncryption: aws.String("AES256"),
+		ServerSideEncryption: encryption,
 		Metadata: map[string]string{
 			"mantl-content-hash": s.ContentHash,
 			"mantl-captured-at":  s.CapturedAt.Format(time.RFC3339),

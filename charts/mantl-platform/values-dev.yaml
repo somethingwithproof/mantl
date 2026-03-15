@@ -1,0 +1,61 @@
+# Development Profile
+# Minimal resources, shorter retention, faster iteration
+
+profile: dev
+
+monitoring:
+  enabled: true
+  prometheus:
+    retention: 7d
+    storageSize: 10Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        cpu: 500m
+        memory: 2Gi
+
+  grafana:
+    enabled: true
+    ingress:
+      enabled: false  # Use port-forward
+
+backup:
+  enabled: true
+  velero:
+    schedules:
+      daily:
+        schedule: "0 3 * * *"
+        template:
+          ttl: 168h  # 7 days
+      weekly:
+        enabled: false
+
+security:
+  trivy:
+    enabled: true
+    scanJobsCronJob: "0 4 * * 0"  # Weekly only
+  falco:
+    enabled: false  # Optional in dev
+
+database:
+  enabled: true
+
+progressiveDelivery:
+  enabled: false  # Not needed in dev
+
+cost:
+  enabled: true
+  opencost:
+    ui:
+      enabled: true
+
+chaos:
+  enabled: false
+
+developer:
+  backstage:
+    enabled: false
+  vcluster:
+    enabled: true  # Useful for dev/test

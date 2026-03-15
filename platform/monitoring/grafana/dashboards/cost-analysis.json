@@ -1,0 +1,269 @@
+{
+  "dashboard": {
+    "title": "Cost Analysis & FinOps",
+    "tags": ["mantl", "cost", "finops"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "5m",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Total Monthly Cost (Projected)",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(node_total_hourly_cost) * 730",
+            "legendFormat": "Monthly Cost"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 10000, "color": "yellow"},
+                {"value": 20000, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Cost Trend (30 Days)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 18, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(node_total_hourly_cost) * 24",
+            "legendFormat": "Daily Cost"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "custom": {
+              "drawStyle": "line",
+              "lineInterpolation": "smooth",
+              "fillOpacity": 20
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Top 10 Most Expensive Namespaces",
+        "type": "bargauge",
+        "gridPos": {"h": 12, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (namespace) (rate(container_cpu_usage_seconds_total[1h]) * on(node) group_left() node_cpu_hourly_cost + rate(container_memory_working_set_bytes[1h]) * on(node) group_left() node_ram_hourly_cost))",
+            "legendFormat": "{{namespace}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 50, "color": "yellow"},
+                {"value": 100, "color": "red"}
+              ]
+            }
+          }
+        },
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient"
+        }
+      },
+      {
+        "id": 4,
+        "title": "Idle Resource Cost (Wasted)",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(node_total_hourly_cost * (1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1h]))))",
+            "legendFormat": "Idle Cost"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 100, "color": "yellow"},
+                {"value": 500, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Cost Efficiency (Utilization %)",
+        "type": "gauge",
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 8},
+        "targets": [
+          {
+            "expr": "(sum(rate(container_cpu_usage_seconds_total[1h])) / sum(kube_node_status_allocatable{resource=\"cpu\"})) * 100",
+            "legendFormat": "CPU Efficiency"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 50, "color": "yellow"},
+                {"value": 70, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 6,
+        "title": "Cost per Node",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "node_total_hourly_cost",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {"Time": true},
+              "renameByName": {
+                "node": "Node",
+                "Value": "Hourly Cost"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD"
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Node"},
+              "properties": [
+                {
+                  "id": "custom.width",
+                  "value": 300
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": 7,
+        "title": "Savings Opportunities",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 20},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (namespace, pod) (rate(container_cpu_usage_seconds_total[1h]) < 0.1))",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "namespace": "Namespace",
+                "pod": "Pod (Low Utilization)"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Cost by Resource Type",
+        "type": "piechart",
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 30},
+        "targets": [
+          {
+            "expr": "sum by (resource) (node_total_hourly_cost{resource=~\"cpu|memory|storage\"})",
+            "legendFormat": "{{resource}}"
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "values": ["value", "percent"]
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Monthly Cost Comparison",
+        "type": "bargauge",
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 30},
+        "targets": [
+          {
+            "expr": "sum(node_total_hourly_cost) * 730",
+            "legendFormat": "Current Month"
+          },
+          {
+            "expr": "sum(node_total_hourly_cost offset 30d) * 730",
+            "legendFormat": "Last Month"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD"
+          }
+        },
+        "options": {
+          "orientation": "vertical"
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "namespace",
+          "type": "query",
+          "query": "label_values(kube_namespace_created, namespace)",
+          "current": {"value": "All", "text": "All"},
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Cost Spikes",
+          "datasource": "Prometheus",
+          "enable": true,
+          "expr": "changes(sum(node_total_hourly_cost)[5m]) > 0.2",
+          "iconColor": "red"
+        }
+      ]
+    }
+  }
+}

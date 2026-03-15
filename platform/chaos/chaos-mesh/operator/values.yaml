@@ -1,0 +1,51 @@
+chaos-mesh:
+  # Dashboard
+  dashboard:
+    create: true
+    ingress:
+      enabled: true
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+      hosts:
+        - name: chaos.mantl.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+      tls:
+        - secretName: chaos-dashboard-tls
+          hosts:
+            - chaos.mantl.example.com
+
+  # Controller Manager
+  controllerManager:
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+  # Daemon
+  chaosDaemon:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 250m
+        memory: 512Mi
+
+  # DNS chaos
+  dnsServer:
+    create: true
+
+  # Monitoring
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+  # Security context
+  securityMode: true

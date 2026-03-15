@@ -1,0 +1,336 @@
+# mantl Platform - Default Values
+# This is a YAML-formatted file declaring default values for the mantl platform chart.
+
+# Global settings
+global:
+  # Domain for ingress
+  domain: "example.com"
+
+  # Storage class for persistent volumes
+  storageClass: ""
+
+  # Image pull secrets
+  imagePullSecrets: []
+
+  # Common labels applied to all resources
+  labels:
+    platform: mantl
+    managed-by: helm
+
+# Profile selection (dev, staging, production)
+profile: production
+
+# Namespace configuration
+namespaceOverride: ""  # Override the namespace name
+namespaceAnnotations: {}  # Additional annotations for the namespace
+
+# Service account configuration
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+################################################################################
+# Monitoring Stack
+################################################################################
+
+monitoring:
+  enabled: true
+
+  # Prometheus
+  prometheus:
+    enabled: true
+    retention: 15d
+    storageSize: 50Gi
+
+    # Resource requests/limits
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2000m
+        memory: 8Gi
+
+    # Scrape configs
+    additionalScrapeConfigs: []
+
+    # Alert rules
+    additionalRuleLabels: {}
+
+  # Grafana
+  grafana:
+    enabled: true
+    adminPassword: "" # Auto-generated if empty
+
+    # Ingress
+    ingress:
+      enabled: false
+      hosts:
+        - grafana.example.com
+      tls:
+        enabled: true
+
+    # Dashboards
+    dashboards:
+      default:
+        security-monitoring:
+          url: https://grafana.com/api/dashboards/12345/revisions/1/download
+        kubernetes-cluster:
+          url: https://grafana.com/api/dashboards/7249/revisions/1/download
+
+    # Data sources
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-server
+        isDefault: true
+
+  # Alertmanager
+  alertmanager:
+    enabled: true
+    config:
+      receivers:
+        - name: 'null'
+        - name: 'slack'
+          slack_configs:
+            - api_url: '' # Set via secret
+              channel: '#alerts'
+
+################################################################################
+# Backup & Disaster Recovery
+################################################################################
+
+backup:
+  enabled: true
+
+  velero:
+    enabled: true
+
+    # Backup storage location (AWS S3, GCS, Azure Blob, etc.)
+    configuration:
+      provider: aws
+      backupStorageLocation:
+        bucket: mantl-backups
+        config:
+          region: us-east-1
+
+    # Snapshot storage location
+    snapshotStorageLocation:
+      provider: aws
+      config:
+        region: us-east-1
+
+    # Backup schedules
+    schedules:
+      daily:
+        schedule: "0 2 * * *"
+        template:
+          ttl: 720h  # 30 days
+          includeClusterResources: true
+
+      weekly:
+        schedule: "0 3 * * 0"
+        template:
+          ttl: 2160h  # 90 days
+          includeClusterResources: true
+
+    # Credentials (use secret)
+    credentials:
+      useSecret: true
+      existingSecret: velero-credentials
+
+################################################################################
+# Security
+################################################################################
+
+security:
+  enabled: true
+
+  # Trivy Operator (Vulnerability Scanning)
+  trivy:
+    enabled: true
+    scanJobTimeout: 5m
+
+    # Scan schedule
+    scanJobsCronJob: "0 1 * * *"
+
+    # Compliance reports
+    compliance:
+      enabled: true
+      reports:
+        - nsa
+        - pci-dss
+
+  # Falco (Runtime Security)
+  falco:
+    enabled: true
+    priority: warning
+
+    # Falcosidekick for alert routing
+    falcosidekick:
+      enabled: true
+      webui:
+        enabled: true
+
+    # Custom rules
+    customRules:
+      mantl-rules.yaml: |
+        - rule: Unexpected outbound connection
+          desc: Detect unexpected outbound connections
+          condition: outbound
+          output: Outbound connection (command=%proc.cmdline connection=%fd.name)
+          priority: WARNING
+
+  # Kyverno (Policy Engine) - Installed separately
+  kyverno:
+    enabled: false  # Will be in task #4
+
+################################################################################
+# Database
+################################################################################
+
+database:
+  enabled: true
+
+  # CloudNativePG Operator
+  cnpg:
+    enabled: true
+
+    # Example cluster (disabled by default - create via CRD)
+    exampleCluster:
+      enabled: false
+      instances: 3
+      storage: 10Gi
+      backup:
+        enabled: true
+        schedule: "0 0 * * *"
+
+################################################################################
+# Progressive Delivery
+################################################################################
+
+progressiveDelivery:
+  enabled: true
+
+  flagger:
+    enabled: true
+
+    # Metrics provider
+    metricsServer: http://prometheus-server
+
+    # Slack notifications
+    slack:
+      url: ""  # Set via secret
+      channel: deployments
+
+################################################################################
+# Cost Management
+################################################################################
+
+cost:
+  enabled: true
+
+  opencost:
+    enabled: true
+
+    # Prometheus integration
+    prometheus:
+      external:
+        url: http://prometheus-server
+
+    # UI access
+    ui:
+      enabled: true
+      ingress:
+        enabled: false
+        hosts:
+          - opencost.example.com
+
+    # Export costs to S3/GCS/Azure
+    exporter:
+      enabled: false
+      csv:
+        endpoint: s3://mantl-cost-reports
+
+################################################################################
+# Chaos Engineering
+################################################################################
+
+chaos:
+  enabled: false  # Disabled by default
+
+  chaosMesh:
+    enabled: false
+    dashboard:
+      enabled: true
+      ingress:
+        enabled: false
+
+################################################################################
+# Developer Platform
+################################################################################
+
+developer:
+  enabled: false  # Disabled by default
+
+  backstage:
+    enabled: false
+    appConfig:
+      organization:
+        name: mantl
+      backend:
+        database:
+          client: pg
+
+  vcluster:
+    enabled: false
+    # Virtual clusters created separately via CRD
+
+################################################################################
+# Profile-specific overrides
+################################################################################
+
+# Development profile
+dev:
+  monitoring:
+    prometheus:
+      retention: 7d
+      storageSize: 10Gi
+  backup:
+    velero:
+      schedules:
+        daily:
+          template:
+            ttl: 168h  # 7 days
+
+# Staging profile
+staging:
+  monitoring:
+    prometheus:
+      retention: 10d
+      storageSize: 20Gi
+  security:
+    trivy:
+      scanJobsCronJob: "0 2 * * *"
+
+# Production profile
+production:
+  monitoring:
+    prometheus:
+      retention: 15d
+      storageSize: 50Gi
+    grafana:
+      ingress:
+        enabled: true
+  security:
+    trivy:
+      enabled: true
+    falco:
+      enabled: true
+  backup:
+    velero:
+      schedules:
+        daily:
+          template:
+            ttl: 720h

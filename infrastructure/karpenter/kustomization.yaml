@@ -1,0 +1,26 @@
+# Karpenter Infrastructure Resources Kustomization
+# Apply after Karpenter controller is installed
+# https://karpenter.sh/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: karpenter-infrastructure
+  labels:
+    app.kubernetes.io/name: karpenter-infrastructure
+    app.kubernetes.io/part-of: mantl-platform
+
+resources:
+  - ec2nodeclass.yaml
+  - karpenter-provisioner.yaml
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  platform.mantl.io/component: karpenter
+
+# Environment-specific configurations can be set via ConfigMapGenerator
+# configMapGenerator:
+#   - name: karpenter-config
+#     literals:
+#       - CLUSTER_NAME=my-cluster
+#       - AWS_REGION=us-west-2

@@ -1,0 +1,170 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-network-policy
+  annotations:
+    policies.kyverno.io/title: "Require Network Policy"
+    policies.kyverno.io/category: "Network Security"
+    policies.kyverno.io/severity: "high"
+    policies.kyverno.io/subject: "Namespace"
+    policies.kyverno.io/description: |
+      Require that all namespaces have at least one NetworkPolicy defined.
+      This enforces zero-trust networking by ensuring explicit allow rules.
+
+      NetworkPolicies provide:
+      - Microsegmentation between pods
+      - Defense in depth
+      - Compliance with zero-trust principles
+      - Protection against lateral movement
+
+      Compliance: CIS Kubernetes Benchmark 5.3.2, NIST 800-190
+spec:
+  validationFailureAction: Audit  # Audit mode to allow gradual adoption
+  background: true
+  rules:
+  - name: check-network-policy-exists
+    match:
+      any:
+      - resources:
+          kinds:
+          - Namespace
+    exclude:
+      any:
+      - resources:
+          names:
+          - default
+          - kube-system
+          - kube-public
+          - kube-node-lease
+          - kyverno
+    context:
+    - name: networkPolicyCount
+      apiCall:
+        urlPath: "/apis/networking.k8s.io/v1/namespaces/{{request.object.metadata.name}}/networkpolicies"
+        jmesPath: "items | length(@)"
+    preconditions:
+      any:
+      - key: "{{request.operation}}"
+        operator: NotEquals
+        value: DELETE
+    validate:
+      message: |
+        Namespace must have at least one NetworkPolicy defined.
+
+        Create a NetworkPolicy to allow traffic:
+
+        Example - Default deny all ingress:
+        ---
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: default-deny-ingress
+        spec:
+          podSelector: {}
+          policyTypes:
+          - Ingress
+
+        Example - Allow specific traffic:
+        ---
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: allow-frontend-to-backend
+        spec:
+          podSelector:
+            matchLabels:
+              app: backend
+          policyTypes:
+          - Ingress
+          ingress:
+          - from:
+            - podSelector:
+                matchLabels:
+                  app: frontend
+            ports:
+            - protocol: TCP
+              port: 8080
+      deny:
+        conditions:
+          any:
+          - key: "{{ networkPolicyCount }}"
+            operator: LessThan
+            value: 1
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-default-deny-network-policy
+  annotations:
+    policies.kyverno.io/title: "Require Default Deny Network Policy"
+    policies.kyverno.io/category: "Network Security"
+    policies.kyverno.io/severity: "medium"
+    policies.kyverno.io/subject: "NetworkPolicy"
+    policies.kyverno.io/description: |
+      Require that namespaces have a default deny NetworkPolicy.
+      This implements deny-by-default, allow-by-exception pattern.
+
+      Best practice: Start with default deny, then add specific allow rules.
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+  - name: check-default-deny-exists
+    match:
+      any:
+      - resources:
+          kinds:
+          - Namespace
+    exclude:
+      any:
+      - resources:
+          names:
+          - default
+          - kube-system
+          - kube-public
+          - kube-node-lease
+          - kyverno
+    context:
+    - name: defaultDenyPolicies
+      apiCall:
+        urlPath: "/apis/networking.k8s.io/v1/namespaces/{{request.object.metadata.name}}/networkpolicies"
+        jmesPath: "items[?spec.podSelector == `{}`] | length(@)"
+    preconditions:
+      any:
+      - key: "{{request.operation}}"
+        operator: NotEquals
+        value: DELETE
+    validate:
+      message: |
+        Namespace should have a default deny NetworkPolicy (podSelector: {}).
+
+        Create a default deny policy:
+
+        ---
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: default-deny-ingress
+        spec:
+          podSelector: {}
+          policyTypes:
+          - Ingress
+
+        Or for both ingress and egress:
+
+        ---
+        apiVersion: networking.k8s.io/v1
+        kind: NetworkPolicy
+        metadata:
+          name: default-deny-all
+        spec:
+          podSelector: {}
+          policyTypes:
+          - Ingress
+          - Egress
+      deny:
+        conditions:
+          any:
+          - key: "{{ defaultDenyPolicies }}"
+            operator: LessThan
+            value: 1

@@ -1,0 +1,286 @@
+{
+  "dashboard": {
+    "title": "Security Posture",
+    "tags": ["mantl", "security", "compliance"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "1m",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Critical Vulnerabilities",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(trivy_image_vulnerabilities{severity=\"CRITICAL\"})",
+            "legendFormat": "Critical CVEs"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 10, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "High Severity Vulnerabilities",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(trivy_image_vulnerabilities{severity=\"HIGH\"})",
+            "legendFormat": "High CVEs"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 5, "color": "yellow"},
+                {"value": 20, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 3,
+        "title": "Kyverno Policy Violations",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(kyverno_policy_results_total{policy_result=\"fail\"})",
+            "legendFormat": "Policy Failures"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 10, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Falco Security Events (24h)",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(increase(falco_events_total{priority=~\"Critical|Warning\"}[24h]))",
+            "legendFormat": "Security Events"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 10, "color": "yellow"},
+                {"value": 50, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "CVEs by Severity Over Time",
+        "type": "timeseries",
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "sum by (severity) (trivy_image_vulnerabilities)",
+            "legendFormat": "{{severity}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "stacking": {"mode": "normal"}
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "CRITICAL"},
+              "properties": [{"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}]
+            },
+            {
+              "matcher": {"id": "byName", "options": "HIGH"},
+              "properties": [{"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}]
+            }
+          ]
+        }
+      },
+      {
+        "id": 6,
+        "title": "Most Vulnerable Images",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (image_name) (trivy_image_vulnerabilities{severity=~\"CRITICAL|HIGH\"}))",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "image_name": "Image",
+                "Value": "CVE Count"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Policy Violations by Type",
+        "type": "bargauge",
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 18},
+        "targets": [
+          {
+            "expr": "sum by (policy_name) (kyverno_policy_results_total{policy_result=\"fail\"})",
+            "legendFormat": "{{policy_name}}"
+          }
+        ],
+        "options": {
+          "orientation": "horizontal",
+          "displayMode": "gradient"
+        }
+      },
+      {
+        "id": 8,
+        "title": "Falco Events by Priority",
+        "type": "piechart",
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 18},
+        "targets": [
+          {
+            "expr": "sum by (priority) (increase(falco_events_total[24h]))",
+            "legendFormat": "{{priority}}"
+          }
+        ],
+        "options": {
+          "legend": {
+            "displayMode": "table",
+            "values": ["value", "percent"]
+          }
+        }
+      },
+      {
+        "id": 9,
+        "title": "Security Incidents Timeline",
+        "type": "timeseries",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 28},
+        "targets": [
+          {
+            "expr": "rate(falco_events_total{priority=~\"Critical|Warning\"}[5m])",
+            "legendFormat": "{{rule}} - {{priority}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {
+              "drawStyle": "bars",
+              "fillOpacity": 80
+            }
+          }
+        }
+      },
+      {
+        "id": 10,
+        "title": "Namespaces with Most Security Issues",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 38},
+        "targets": [
+          {
+            "expr": "topk(10, sum by (namespace) (trivy_image_vulnerabilities{severity=~\"CRITICAL|HIGH\"} + on(namespace) group_left() kyverno_policy_results_total{policy_result=\"fail\"}))",
+            "format": "table",
+            "instant": true
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Certificate Expiry (Days Remaining)",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 38},
+        "targets": [
+          {
+            "expr": "sort((certmanager_certificate_expiration_timestamp_seconds - time()) / 86400)",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "renameByName": {
+                "name": "Certificate",
+                "namespace": "Namespace",
+                "Value": "Days to Expiry"
+              }
+            }
+          }
+        ],
+        "fieldConfig": {
+          "overrides": [
+            {
+              "matcher": {"id": "byName", "options": "Days to Expiry"},
+              "properties": [
+                {
+                  "id": "thresholds",
+                  "value": {
+                    "mode": "absolute",
+                    "steps": [
+                      {"value": 0, "color": "red"},
+                      {"value": 7, "color": "yellow"},
+                      {"value": 30, "color": "green"}
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "namespace",
+          "type": "query",
+          "query": "label_values(kube_namespace_created, namespace)",
+          "includeAll": true,
+          "multi": true
+        }
+      ]
+    }
+  }
+}

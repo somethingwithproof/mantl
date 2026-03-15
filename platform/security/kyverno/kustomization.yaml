@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kyverno
+
+resources:
+- namespace.yaml
+- operator/helmrelease.yaml
+- policies/require-resource-limits.yaml
+- policies/restrict-image-registries.yaml
+- policies/disallow-latest-tag.yaml
+- policies/require-labels.yaml
+- policies/pss-restricted.yaml
+- policies/require-network-policy.yaml
+- policies/disallow-default-namespace.yaml
+- policies/restrict-service-account-tokens.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: mantl-platform
+  platform: mantl

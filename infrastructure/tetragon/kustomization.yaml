@@ -1,0 +1,30 @@
+# Cilium Tetragon Security Policies Kustomization
+# eBPF-based runtime security
+# https://tetragon.io/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: tetragon-security
+  labels:
+    app.kubernetes.io/name: tetragon-security
+    app.kubernetes.io/part-of: mantl-platform
+
+namespace: tetragon
+
+resources:
+  - tetragon-policy.yaml
+
+# Helm chart for Tetragon itself
+helmCharts:
+  - name: tetragon
+    repo: https://helm.cilium.io
+    version: 1.2.0
+    releaseName: tetragon
+    namespace: tetragon
+    valuesFile: tetragon-values.yaml
+    includeCRDs: true
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  platform.mantl.io/component: tetragon

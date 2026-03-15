@@ -1,0 +1,184 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ecommerce-platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/manifest-generate-paths: "examples/ecommerce-microservices"
+spec:
+  # How often to re-evaluate the generators
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+
+  # Cluster generator - deploy based on cluster labels
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          app: ecommerce
+          enabled: "true"
+      values:
+        # Default values
+        replicas: "3"
+        resources: "medium"
+
+  template:
+    metadata:
+      name: 'ecommerce-{{.name}}'
+      labels:
+        app: ecommerce
+        environment: '{{.metadata.labels.environment}}'
+        region: '{{.metadata.labels.region}}'
+      annotations:
+        argocd.argoproj.io/manifest-generate-paths: "."
+
+    spec:
+      project: default
+
+      source:
+        repoURL: https://github.com/thomasvincent/mantl
+        targetRevision: HEAD
+        path: 'examples/ecommerce-microservices/overlays/{{.metadata.labels.environment}}'
+
+        # Kustomize build options
+        kustomize:
+          images:
+          - name: products-api
+            newTag: '{{.metadata.annotations.version | default "v1.0.0"}}'
+          - name: frontend
+            newTag: '{{.metadata.annotations.version | default "v1.0.0"}}'
+
+          # Patch replicas based on cluster tier
+          patches:
+          - target:
+              kind: Deployment
+              labelSelector: app.kubernetes.io/part-of=ecommerce
+            patch: |
+              - op: replace
+                path: /spec/replicas
+                value: {{.values.replicas}}
+
+      destination:
+        server: '{{.server}}'
+        namespace: ecommerce
+
+      # Sync policy
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+        - CreateNamespace=true
+        - PrunePropagationPolicy=foreground
+        - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+
+      # Health checks
+      ignoreDifferences:
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+        - /spec/replicas  # Ignore HPA-managed replicas
+
+  # Progressive rollout strategy
+  strategy:
+    type: RollingSync
+    rollingSync:
+      steps:
+      # Phase 1: Canary clusters (single cluster for testing)
+      - matchExpressions:
+        - key: rollout-phase
+          operator: In
+          values: ["1"]
+        maxUpdate: 1
+
+      # Phase 2: Staging clusters
+      - matchExpressions:
+        - key: rollout-phase
+          operator: In
+          values: ["2"]
+        maxUpdate: 2
+
+      # Phase 3: Production (50% of prod clusters)
+      - matchExpressions:
+        - key: rollout-phase
+          operator: In
+          values: ["3"]
+        - key: environment
+          operator: In
+          values: ["production"]
+        maxUpdate: 50%
+
+      # Phase 4: Remaining production clusters
+      - matchExpressions:
+        - key: environment
+          operator: In
+          values: ["production"]
+        maxUpdate: 100%
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-monitoring
+  namespace: argocd
+spec:
+  goTemplate: true
+
+  generators:
+  - clusters:
+      selector:
+        matchExpressions:
+        - key: monitoring
+          operator: In
+          values: ["enabled", "true"]
+
+  template:
+    metadata:
+      name: 'monitoring-{{.name}}'
+      labels:
+        component: monitoring
+
+    spec:
+      project: platform
+
+      source:
+        repoURL: https://github.com/thomasvincent/mantl
+        targetRevision: HEAD
+        path: 'charts/mantl-platform'
+
+        helm:
+          releaseName: mantl-platform
+
+          # Environment-specific values
+          valueFiles:
+          - 'values-{{.metadata.labels.environment}}.yaml'
+
+          values: |
+            global:
+              domain: {{.metadata.labels.environment}}.{{.metadata.labels.region}}.example.com
+
+            monitoring:
+              enabled: true
+              prometheus:
+                retention: {{if eq .metadata.labels.environment "production"}}30d{{else}}7d{{end}}
+                storageSize: {{if eq .metadata.labels.environment "production"}}100Gi{{else}}20Gi{{end}}
+
+            backup:
+              enabled: {{if eq .metadata.labels.environment "production"}}true{{else}}false{{end}}
+
+      destination:
+        server: '{{.server}}'
+        namespace: mantl-system
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+        - CreateNamespace=true

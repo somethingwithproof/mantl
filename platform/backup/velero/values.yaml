@@ -1,0 +1,80 @@
+velero:
+  configuration:
+    # Backup storage location
+    backupStorageLocation:
+      - name: default
+        provider: aws  # or azure, gcp
+        bucket: mantl-velero-backups
+        config:
+          region: us-east-1
+          # Use IRSA for AWS (no credentials needed)
+          # serviceAccount: velero
+
+    # Volume snapshot location
+    volumeSnapshotLocation:
+      - name: default
+        provider: aws  # or azure, gcp
+        config:
+          region: us-east-1
+
+    # Feature flags
+    features: EnableCSI
+
+  # Credentials (via External Secrets)
+  credentials:
+    useSecret: false  # Using workload identity instead
+
+  # Service account
+  serviceAccount:
+    server:
+      create: true
+      annotations:
+        # AWS IRSA
+        eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/velero
+        # GCP Workload Identity
+        iam.gke.io/gcp-service-account: velero@PROJECT_ID.iam.gserviceaccount.com
+        # Azure Managed Identity
+        azure.workload.identity/client-id: CLIENT_ID
+
+  # Init containers for plugin installation
+  initContainers:
+    - name: velero-plugin-for-aws
+      image: velero/velero-plugin-for-aws:v1.10.0
+      volumeMounts:
+        - mountPath: /target
+          name: plugins
+
+  # Schedules
+  schedules:
+    daily-backup:
+      disabled: false
+      schedule: "0 2 * * *"  # 2 AM daily
+      template:
+        ttl: 720h  # 30 days
+        includedNamespaces:
+          - production
+          - staging
+        snapshotVolumes: true
+
+    weekly-backup:
+      disabled: false
+      schedule: "0 3 * * 0"  # 3 AM Sunday
+      template:
+        ttl: 2160h  # 90 days
+        includedNamespaces:
+          - "*"
+        snapshotVolumes: true
+
+  # Metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi

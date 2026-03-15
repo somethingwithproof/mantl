@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ecommerce
+
+resources:
+- ../../base
+- ingress.yaml
+- hpa.yaml
+
+patchesStrategicMerge:
+- replica-patch.yaml
+- resource-patch.yaml
+
+images:
+- name: products-api
+  newTag: v1.0.0
+- name: nginx
+  newTag: 1.25-alpine
+
+configMapGenerator:
+- name: app-config
+  behavior: merge
+  literals:
+  - ENVIRONMENT=production
+  - LOG_LEVEL=warn
+  - ENABLE_PROFILING=false
+
+commonAnnotations:
+  environment: production
+  contact: platform-engineering@example.com

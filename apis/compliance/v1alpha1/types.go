@@ -80,6 +80,7 @@ type ComplianceAuditStatus struct {
 	StartTime   *metav1.Time `json:"startTime,omitempty"`
 	EndTime     *metav1.Time `json:"endTime,omitempty"`
 	FindingCount int32       `json:"findingCount,omitempty"`
+	FailedCount  int32       `json:"failedCount,omitempty"`
 	EvidenceURI  string      `json:"evidenceUri,omitempty"`
 }
 

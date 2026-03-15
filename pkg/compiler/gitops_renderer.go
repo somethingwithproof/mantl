@@ -143,21 +143,29 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
 	return ioutil.WriteFile(tenantFile, []byte(content), 0600)
 }
 
+// syncWaveEntry pairs a component prefix with its ArgoCD sync-wave number.
+type syncWaveEntry struct {
+	prefix string
+	wave   string
+}
+
 // syncWavePriority assigns ArgoCD sync-wave numbers to known infrastructure
 // components. Lower waves deploy first; anything not listed defaults to "3".
-var syncWavePriority = map[string]string{
-	"cert-manager":     "1",
-	"external-secrets": "1",
-	"kyverno":          "2",
-	"monitoring":       "2",
+// Ordered by prefix length descending so longer (more specific) prefixes match
+// first, eliminating ambiguity when one prefix is a substring of another.
+var syncWavePriority = []syncWaveEntry{
+	{"external-secrets", "1"},
+	{"cert-manager", "1"},
+	{"monitoring", "2"},
+	{"kyverno", "2"},
 }
 
 // renderApp is a helper to generate a standard ArgoCD Application manifest.
 func renderApp(outputDir, name, path string) error {
 	wave := "3"
-	for component, w := range syncWavePriority {
-		if strings.Contains(name, component) {
-			wave = w
+	for _, entry := range syncWavePriority {
+		if strings.HasPrefix(name, entry.prefix) {
+			wave = entry.wave
 			break
 		}
 	}

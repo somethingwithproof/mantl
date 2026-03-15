@@ -1,0 +1,107 @@
+{
+  "dashboard": {
+    "title": "Compliance Overview",
+    "tags": ["mantl", "compliance", "audit"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "5m",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Overall Compliance Score",
+        "type": "gauge",
+        "gridPos": {"h": 10, "w": 8, "x": 0, "y": 0},
+        "targets": [{
+          "expr": "(1 - (sum(kyverno_policy_results_total{policy_result=\"fail\"}) / sum(kyverno_policy_results_total))) * 100",
+          "legendFormat": "Compliance %"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 90, "color": "yellow"},
+                {"value": 95, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Policy Compliance by Framework",
+        "type": "bargauge",
+        "gridPos": {"h": 10, "w": 16, "x": 8, "y": 0},
+        "targets": [{
+          "expr": "sum by (framework) (kyverno_policy_results_total{policy_result=\"pass\"}) / sum by (framework) (kyverno_policy_results_total) * 100",
+          "legendFormat": "{{framework}}"
+        }],
+        "fieldConfig": {
+          "defaults": {"unit": "percent"}
+        }
+      },
+      {
+        "id": 3,
+        "title": "Failed Compliance Checks",
+        "type": "table",
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 10},
+        "targets": [{
+          "expr": "topk(10, sum by (policy_name, namespace) (kyverno_policy_results_total{policy_result=\"fail\"}))",
+          "format": "table"
+        }]
+      },
+      {
+        "id": 4,
+        "title": "Audit Events (24h)",
+        "type": "timeseries",
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 10},
+        "targets": [{
+          "expr": "rate(apiserver_audit_event_total[5m])",
+          "legendFormat": "Audit Events/sec"
+        }]
+      },
+      {
+        "id": 5,
+        "title": "Encryption Status",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 20},
+        "targets": [{
+          "expr": "count(kube_secret_info{type=\"kubernetes.io/tls\"})",
+          "legendFormat": "TLS Secrets"
+        }]
+      },
+      {
+        "id": 6,
+        "title": "RBAC Policies",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 20},
+        "targets": [{
+          "expr": "count(kube_rolebinding_info) + count(kube_clusterrolebinding_info)",
+          "legendFormat": "Role Bindings"
+        }]
+      },
+      {
+        "id": 7,
+        "title": "Network Policies",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 20},
+        "targets": [{
+          "expr": "count(kube_networkpolicy_created)",
+          "legendFormat": "Network Policies"
+        }]
+      },
+      {
+        "id": 8,
+        "title": "Pod Security Standards",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 20},
+        "targets": [{
+          "expr": "count(kube_namespace_labels{label_pod_security_kubernetes_io_enforce!=\"\"})",
+          "legendFormat": "PSS Enabled Namespaces"
+        }]
+      }
+    ]
+  }
+}

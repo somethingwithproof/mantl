@@ -1,0 +1,251 @@
+# Cilium Helm Values for Zero-Trust Networking
+# Production-ready configuration with security hardening
+# https://docs.cilium.io/en/stable/helm-reference/
+---
+# Cluster configuration
+cluster:
+  name: mantl-cluster
+  id: 1
+
+# Enable Cilium as the CNI
+cni:
+  install: true
+  chainingMode: none
+  exclusive: true
+
+# IP Address Management
+ipam:
+  mode: kubernetes
+
+# Enable native routing for better performance
+routingMode: native
+autoDirectNodeRoutes: true
+ipv4NativeRoutingCIDR: "10.0.0.0/8"
+
+# Kube-proxy replacement for better performance
+kubeProxyReplacement: true
+kubeProxyReplacementHealthzBindAddr: "0.0.0.0:10256"
+
+# Enable eBPF-based networking
+bpf:
+  masquerade: true
+  tproxy: true
+  lbExternalClusterIP: true
+
+# Enable host firewall
+hostFirewall:
+  enabled: true
+
+# Security settings
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+# Zero-Trust: Enable mutual authentication
+authentication:
+  mutual:
+    spire:
+      enabled: true
+      install:
+        enabled: false  # We deploy SPIRE separately
+      serverAddress: spire-server.spire.svc.cluster.local:8081
+      trustDomain: mantl.local
+
+# Enable Hubble for network observability
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+    replicas: 2
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  ui:
+    enabled: true
+    replicas: 2
+    frontend:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+    backend:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - port-distribution
+      - icmp
+      - httpV2:exemplars=true;labelsContext=source_ip,source_namespace,source_workload,destination_ip,destination_namespace,destination_workload,traffic_direction
+    serviceMonitor:
+      enabled: true
+
+# L7 Policy support
+l7Proxy: true
+
+# Enable bandwidth manager
+bandwidthManager:
+  enabled: true
+
+# Enable local redirect policy
+localRedirectPolicy: true
+
+# Node init settings
+nodeInit:
+  enabled: true
+  reconfigureKubelet: true
+  removeCbrBridge: true
+
+# Operator settings
+operator:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+
+# Agent settings
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Pod security
+podSecurityContext:
+  runAsUser: 0
+  runAsGroup: 0
+
+# Enable policy enforcement
+policyEnforcementMode: "default"
+
+# Enable endpoint routes
+endpointRoutes:
+  enabled: true
+
+# Enable well-known identities
+wellKnownIdentities:
+  enabled: true
+
+# Monitoring and metrics
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
+# Cluster mesh for multi-cluster
+clustermesh:
+  useAPIServer: false
+
+# Enable socket-level load balancing
+socketLB:
+  enabled: true
+
+# Enable IPAM prefix delegation
+prefixDelegation:
+  enabled: false
+
+# Health checking
+healthChecking: true
+
+# Policy audit mode (set to false for enforcement)
+policyAuditMode: false
+
+# Enable endpoint health checking
+endpointHealthChecking:
+  enabled: true
+
+# Envoy configuration
+envoy:
+  enabled: true
+  securityContext:
+    capabilities:
+      keepCapNetBindService: true
+      envoy:
+        - NET_ADMIN
+        - NET_BIND_SERVICE
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Tolerations for system pods
+tolerations:
+  - operator: Exists
+
+# Update strategy
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 2
+
+# External workloads
+externalWorkloads:
+  enabled: false
+
+# Enable encryption
+encryption:
+  enabled: true
+  type: wireguard
+  nodeEncryption: true
+  wireguard:
+    persistentKeepalive: "0s"
+
+# Identity allocation mode
+identityAllocationMode: crd
+
+# Enable CNI chaining mode
+cniChaining: false
+
+# Log settings
+debug:
+  enabled: false
+logSystemLoad: false
+
+# Extra configuration
+extraConfig:
+  enable-envoy-config: "true"
+  monitor-aggregation: medium
+  monitor-aggregation-interval: "5s"

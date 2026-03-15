@@ -1,0 +1,38 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: api-service-bluegreen
+  namespace: production
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-service
+
+  service:
+    port: 8080
+
+  # Blue/Green deployment
+  analysis:
+    interval: 1m
+    threshold: 10
+    iterations: 2
+
+    # Blue/Green strategy: traffic switches all at once
+    sessionAffinity:
+      cookieName: flagger-cookie
+      maxAge: 3600
+
+    metrics:
+      - name: request-success-rate
+        thresholdRange:
+          min: 99
+        interval: 1m
+
+    webhooks:
+      - name: smoke-test
+        type: pre-rollout
+        url: http://flagger-loadtester.flagger/
+        metadata:
+          type: cmd
+          cmd: "curl -s http://api-service-canary:8080/health | grep ok"

@@ -1,0 +1,58 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: products-api
+  namespace: ecommerce
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: products-api
+
+  provider: kubernetes
+
+  service:
+    port: 8000
+    targetPort: 8000
+
+  analysis:
+    interval: 1m
+    threshold: 10
+    maxWeight: 50
+    stepWeight: 10
+
+    metrics:
+    - name: request-success-rate
+      thresholdRange:
+        min: 99
+      interval: 1m
+
+    - name: request-duration
+      thresholdRange:
+        max: 1000  # 1 second for API calls
+      interval: 1m
+
+    - name: error-rate
+      thresholdRange:
+        max: 1  # Max 1% error rate
+      interval: 1m
+      query: |
+        100 - sum(
+          rate(http_requests_total{
+            job="products-api",
+            status!~"5.."
+          }[1m])
+        ) / sum(
+          rate(http_requests_total{
+            job="products-api"
+          }[1m])
+        ) * 100
+
+  webhooks:
+  - name: load-test
+    type: rollout
+    url: http://flagger-loadtester.mantl-system/
+    timeout: 15s
+    metadata:
+      type: cmd
+      cmd: "hey -z 1m -q 50 -c 5 http://products-api.ecommerce:8000/api/v1/products"

@@ -1,0 +1,84 @@
+{
+  "dashboard": {
+    "title": "Capacity Planning",
+    "tags": ["mantl", "capacity", "planning"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "5m",
+    "panels": [
+      {
+        "id": 1,
+        "title": "CPU Capacity Trend (30 Days)",
+        "type": "timeseries",
+        "gridPos": {"h": 10, "w": 12, "x": 0, "y": 0},
+        "targets": [{
+          "expr": "(sum(rate(container_cpu_usage_seconds_total[1h])) / sum(kube_node_status_allocatable{resource=\"cpu\"})) * 100",
+          "legendFormat": "CPU Utilization %"
+        }]
+      },
+      {
+        "id": 2,
+        "title": "Memory Capacity Trend (30 Days)",
+        "type": "timeseries",
+        "gridPos": {"h": 10, "w": 12, "x": 12, "y": 0},
+        "targets": [{
+          "expr": "(sum(container_memory_working_set_bytes) / sum(kube_node_status_allocatable{resource=\"memory\"})) * 100",
+          "legendFormat": "Memory Utilization %"
+        }]
+      },
+      {
+        "id": 3,
+        "title": "Storage Capacity Trend",
+        "type": "timeseries",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 10},
+        "targets": [{
+          "expr": "(sum(kubelet_volume_stats_used_bytes) / sum(kubelet_volume_stats_capacity_bytes)) * 100",
+          "legendFormat": "Storage Utilization %"
+        }]
+      },
+      {
+        "id": 4,
+        "title": "Estimated Days Until CPU Exhaustion",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 20},
+        "targets": [{
+          "expr": "(100 - (sum(rate(container_cpu_usage_seconds_total[1h])) / sum(kube_node_status_allocatable{resource=\"cpu\"})) * 100) / (deriv((sum(rate(container_cpu_usage_seconds_total[1h])) / sum(kube_node_status_allocatable{resource=\"cpu\"})) * 100[7d]) * 86400)",
+          "legendFormat": "Days"
+        }],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "d",
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 30, "color": "yellow"},
+                {"value": 90, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Node Count Recommendation",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 20},
+        "targets": [{
+          "expr": "ceil(sum(rate(container_cpu_usage_seconds_total[1h])) / (avg(kube_node_status_allocatable{resource=\"cpu\"}) * 0.8))",
+          "legendFormat": "Recommended Nodes"
+        }]
+      },
+      {
+        "id": 6,
+        "title": "Pod Density per Node",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 20},
+        "targets": [{
+          "expr": "sum(kube_pod_info) / count(kube_node_info)",
+          "legendFormat": "Pods per Node"
+        }]
+      }
+    ]
+  }
+}

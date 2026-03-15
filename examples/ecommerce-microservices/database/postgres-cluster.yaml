@@ -1,0 +1,155 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ecommerce-db
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/name: ecommerce-db
+    app.kubernetes.io/part-of: ecommerce
+    app.kubernetes.io/component: database
+spec:
+  instances: 3
+
+  imageName: ghcr.io/cloudnative-pg/postgresql:15.5
+
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: "256MB"
+      effective_cache_size: "1GB"
+      maintenance_work_mem: "64MB"
+      checkpoint_completion_target: "0.9"
+      wal_buffers: "16MB"
+      default_statistics_target: "100"
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+      work_mem: "2621kB"
+      min_wal_size: "1GB"
+      max_wal_size: "4GB"
+      max_worker_processes: "4"
+      max_parallel_workers_per_gather: "2"
+      max_parallel_workers: "4"
+      max_parallel_maintenance_workers: "2"
+
+  # High availability configuration
+  enableSuperuserAccess: false
+  primaryUpdateStrategy: unsupervised
+  primaryUpdateMethod: switchover
+
+  # Bootstrap from scratch
+  bootstrap:
+    initdb:
+      database: products
+      owner: products
+      secret:
+        name: ecommerce-db-app-user
+
+  # Storage configuration
+  storage:
+    size: 20Gi
+    storageClass: standard
+    pvcTemplate:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi
+      volumeMode: Filesystem
+
+  # WAL storage for better performance
+  walStorage:
+    size: 10Gi
+    storageClass: standard
+    pvcTemplate:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+
+  # Monitoring
+  monitoring:
+    enabled: true
+    podMonitorEnabled: true
+
+  # Resources
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+  # Backup configuration
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://mantl-backups/ecommerce-db/
+      s3Credentials:
+        accessKeyId:
+          name: aws-credentials
+          key: access-key-id
+        secretAccessKey:
+          name: aws-credentials
+          key: secret-access-key
+      wal:
+        compression: gzip
+        maxParallel: 8
+      data:
+        compression: gzip
+        jobs: 2
+    retentionPolicy: "30d"
+
+  # Backup schedule
+  backupSchedule:
+    - name: daily-backup
+      schedule: "0 2 * * *"
+      backupOwnerReference: self
+      target: primary
+      method: barmanObjectStore
+
+    - name: weekly-backup
+      schedule: "0 3 * * 0"
+      backupOwnerReference: self
+      target: primary
+      method: barmanObjectStore
+
+  # Point-in-time recovery
+  enablePointInTimeRecovery: true
+
+  # Affinity rules for high availability
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: preferred
+
+  # Node selector (optional)
+  # nodeSelector:
+  #   workload-type: database
+
+  # Tolerations (optional)
+  # tolerations:
+  # - key: "database"
+  #   operator: "Equal"
+  #   value: "true"
+  #   effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecommerce-db-app-user
+  namespace: ecommerce
+type: kubernetes.io/basic-auth
+stringData:
+  username: products
+  password: CHANGEME_PRODUCTS_PASSWORD  # Should be sealed-secret in production
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-credentials
+  namespace: ecommerce
+type: Opaque
+stringData:
+  access-key-id: CHANGEME_AWS_ACCESS_KEY
+  secret-access-key: CHANGEME_AWS_SECRET_KEY

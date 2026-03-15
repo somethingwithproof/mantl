@@ -1,0 +1,159 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: kyverno
+  namespace: kyverno
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: kyverno
+      version: "3.1.x"
+      sourceRef:
+        kind: HelmRepository
+        name: kyverno
+        namespace: flux-system
+      interval: 5m
+
+  install:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+
+  upgrade:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+
+  values:
+    # High availability
+    replicaCount: 3
+
+    # Resource limits
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+
+    # Pod anti-affinity for HA
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - kyverno
+          topologyKey: kubernetes.io/hostname
+
+    # Monitoring
+    metricsService:
+      create: true
+      type: ClusterIP
+      port: 8000
+
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+
+    # Admission controller configuration
+    admissionController:
+      replicas: 3
+
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 1000m
+          memory: 512Mi
+
+    # Background controller for existing resources
+    backgroundController:
+      enabled: true
+      replicas: 2
+
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+    # Cleanup controller
+    cleanupController:
+      enabled: true
+
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+
+    # Reports controller
+    reportsController:
+      enabled: true
+      replicas: 2
+
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+    # Webhook configuration
+    webhooksCleanup:
+      enabled: true
+
+    # Policy reports
+    policyReportsCleanup:
+      enabled: true
+      schedule: "*/10 * * * *"
+
+    # Logging
+    logging:
+      format: json
+      verbosity: 2
+
+    # Image pull secrets (if needed for private registries)
+    # imagePullSecrets:
+    # - name: regcred
+
+    # Custom CA bundle (if needed)
+    # customCABundle: |
+    #   -----BEGIN CERTIFICATE-----
+    #   ...
+    #   -----END CERTIFICATE-----
+
+    # Feature flags
+    features:
+      policyExceptions:
+        enabled: true
+      backgroundScan:
+        enabled: true
+        interval: 1h
+      generateValidatingAdmissionPolicy:
+        enabled: false
+      admissionReports:
+        enabled: true
+      aggregateReports:
+        enabled: true
+---
+apiVersion: source.toolkit.fluxcd.io/v1beta2
+kind: HelmRepository
+metadata:
+  name: kyverno
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://kyverno.github.io/kyverno/

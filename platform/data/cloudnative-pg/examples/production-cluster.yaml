@@ -1,0 +1,54 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: app-db
+  namespace: production
+spec:
+  instances: 3
+
+  postgresql:
+    parameters:
+      max_connections: "100"
+      shared_buffers: "256MB"
+      effective_cache_size: "1GB"
+      work_mem: "16MB"
+
+  # Storage
+  storage:
+    size: 100Gi
+    storageClass: gp3
+
+  # Monitoring
+  monitoring:
+    enabled: true
+    podMonitorMetricRelabelings:
+      - sourceLabels: ["cluster"]
+        targetLabel: postgresql_cluster
+
+  # Backup configuration
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://mantl-postgres-backups/
+      s3Credentials:
+        inheritFromIAMRole: true  # Use IRSA
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+    retentionPolicy: "30d"
+
+  # Point-in-time recovery
+  externalClusters: []
+
+  # Bootstrap
+  bootstrap:
+    initdb:
+      database: app
+      owner: app
+      secret:
+        name: app-db-credentials
+
+  # Affinity
+  affinity:
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname

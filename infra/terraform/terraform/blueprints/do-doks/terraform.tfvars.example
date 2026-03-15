@@ -1,0 +1,124 @@
+################################################################################
+# Core Configuration
+################################################################################
+
+cluster_name       = "mantl-dev"
+region             = "nyc3"
+environment        = "dev"
+kubernetes_version = "1.31.3-do.0"
+
+tags = [
+  "mantl",
+  "kubernetes",
+  "dev"
+]
+
+################################################################################
+# Networking
+################################################################################
+
+vpc_cidr = "10.10.0.0/16"
+
+# Restrict SSH to internal networks only
+allowed_ssh_cidrs = ["10.0.0.0/8"]
+
+################################################################################
+# Node Pools
+################################################################################
+
+# System pool (platform components)
+system_node_size  = "s-4vcpu-8gb"
+system_node_count = 2
+
+# Workload pool (application workloads)
+workload_node_size = "s-4vcpu-8gb"
+workload_min_nodes = 2
+workload_max_nodes = 5
+
+# Spot pool (optional cost savings)
+enable_spot_pool = false
+spot_node_size   = "s-4vcpu-8gb"
+spot_min_nodes   = 0
+spot_max_nodes   = 3
+
+################################################################################
+# Cluster Management
+################################################################################
+
+enable_auto_upgrade      = false
+maintenance_day          = "sunday"
+maintenance_start_time   = "02:00"
+destroy_all_resources    = false
+
+################################################################################
+# Container Registry
+################################################################################
+
+registry_tier   = "basic"
+registry_region = "nyc3"
+
+################################################################################
+# Load Balancer
+################################################################################
+
+enable_ingress_lb = true
+
+################################################################################
+# Monitoring
+################################################################################
+
+enable_monitoring = true
+alert_emails      = [
+  # "ops@example.com"
+]
+
+################################################################################
+# Platform Database (Optional)
+################################################################################
+
+enable_platform_db   = false
+postgres_version     = "16"
+postgres_size        = "db-s-2vcpu-4gb"
+postgres_node_count  = 1  # Set to 2 for HA
+db_maintenance_day   = "sunday"
+db_maintenance_hour  = "03:00"
+
+################################################################################
+# Backup Storage
+################################################################################
+
+enable_backup_bucket   = true
+spaces_region          = "nyc3"
+backup_retention_days  = 30
+
+################################################################################
+# Platform Security Features
+################################################################################
+
+# Cilium CNI + Hubble (Flow Logs Alternative)
+enable_cilium               = true
+hubble_ui_ingress_enabled   = false
+hubble_ui_hosts             = []
+enable_flow_logs_export     = true
+
+# Sealed Secrets (KMS Alternative)
+enable_sealed_secrets = true
+
+# External Secrets Operator
+enable_external_secrets = false
+
+# Falco (Runtime Security)
+enable_falco       = true
+falco_webhook_url  = ""  # Optional: Slack/PagerDuty webhook
+falco_ui_enabled   = false
+
+# Tailscale VPN (Private Endpoint Alternative)
+enable_tailscale        = false
+tailscale_client_id     = ""
+tailscale_client_secret = ""
+
+# cert-manager
+enable_cert_manager = true
+
+# Security Dashboard
+enable_security_dashboard = true

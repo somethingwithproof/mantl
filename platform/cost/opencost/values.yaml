@@ -1,0 +1,114 @@
+################################################################################
+# OpenCost Configuration for Cost Management
+################################################################################
+
+opencost:
+  exporter:
+    # Cluster identifier for multi-cluster deployments
+    defaultClusterId: mantl-production
+
+    # Cloud provider cost integration
+    cloudProviderApiKey: ""  # Set via External Secrets
+
+    # Resources
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # Prometheus configuration (use existing)
+  prometheus:
+    internal:
+      enabled: false
+    external:
+      url: http://prometheus-server.monitoring.svc:80
+      enabled: true
+
+  # UI Configuration
+  ui:
+    enabled: true
+    ingress:
+      enabled: true
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+        kubernetes.io/tls-acme: "true"
+      hosts:
+        - host: opencost.mantl.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+      tls:
+        - secretName: opencost-tls
+          hosts:
+            - opencost.mantl.example.com
+
+  # ServiceMonitor for Prometheus scraping
+  serviceMonitor:
+    enabled: true
+    additionalLabels:
+      release: prometheus
+
+  # Cost allocation configuration
+  config:
+    # AWS-specific configuration
+    aws:
+      spotDataRegion: us-east-1
+      spotDataBucket: mantl-spot-data-feed
+      athenaProjectID: mantl-opencost
+
+    # GCP-specific configuration
+    gcp:
+      billingDataDataset: billing_export
+
+    # Azure-specific configuration
+    azure:
+      storageAccount: mantlcostdata
+
+  # Cost allocation settings
+  allocation:
+    # Idle cost allocation method
+    idleCostAllocation: shareByNode
+
+    # Include idle costs in allocation
+    includeIdleCosts: true
+
+    # Reconcile with cloud provider bills
+    reconcileEnabled: true
+
+# Additional monitoring
+alerts:
+  enabled: true
+  rules:
+    - alert: HighMonthlyCostIncrease
+      expr: |
+        sum(rate(node_total_hourly_cost[30d]))
+        /
+        sum(rate(node_total_hourly_cost[30d] offset 30d)) > 1.2
+      for: 1h
+      annotations:
+        summary: "Monthly costs increased by >20%"
+        description: "Cluster costs have increased by {{ $value | humanizePercentage }} over the last month"
+      labels:
+        severity: warning
+
+    - alert: NamespaceOverBudget
+      expr: |
+        sum by (namespace) (
+          rate(container_cpu_usage_seconds_total[1h]) *
+          on(node) group_left()
+          node_cpu_hourly_cost
+        ) * 730 > namespace_monthly_budget
+      for: 1h
+      annotations:
+        summary: "Namespace {{ $labels.namespace }} over budget"
+        description: "Projected monthly cost exceeds budget"
+      labels:
+        severity: warning
+
+# Grafana dashboard integration
+dashboards:
+  enabled: true
+  namespace: monitoring

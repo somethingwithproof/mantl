@@ -1,0 +1,36 @@
+trivy-operator:
+  # Scan configuration
+  scanJobTolerations: []
+  scanJobAnnotations: {}
+  scanJobPodTemplateLabels: {}
+
+  # Compliance scanning
+  compliance:
+    cron: "0 */6 * * *"  # Every 6 hours
+    reportType: summary
+
+  # Vulnerabilities
+  vulnerabilityReports:
+    scanner: Trivy
+
+  trivyOperator:
+    scanJobsInSameNamespace: true
+
+  serviceMonitor:
+    enabled: true
+
+  # Trivy configuration
+  trivy:
+    # Use server mode for efficiency
+    server:
+      enabled: true
+
+    severity: CRITICAL,HIGH,MEDIUM
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

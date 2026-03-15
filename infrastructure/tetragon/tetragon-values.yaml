@@ -1,0 +1,147 @@
+# Cilium Tetragon Helm Values
+# eBPF-based security observability
+# https://tetragon.io/
+
+# Tetragon agent configuration
+tetragon:
+  # Enable BPF-based process events
+  enableProcessCred: true
+  enableProcessNs: true
+
+  # Enable kernel capabilities tracking
+  enableK8sAPI: true
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Security context
+  securityContext:
+    privileged: true  # Required for eBPF
+    capabilities:
+      add:
+        - BPF
+        - PERFMON
+        - SYS_RESOURCE
+        - SYS_ADMIN
+
+  # Export configuration
+  export:
+    # Export events to stdout (for log collection)
+    stdout:
+      enabledCommand: true
+      enabledArgs: true
+      enabledK8s: true
+
+  # Policy directory
+  policyDir: /etc/tetragon/tetragon.tp.d
+
+  # BPF configuration
+  btf: ""  # Auto-detect BTF
+
+  # Process tree tracking
+  enableCgroupId: true
+
+  # Health server
+  healthServer:
+    enabled: true
+    port: 6789
+
+  # gRPC server for events
+  grpc:
+    enabled: true
+    address: "localhost:54321"
+
+  # Prometheus metrics
+  prometheus:
+    enabled: true
+    address: "0.0.0.0:2112"
+    metricsLabelFilter: ""
+    serviceMonitor:
+      enabled: true
+      labels:
+        release: prometheus
+
+# Tetragon Operator configuration
+tetragonOperator:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+# Export configuration
+export:
+  # File exporter (for persistent storage)
+  filenames:
+    - /var/log/tetragon/events.log
+
+  # Rate limits
+  rateLimit: 0  # No rate limit
+  aggregationOptions:
+    windowSize: 15s
+    channelBufferSize: 16384
+
+# Priority class
+priorityClassName: system-node-critical
+
+# Node selector
+nodeSelector:
+  kubernetes.io/os: linux
+
+# Tolerations (run on all nodes including control plane)
+tolerations:
+  - operator: Exists
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "2112"
+
+# Service account
+serviceAccount:
+  create: true
+  name: tetragon
+
+# RBAC
+rbac:
+  create: true
+
+# Update strategy
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+
+# Extra volumes for policy files
+extraVolumes:
+  - name: tetragon-policies
+    configMap:
+      name: tetragon-policies
+      optional: true
+
+extraVolumeMounts:
+  - name: tetragon-policies
+    mountPath: /etc/tetragon/tetragon.tp.d
+    readOnly: true
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: products-api
+  namespace: ecommerce
+  labels:
+    app.kubernetes.io/name: products-api
+    app.kubernetes.io/part-of: ecommerce
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app.kubernetes.io/name: products-api
+    app.kubernetes.io/part-of: ecommerce

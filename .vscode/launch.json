@@ -1,0 +1,122 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Products API",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "main:app",
+        "--reload",
+        "--host", "0.0.0.0",
+        "--port", "8000"
+      ],
+      "cwd": "${workspaceFolder}/examples/ecommerce-microservices/src/products-api",
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/products",
+        "LOG_LEVEL": "debug"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: ML Inference Service",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "main:app",
+        "--reload",
+        "--host", "0.0.0.0",
+        "--port", "8000"
+      ],
+      "cwd": "${workspaceFolder}/examples/ml-inference-service/src",
+      "env": {
+        "LOG_LEVEL": "debug"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: Event Publisher",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "publisher:app",
+        "--reload",
+        "--host", "0.0.0.0",
+        "--port", "8000"
+      ],
+      "cwd": "${workspaceFolder}/examples/event-driven-arch/publisher",
+      "env": {
+        "NATS_URL": "nats://localhost:4222",
+        "LOG_LEVEL": "debug"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: Event Subscriber",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/examples/event-driven-arch/subscriber/subscriber.py",
+      "cwd": "${workspaceFolder}/examples/event-driven-arch/subscriber",
+      "env": {
+        "NATS_URL": "nats://localhost:4222",
+        "LOG_LEVEL": "debug"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: Batch Processor",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/examples/batch-processing-job/src/batch_processor.py",
+      "cwd": "${workspaceFolder}/examples/batch-processing-job/src",
+      "env": {
+        "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/batch",
+        "S3_BUCKET": "mantl-batch-dev",
+        "LOG_LEVEL": "debug"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: Pytest Current File",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "${file}",
+        "-v",
+        "-s"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Python: Pytest All Tests",
+      "type": "python",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "tests/",
+        "-v",
+        "--cov",
+        "--cov-report=html"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Docker: Attach to Container",
+      "type": "docker",
+      "request": "attach",
+      "platform": "node",
+      "preLaunchTask": "docker-run: debug"
+    }
+  ]
+}

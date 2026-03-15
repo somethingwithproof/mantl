@@ -1,0 +1,132 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: "Disallow Latest Tag"
+    policies.kyverno.io/category: "Image Security"
+    policies.kyverno.io/severity: "medium"
+    policies.kyverno.io/subject: "Pod"
+    policies.kyverno.io/minversion: "1.6.0"
+    policies.kyverno.io/description: |
+      Require that all container images have explicit version tags and not
+      use 'latest' or no tag. Using :latest is an anti-pattern as it makes
+      deployments non-deterministic and harder to rollback.
+
+      Rationale:
+      - :latest tag is mutable and can change without notice
+      - Makes troubleshooting difficult (which exact image caused the issue?)
+      - Prevents reliable rollbacks
+      - Violates immutability principle
+
+      Best practice: Use semantic versions (v1.2.3) or commit SHAs
+
+      Compliance: Best practices for reproducible deployments
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+  - name: require-image-tag
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+          - kyverno
+    validate:
+      message: |
+        Container images must have explicit version tags (not :latest or no tag).
+
+        Bad: nginx, nginx:latest
+        Good: nginx:1.25-alpine, nginx:1.25.3
+
+        Images without tags: {{ request.object.spec.containers[?!contains(image, ':')].image | join(', ') }}
+        Images with :latest: {{ request.object.spec.containers[?ends_with(image, ':latest')].image | join(', ') }}
+      foreach:
+      - list: request.object.spec.containers[]
+        deny:
+          conditions:
+            any:
+            # No tag specified (implicitly :latest)
+            - key: "{{ element.image }}"
+              operator: AnyNotIn
+              value: "*:*"
+            # Explicit :latest tag
+            - key: "{{ element.image }}"
+              operator: AnyIn
+              value: "*:latest"
+
+  - name: require-init-image-tag
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+          - kyverno
+    preconditions:
+      any:
+      - key: "{{ request.object.spec.initContainers[] || `[]` | length(@) }}"
+        operator: GreaterThan
+        value: 0
+    validate:
+      message: |
+        Init container images must have explicit version tags (not :latest or no tag).
+      foreach:
+      - list: request.object.spec.initContainers[]
+        deny:
+          conditions:
+            any:
+            - key: "{{ element.image }}"
+              operator: AnyNotIn
+              value: "*:*"
+            - key: "{{ element.image }}"
+              operator: AnyIn
+              value: "*:latest"
+
+  - name: require-ephemeral-image-tag
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+          - kyverno
+    preconditions:
+      any:
+      - key: "{{ request.object.spec.ephemeralContainers[] || `[]` | length(@) }}"
+        operator: GreaterThan
+        value: 0
+    validate:
+      message: |
+        Ephemeral container images must have explicit version tags (not :latest or no tag).
+      foreach:
+      - list: request.object.spec.ephemeralContainers[]
+        deny:
+          conditions:
+            any:
+            - key: "{{ element.image }}"
+              operator: AnyNotIn
+              value: "*:*"
+            - key: "{{ element.image }}"
+              operator: AnyIn
+              value: "*:latest"

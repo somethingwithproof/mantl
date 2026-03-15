@@ -1,0 +1,132 @@
+# Production Profile
+# Full features, high availability, extended retention
+
+profile: production
+
+global:
+  domain: "prod.mantl.io"
+
+monitoring:
+  enabled: true
+  prometheus:
+    retention: 30d
+    storageSize: 100Gi
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 4Gi
+      limits:
+        cpu: 4000m
+        memory: 16Gi
+
+    # High availability
+    replicas: 2
+
+  grafana:
+    enabled: true
+    ingress:
+      enabled: true
+      hosts:
+        - grafana.prod.mantl.io
+      tls:
+        enabled: true
+        secretName: grafana-tls
+
+    # High availability
+    replicas: 2
+
+  alertmanager:
+    enabled: true
+    config:
+      receivers:
+        - name: 'slack-critical'
+          slack_configs:
+            - api_url_file: /etc/alertmanager/secrets/slack-webhook
+              channel: '#alerts-critical'
+              send_resolved: true
+
+backup:
+  enabled: true
+  velero:
+    configuration:
+      provider: aws
+      backupStorageLocation:
+        bucket: mantl-prod-backups
+        config:
+          region: us-east-1
+
+    schedules:
+      daily:
+        schedule: "0 2 * * *"
+        template:
+          ttl: 720h  # 30 days
+
+      weekly:
+        schedule: "0 3 * * 0"
+        template:
+          ttl: 2160h  # 90 days
+
+      monthly:
+        schedule: "0 4 1 * *"
+        template:
+          ttl: 8760h  # 365 days
+
+security:
+  enabled: true
+  trivy:
+    enabled: true
+    scanJobsCronJob: "0 1 * * *"  # Daily
+    compliance:
+      enabled: true
+      reports:
+        - nsa
+        - pci-dss
+        - cis
+
+  falco:
+    enabled: true
+    priority: notice  # More sensitive
+    falcosidekick:
+      enabled: true
+      webui:
+        enabled: true
+        ingress:
+          enabled: true
+
+database:
+  enabled: true
+  cnpg:
+    exampleCluster:
+      enabled: false  # Create via GitOps
+
+progressiveDelivery:
+  enabled: true
+  flagger:
+    metricsServer: http://prometheus-server
+    slack:
+      channel: "#deployments"
+
+cost:
+  enabled: true
+  opencost:
+    ui:
+      enabled: true
+      ingress:
+        enabled: true
+        hosts:
+          - opencost.prod.mantl.io
+    exporter:
+      enabled: true
+      csv:
+        endpoint: s3://mantl-prod-cost-reports
+
+chaos:
+  enabled: false  # Enable only for specific tests
+
+developer:
+  backstage:
+    enabled: true
+    ingress:
+      enabled: true
+  vcluster:
+    enabled: false  # Use separate clusters

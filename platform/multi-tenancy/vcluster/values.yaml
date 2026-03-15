@@ -1,0 +1,45 @@
+vcluster:
+  # Syncer configuration
+  syncer:
+    extraArgs:
+      - --out-kube-config-server=https://vcluster.example.com
+
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+  # Storage
+  storage:
+    className: gp3
+    size: 20Gi
+
+  # Resource quotas
+  resourceQuota:
+    enabled: true
+    quota:
+      requests.cpu: "10"
+      requests.memory: "20Gi"
+      requests.storage: "100Gi"
+      persistentvolumeclaims: "10"
+
+  # Network policies
+  networkPolicy:
+    enabled: true
+
+  # Pod security
+  podSecurityStandard: baseline
+
+  # Monitoring
+  monitoring:
+    enabled: true
+
+  # Ingress
+  ingress:
+    enabled: true
+    host: vcluster-team-a.mantl.example.com
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod

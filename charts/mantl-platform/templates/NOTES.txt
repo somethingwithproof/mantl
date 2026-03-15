@@ -1,0 +1,214 @@
+{{- $profile := .Values.profile | default "production" }}
+{{- $domain := .Values.global.domain }}
+
+████████████████████████████████████████████████████████████████████████████
+█                                                                          █
+█   mantl Platform {{ .Chart.Version }} - Deployed Successfully!          █
+█                                                                          █
+████████████████████████████████████████████████████████████████████████████
+
+Profile: {{ $profile }}
+Namespace: {{ include "mantl-platform.namespace" . }}
+
+================================================================================
+ENABLED COMPONENTS
+================================================================================
+
+{{- if .Values.monitoring.enabled }}
+✓ Monitoring Stack (Prometheus + Grafana)
+{{- end }}
+{{- if .Values.backup.enabled }}
+✓ Backup & DR (Velero)
+{{- end }}
+{{- if .Values.security.enabled }}
+✓ Security (Trivy + Falco)
+{{- end }}
+{{- if .Values.database.enabled }}
+✓ Database (CloudNativePG)
+{{- end }}
+{{- if .Values.progressiveDelivery.enabled }}
+✓ Progressive Delivery (Flagger)
+{{- end }}
+{{- if .Values.cost.enabled }}
+✓ Cost Management (OpenCost)
+{{- end }}
+{{- if .Values.chaos.enabled }}
+✓ Chaos Engineering (Chaos Mesh)
+{{- end }}
+{{- if .Values.developer.enabled }}
+✓ Developer Platform (Backstage + vCluster)
+{{- end }}
+
+================================================================================
+ACCESSING COMPONENTS
+================================================================================
+
+{{- if .Values.monitoring.grafana.enabled }}
+
+🔍 Grafana Dashboard
+────────────────────────────────────────────────────────────────────────────
+{{- if .Values.monitoring.grafana.ingress.enabled }}
+URL: https://{{ index .Values.monitoring.grafana.ingress.hosts 0 }}
+
+{{- else }}
+Access via port-forward:
+
+  kubectl port-forward -n {{ include "mantl-platform.namespace" . }} \
+    svc/{{ .Release.Name }}-grafana 3000:80
+
+  Open: http://localhost:3000
+{{- end }}
+
+Get admin password:
+
+  kubectl get secret -n {{ include "mantl-platform.namespace" . }} \
+    {{ .Release.Name }}-grafana \
+    -o jsonpath="{.data.admin-password}" | base64 --decode
+
+{{- end }}
+
+{{- if .Values.monitoring.prometheus.enabled }}
+
+📊 Prometheus
+────────────────────────────────────────────────────────────────────────────
+Access via port-forward:
+
+  kubectl port-forward -n {{ include "mantl-platform.namespace" . }} \
+    svc/{{ .Release.Name }}-prometheus-server 9090:80
+
+  Open: http://localhost:9090
+
+{{- end }}
+
+{{- if .Values.cost.opencost.enabled }}
+
+💰 OpenCost
+────────────────────────────────────────────────────────────────────────────
+{{- if .Values.cost.opencost.ui.ingress.enabled }}
+URL: https://{{ index .Values.cost.opencost.ui.ingress.hosts 0 }}
+
+{{- else }}
+Access via port-forward:
+
+  kubectl port-forward -n {{ include "mantl-platform.namespace" . }} \
+    svc/{{ .Release.Name }}-opencost 9090:9090
+
+  Open: http://localhost:9090
+{{- end }}
+
+{{- end }}
+
+{{- if and .Values.security.falco.enabled .Values.security.falco.falcosidekick.webui.enabled }}
+
+🛡️  Falco Security Dashboard
+────────────────────────────────────────────────────────────────────────────
+Access via port-forward:
+
+  kubectl port-forward -n {{ include "mantl-platform.namespace" . }} \
+    svc/{{ .Release.Name }}-falcosidekick-ui 2802:2802
+
+  Open: http://localhost:2802
+
+{{- end }}
+
+{{- if .Values.backup.enabled }}
+
+💾 Backup Management (Velero)
+────────────────────────────────────────────────────────────────────────────
+List backups:
+
+  velero backup get -n {{ include "mantl-platform.namespace" . }}
+
+Create manual backup:
+
+  velero backup create manual-backup \
+    --include-namespaces default,production \
+    -n {{ include "mantl-platform.namespace" . }}
+
+Restore from backup:
+
+  velero restore create --from-backup <backup-name> \
+    -n {{ include "mantl-platform.namespace" . }}
+
+{{- end }}
+
+{{- if .Values.security.trivy.enabled }}
+
+🔒 Security Scanning (Trivy)
+────────────────────────────────────────────────────────────────────────────
+View vulnerability reports:
+
+  kubectl get vulnerabilityreports -A
+
+View specific report:
+
+  kubectl get vulnerabilityreport <name> -o yaml
+
+{{- end }}
+
+{{- if .Values.progressiveDelivery.enabled }}
+
+🚀 Progressive Delivery (Flagger)
+────────────────────────────────────────────────────────────────────────────
+View canary deployments:
+
+  kubectl get canaries -A
+
+View canary status:
+
+  kubectl describe canary <name> -n <namespace>
+
+{{- end }}
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+{{- if eq $profile "dev" }}
+
+Development Profile Active:
+  ✓ Minimal resources allocated
+  ✓ 7-day retention periods
+  ✓ Weekly security scans only
+
+  → Consider upgrading to 'staging' or 'production' profile for production use
+
+{{- else if eq $profile "staging" }}
+
+Staging Profile Active:
+  ✓ Medium resources allocated
+  ✓ 10-day retention periods
+  ✓ Daily security scans
+
+  → Review for production readiness before final deployment
+
+{{- else }}
+
+Production Profile Active:
+  ✓ High availability enabled
+  ✓ 30+ day retention periods
+  ✓ Daily security scans
+  ✓ Full monitoring and alerting
+
+  → Configure alerting routes for your team
+  → Set up backup storage credentials (if not already configured)
+  → Review ingress configurations for your domain
+
+{{- end }}
+
+================================================================================
+DOCUMENTATION
+================================================================================
+
+Chart Documentation:
+  https://github.com/thomasvincent/mantl/tree/main/charts/mantl-platform
+
+Full Platform Documentation:
+  https://github.com/thomasvincent/mantl
+
+Support:
+  https://github.com/thomasvincent/mantl/issues
+
+================================================================================
+
+Thank you for using mantl Platform!
