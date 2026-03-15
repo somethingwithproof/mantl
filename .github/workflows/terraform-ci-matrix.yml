@@ -1,4 +1,4 @@
-name: OpenTofu CI
+name: Terraform CI
 
 permissions:
   contents: read
@@ -6,7 +6,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: opentofu-ci-${{ github.ref }}
+  group: terraform-ci-${{ github.ref }}
   cancel-in-progress: true
 
 on:
@@ -27,15 +27,15 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: opentofu/setup-opentofu@v1
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
         with:
-          tofu_version: '1.8.0'
-      - name: OpenTofu fmt (repo)
-        run: tofu fmt -check -recursive
+          terraform_version: '~1.9'
+      - name: Terraform fmt (repo)
+        run: terraform fmt -check -recursive
 
-  opentofu:
-    name: OpenTofu validate (${{ matrix.path }})
+  terraform:
+    name: Terraform validate (${{ matrix.path }})
     runs-on: ubuntu-latest
     if: ${{ hashFiles(format('{0}/**/*.tf', matrix.path)) != '' }}
     strategy:
@@ -55,24 +55,24 @@ jobs:
       run:
         working-directory: ${{ matrix.path }}
     steps:
-      - uses: actions/checkout@v6
-      - name: OpenTofu plugin cache
+      - uses: actions/checkout@v4
+      - name: Terraform plugin cache
         run: echo "plugin_cache_dir=$HOME/.terraform.d/plugin-cache" >> $GITHUB_ENV
-      - uses: actions/cache@v5
+      - uses: actions/cache@v4
         with:
           path: ~/.terraform.d/plugin-cache
-          key: ${{ runner.os }}-tofu-${{ hashFiles(format('{0}/**/*.tf', matrix.path)) }}
-      - uses: opentofu/setup-opentofu@v1
+          key: ${{ runner.os }}-tf-${{ hashFiles(format('{0}/**/*.tf', matrix.path)) }}
+      - uses: hashicorp/setup-terraform@v3
         with:
-          tofu_version: '1.8.0'
+          terraform_version: '~1.9'
       - name: Init
-        run: tofu init -backend=false -input=false
+        run: terraform init -backend=false -input=false
       - name: Validate
-        run: tofu validate
+        run: terraform validate
       - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v6
+        uses: terraform-linters/setup-tflint@v4
       - name: Cache TFLint plugins
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: ~/.tflint.d/plugins
           key: ${{ runner.os }}-tflint-${{ hashFiles('.tflint.hcl') }}
@@ -85,7 +85,7 @@ jobs:
     name: tfsec (repo)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: aquasecurity/tfsec-action@v1
         with:
           working_directory: terraform
@@ -93,7 +93,7 @@ jobs:
           sarif_file: tfsec.sarif
           additional_args: --config-file .tfsec.yml
       - name: Upload tfsec SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: tfsec.sarif
           category: tfsec
@@ -102,7 +102,7 @@ jobs:
     name: Checkov (repo)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
       - uses: bridgecrewio/checkov-action@v12
         with:
           directory: terraform
@@ -112,7 +112,7 @@ jobs:
           config_file: .checkov.yml
           severity: MEDIUM,HIGH,CRITICAL
       - name: Upload Checkov SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: checkov.sarif
           category: checkov

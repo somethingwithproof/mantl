@@ -1,0 +1,29 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Image Registries
+    policies.kyverno.io/category: Software Supply Chain Security
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Only allow images from authorized registries.
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: validate-registries
+      match:
+        any:
+        - resources:
+            kinds:
+              - Pod
+      validate:
+        message: "Unknown image registry. Only authorized registries are allowed."
+        anyPattern:
+          - spec:
+              containers:
+                - image: "602401143452.dkr.ecr.*.amazonaws.com/*" # Example EKS Registry
+          - spec:
+              containers:
+                - image: "thomasvincent/*"

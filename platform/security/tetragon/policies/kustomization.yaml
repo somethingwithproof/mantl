@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - privilege-escalation.yaml
+  - sensitive-file-access.yaml
+  - suspicious-network.yaml
+  - crypto-mining.yaml

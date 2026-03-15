@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: argocd
+data:
+  # Notification services configuration
+  service.slack: |
+    token: $slack-token
+    username: ArgoCD
+    icon: https://argoproj.github.io/argo-cd/assets/logo.png
+
+  service.webhook.platform-alerts: |
+    url: $webhook-url
+    headers:
+      - name: Content-Type
+        value: application/json
+
+  # Notification templates
+  template.app-sync-succeeded: |
+    message: |
+      Application {{.app.metadata.name}} has been successfully synced.
+      Sync Status: {{.app.status.sync.status}}
+      Health Status: {{.app.status.health.status}}
+      Revision: {{.app.status.sync.revision}}
+    slack:
+      attachments: |
+        [{
+          "color": "#18be52",
+          "title": "{{.app.metadata.name}} synced successfully",
+          "fields": [
+            {"title": "Application", "value": "{{.app.metadata.name}}", "short": true},
+            {"title": "Revision", "value": "{{.app.status.sync.revision | substr 0 7}}", "short": true},
+            {"title": "Environment", "value": "{{.app.spec.destination.namespace}}", "short": true}
+          ]
+        }]
+
+  template.app-sync-failed: |
+    message: |
+      Application {{.app.metadata.name}} sync has failed!
+      Error: {{.app.status.operationState.message}}
+    slack:
+      attachments: |
+        [{
+          "color": "#e53935",
+          "title": "{{.app.metadata.name}} sync failed",
+          "text": "{{.app.status.operationState.message}}",
+          "fields": [
+            {"title": "Application", "value": "{{.app.metadata.name}}", "short": true},
+            {"title": "Revision", "value": "{{.app.status.sync.revision | substr 0 7}}", "short": true}
+          ]
+        }]
+
+  template.app-health-degraded: |
+    message: |
+      Application {{.app.metadata.name}} health is degraded!
+      Health Status: {{.app.status.health.status}}
+    slack:
+      attachments: |
+        [{
+          "color": "#f4c030",
+          "title": "{{.app.metadata.name}} health degraded",
+          "fields": [
+            {"title": "Application", "value": "{{.app.metadata.name}}", "short": true},
+            {"title": "Health Status", "value": "{{.app.status.health.status}}", "short": true}
+          ]
+        }]
+
+  template.app-deployed: |
+    message: |
+      Application {{.app.metadata.name}} has been deployed.
+    slack:
+      attachments: |
+        [{
+          "color": "#18be52",
+          "title": "{{.app.metadata.name}} deployed",
+          "fields": [
+            {"title": "Application", "value": "{{.app.metadata.name}}", "short": true},
+            {"title": "Revision", "value": "{{.app.status.sync.revision | substr 0 7}}", "short": true},
+            {"title": "Deployed At", "value": "{{.app.status.operationState.finishedAt}}", "short": true}
+          ]
+        }]
+
+  # Triggers
+  trigger.on-sync-succeeded: |
+    - when: app.status.operationState.phase in ['Succeeded']
+      send: [app-sync-succeeded]
+
+  trigger.on-sync-failed: |
+    - when: app.status.operationState.phase in ['Error', 'Failed']
+      send: [app-sync-failed]
+
+  trigger.on-health-degraded: |
+    - when: app.status.health.status == 'Degraded'
+      send: [app-health-degraded]
+
+  trigger.on-deployed: |
+    - when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+      send: [app-deployed]
+
+  # Default subscriptions for all applications
+  subscriptions: |
+    - recipients:
+        - slack:platform-alerts
+      triggers:
+        - on-sync-failed
+        - on-health-degraded

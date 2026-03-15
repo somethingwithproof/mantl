@@ -1,4 +1,4 @@
-name: OpenTofu CI (cloudflare)
+name: Terraform CI (cloudflare)
 on:
   pull_request:
   workflow_dispatch:
@@ -16,18 +16,18 @@ jobs:
       run:
         working-directory: terraform/cloudflare
     steps:
-      - uses: actions/checkout@v6
-      - uses: opentofu/setup-opentofu@v1
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
         with:
-          tofu_version: 1.8.0
-      - name: OpenTofu fmt
-        run: tofu fmt -check -recursive
-      - name: OpenTofu validate
+          terraform_version: 1.14.3
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+      - name: Terraform validate
         run: |
-          tofu init -backend=false -input=false -no-color
-          tofu validate -no-color
+          terraform init -backend=false -input=false -no-color
+          terraform validate -no-color
       - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v6
+        uses: terraform-linters/setup-tflint@v4
         with:
           tflint_version: v0.54.0
       - name: Run TFLint

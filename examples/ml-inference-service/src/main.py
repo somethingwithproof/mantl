@@ -71,10 +71,38 @@ app = FastAPI(
 )
 
 # CORS middleware
+def _parse_cors_origins() -> list[str]:
+    raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    if not raw:
+        logger.warning(
+            "CORS_ALLOWED_ORIGINS is not set; all cross-origin requests will be rejected"
+        )
+        return []
+    origins = [o.strip() for o in raw.split(",") if o.strip()]
+    for origin in origins:
+        if origin != "*" and not origin.startswith(("http://", "https://")):
+            raise RuntimeError(f"Invalid CORS origin: {origin}")
+    creds_raw = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower()
+    if creds_raw not in ("true", "false"):
+        raise RuntimeError(
+            f"CORS_ALLOW_CREDENTIALS must be 'true' or 'false', got: {creds_raw!r}"
+        )
+    allow_credentials = creds_raw == "true"
+    if "*" in origins and allow_credentials:
+        raise RuntimeError(
+            "CORS_ALLOWED_ORIGINS=* with CORS_ALLOW_CREDENTIALS=true is unsafe; "
+            "specify an explicit origin allowlist"
+        )
+    if "*" in origins:
+        raise RuntimeError(
+            "CORS_ALLOWED_ORIGINS=* is not allowed; specify explicit origin allowlist"
+        )
+    return origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_parse_cors_origins(),
+    allow_credentials=os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -300,7 +328,7 @@ async def predict(request: PredictionRequest):
                 status="error"
             ).inc()
             logger.error(f"Prediction failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/api/v1/predict/batch", response_model=BatchPredictionResponse)
 async def predict_batch(request: BatchPredictionRequest):
@@ -366,7 +394,7 @@ async def predict_batch(request: BatchPredictionRequest):
                 status="error"
             ).inc()
             logger.error(f"Batch prediction failed: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Batch prediction failed: {str(e)}")
+            raise HTTPException(status_code=500, detail="Internal server error")
 
 if __name__ == "__main__":
     import uvicorn

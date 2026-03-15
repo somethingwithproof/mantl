@@ -1,0 +1,388 @@
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceFramework
+metadata:
+  name: hipaa
+  labels:
+    app.kubernetes.io/part-of: mantl-compliance
+spec:
+  name: HIPAA Security Rule
+  version: "2024"
+  description: |
+    Health Insurance Portability and Accountability Act (HIPAA) Security Rule
+    compliance framework for protecting electronic Protected Health Information (ePHI).
+  categories:
+    - name: administrative-safeguards
+      displayName: Administrative Safeguards (164.308)
+      controls:
+        - id: hipaa-164.308.a.1.i
+          name: Security Management Process - Risk Analysis
+          description: Conduct an accurate and thorough assessment of the potential risks and vulnerabilities to ePHI
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Vulnerability scanning results
+            - type: logs
+              description: Risk assessment documentation
+
+        - id: hipaa-164.308.a.1.ii.a
+          name: Security Management Process - Risk Management
+          description: Implement security measures sufficient to reduce risks and vulnerabilities
+          severity: critical
+          automatable: true
+          evidence:
+            - type: policy
+              description: Security policies in place
+            - type: configuration
+              description: Security controls configuration
+
+        - id: hipaa-164.308.a.1.ii.b
+          name: Security Management Process - Sanction Policy
+          description: Apply appropriate sanctions against workforce members who fail to comply
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Sanction policy documentation
+
+        - id: hipaa-164.308.a.1.ii.c
+          name: Security Management Process - Information System Activity Review
+          description: Implement procedures to regularly review records of information system activity
+          severity: critical
+          automatable: true
+          evidence:
+            - type: logs
+              description: Audit log review procedures
+            - type: metrics
+              description: Log aggregation and monitoring
+
+        - id: hipaa-164.308.a.3.i
+          name: Workforce Security - Authorization
+          description: Implement procedures for the authorization and supervision of workforce members
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: RBAC policies
+            - type: logs
+              description: Access authorization records
+
+        - id: hipaa-164.308.a.3.ii.a
+          name: Workforce Security - Clearance Procedure
+          description: Implement procedures to determine access to ePHI is appropriate
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Access control configurations
+            - type: logs
+              description: Access review logs
+
+        - id: hipaa-164.308.a.3.ii.b
+          name: Workforce Security - Termination Procedures
+          description: Implement procedures for terminating access when employment ends
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Account deprovisioning automation
+            - type: logs
+              description: Termination process logs
+
+        - id: hipaa-164.308.a.4.ii.b
+          name: Information Access Management - Access Authorization
+          description: Implement policies and procedures for granting access to ePHI
+          severity: critical
+          automatable: true
+          evidence:
+            - type: policy
+              description: Access authorization policies
+            - type: configuration
+              description: RBAC configurations
+
+        - id: hipaa-164.308.a.4.ii.c
+          name: Information Access Management - Access Establishment and Modification
+          description: Implement policies and procedures for access establishment, modification, and review
+          severity: high
+          automatable: true
+          evidence:
+            - type: logs
+              description: Access modification audit trail
+            - type: configuration
+              description: Identity provider configuration
+
+        - id: hipaa-164.308.a.5.i
+          name: Security Awareness and Training
+          description: Implement a security awareness and training program
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Training records and materials
+
+        - id: hipaa-164.308.a.5.ii.b
+          name: Security Awareness - Protection from Malicious Software
+          description: Procedures for guarding against, detecting, and reporting malicious software
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Container image scanning configuration
+            - type: logs
+              description: Malware detection logs
+
+        - id: hipaa-164.308.a.5.ii.c
+          name: Security Awareness - Log-in Monitoring
+          description: Procedures for monitoring log-in attempts and reporting discrepancies
+          severity: critical
+          automatable: true
+          evidence:
+            - type: logs
+              description: Authentication logs
+            - type: metrics
+              description: Failed login attempt metrics
+
+        - id: hipaa-164.308.a.5.ii.d
+          name: Security Awareness - Password Management
+          description: Procedures for creating, changing, and safeguarding passwords
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Password policy configuration
+            - type: policy
+              description: Password management policies
+
+        - id: hipaa-164.308.a.6.i
+          name: Security Incident Procedures - Response and Reporting
+          description: Identify and respond to suspected or known security incidents
+          severity: critical
+          automatable: true
+          evidence:
+            - type: logs
+              description: Security incident logs
+            - type: documentation
+              description: Incident response procedures
+
+        - id: hipaa-164.308.a.7.i
+          name: Contingency Plan - Data Backup Plan
+          description: Establish and implement procedures to create and maintain retrievable exact copies of ePHI
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Backup configuration
+            - type: logs
+              description: Backup execution logs
+
+        - id: hipaa-164.308.a.7.ii.a
+          name: Contingency Plan - Disaster Recovery Plan
+          description: Establish procedures to restore lost data
+          severity: critical
+          automatable: true
+          evidence:
+            - type: documentation
+              description: Disaster recovery documentation
+            - type: configuration
+              description: DR configuration
+
+        - id: hipaa-164.308.a.7.ii.b
+          name: Contingency Plan - Emergency Mode Operation Plan
+          description: Establish procedures to enable continuation of critical processes during emergency
+          severity: critical
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Emergency operations procedures
+
+        - id: hipaa-164.308.a.7.ii.c
+          name: Contingency Plan - Testing and Revision Procedures
+          description: Implement procedures for periodic testing and revision of contingency plans
+          severity: high
+          automatable: true
+          evidence:
+            - type: logs
+              description: DR test execution logs
+            - type: documentation
+              description: Test results documentation
+
+        - id: hipaa-164.308.a.7.ii.d
+          name: Contingency Plan - Applications and Data Criticality Analysis
+          description: Assess the relative criticality of specific applications and data
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Criticality analysis documentation
+
+        - id: hipaa-164.308.a.8
+          name: Evaluation
+          description: Perform a periodic technical and nontechnical evaluation
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Compliance scanning configuration
+            - type: logs
+              description: Compliance scan results
+
+    - name: physical-safeguards
+      displayName: Physical Safeguards (164.310)
+      controls:
+        - id: hipaa-164.310.a.1
+          name: Facility Access Controls
+          description: Implement policies and procedures to limit physical access
+          severity: high
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Data center security documentation
+
+        - id: hipaa-164.310.b
+          name: Workstation Use
+          description: Implement policies and procedures for proper workstation use
+          severity: medium
+          automatable: false
+          evidence:
+            - type: policy
+              description: Workstation use policies
+
+        - id: hipaa-164.310.c
+          name: Workstation Security
+          description: Implement physical safeguards for workstations accessing ePHI
+          severity: medium
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Workstation security documentation
+
+        - id: hipaa-164.310.d.1
+          name: Device and Media Controls - Disposal
+          description: Implement policies and procedures for proper disposal of hardware and media
+          severity: critical
+          automatable: false
+          evidence:
+            - type: documentation
+              description: Media disposal procedures
+
+        - id: hipaa-164.310.d.2.i
+          name: Device and Media Controls - Accountability
+          description: Maintain a record of the movements of hardware and media
+          severity: high
+          automatable: true
+          evidence:
+            - type: logs
+              description: Asset inventory logs
+            - type: configuration
+              description: Asset tracking configuration
+
+    - name: technical-safeguards
+      displayName: Technical Safeguards (164.312)
+      controls:
+        - id: hipaa-164.312.a.1
+          name: Access Control - Unique User Identification
+          description: Assign a unique name and/or number for identifying and tracking user identity
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: User identity configuration
+            - type: logs
+              description: User account audit trail
+
+        - id: hipaa-164.312.a.2.i
+          name: Access Control - Emergency Access Procedure
+          description: Establish procedures for obtaining access to ePHI during an emergency
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Break-glass access configuration
+            - type: documentation
+              description: Emergency access procedures
+
+        - id: hipaa-164.312.a.2.ii
+          name: Access Control - Automatic Logoff
+          description: Implement electronic procedures that terminate an electronic session after inactivity
+          severity: medium
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Session timeout configuration
+
+        - id: hipaa-164.312.a.2.iv
+          name: Access Control - Encryption and Decryption
+          description: Implement a mechanism to encrypt and decrypt ePHI
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Encryption configuration
+            - type: attestation
+              description: Encryption key management
+
+        - id: hipaa-164.312.b
+          name: Audit Controls
+          description: Implement hardware, software, and/or procedural mechanisms to record and examine activity
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Audit logging configuration
+            - type: logs
+              description: Comprehensive audit logs
+
+        - id: hipaa-164.312.c.1
+          name: Integrity Controls - Mechanism to Authenticate ePHI
+          description: Implement electronic mechanisms to corroborate that ePHI has not been altered or destroyed
+          severity: high
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Data integrity mechanisms
+            - type: logs
+              description: Integrity verification logs
+
+        - id: hipaa-164.312.c.2
+          name: Integrity Controls - Authentication
+          description: Implement procedures to verify that a person or entity seeking access is the one claimed
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Authentication configuration
+            - type: logs
+              description: Authentication logs
+
+        - id: hipaa-164.312.d
+          name: Person or Entity Authentication
+          description: Implement procedures to verify the identity of persons or entities
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Identity verification configuration
+            - type: logs
+              description: Identity verification audit trail
+
+        - id: hipaa-164.312.e.1
+          name: Transmission Security - Integrity Controls
+          description: Implement security measures to ensure ePHI is not improperly modified during transmission
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: TLS configuration
+            - type: attestation
+              description: Certificate management
+
+        - id: hipaa-164.312.e.2.ii
+          name: Transmission Security - Encryption
+          description: Implement a mechanism to encrypt ePHI during transmission
+          severity: critical
+          automatable: true
+          evidence:
+            - type: configuration
+              description: Transport encryption configuration
+            - type: logs
+              description: Encryption verification logs

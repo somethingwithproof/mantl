@@ -1,0 +1,49 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: aws-s3-mantlbucket
+  labels:
+    provider: aws
+spec:
+  compositeTypeRef:
+    apiVersion: platform.mantl.io/v1alpha1
+    kind: XMantlBucket
+  resources:
+    - name: s3bucket
+      base:
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: Bucket
+        spec:
+          forProvider:
+            forceDestroy: true
+      patches:
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+        - fromFieldPath: "metadata.uid"
+          toFieldPath: "metadata.name"
+          transforms:
+            - type: string
+              string:
+                fmt: "mantl-%s"
+      connectionDetails:
+        - fromConnectionSecretKey: bucketDomainName
+    - name: bucketVersioning
+      base:
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: BucketVersioningV2
+        spec:
+          forProvider:
+            bucketSelector:
+              matchControllerRef: true
+            versioningConfiguration:
+              - status: Enabled
+      patches:
+        - fromFieldPath: "spec.parameters.region"
+          toFieldPath: "spec.forProvider.region"
+        - fromFieldPath: "spec.parameters.versioning"
+          toFieldPath: "spec.forProvider.versioningConfiguration[0].status"
+          transforms:
+            - type: map
+              map:
+                "true": "Enabled"
+                "false": "Suspended"

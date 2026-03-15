@@ -85,13 +85,8 @@ pipeline {
                         sh '''
                             # Install kustomize and kubectl
                             apk add --no-cache curl
-
-                            # Download kustomize install script with verification
-                            curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" -o install_kustomize.sh
-                            chmod +x install_kustomize.sh
-                            ./install_kustomize.sh
+                            curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
                             mv kustomize /usr/local/bin/
-                            rm install_kustomize.sh
 
                             curl -LO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
                             chmod +x kubectl

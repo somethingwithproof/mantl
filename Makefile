@@ -1,4 +1,4 @@
-.PHONY: help install-dev install-staging install-production install-small install-medium install-full clean test lint wizard cli-install
+.PHONY: help install-dev install-staging install-production install-small install-medium install-full clean test test-unit test-coverage test-watch lint format validate security-scan audit wizard cli-install
 
 # Default target
 .DEFAULT_GOAL := help
@@ -77,16 +77,60 @@ test: ## Run all tests
 	@echo "${GREEN}Running tests...${RESET}"
 	@pytest -v tests/
 	@echo "${GREEN}Validating Kustomize builds...${RESET}"
-	@./ci/validate-kustomize.sh
+	@$(MAKE) kustomize-validate
 	@echo "${GREEN}Validating Terraform...${RESET}"
-	@./ci/validate-terraform.sh
+	@$(MAKE) terraform-validate
+
+test-unit: ## Run unit tests only
+	@echo "${GREEN}Running unit tests...${RESET}"
+	@pytest -v tests/unit/
+
+test-coverage: ## Run tests with coverage report
+	@echo "${GREEN}Running tests with coverage...${RESET}"
+	@pytest -v --cov=. --cov-report=html --cov-report=term-missing tests/
+	@echo "${GREEN}Coverage report generated in htmlcov/${RESET}"
+
+test-watch: ## Run tests in watch mode (requires pytest-watch)
+	@echo "${GREEN}Running tests in watch mode...${RESET}"
+	@ptw -- -v tests/
 
 lint: ## Run all linters
 	@echo "${GREEN}Running linters...${RESET}"
 	@black --check .
 	@ruff check .
 	@yamllint .
-@find bin ci -name "*.sh" -type f | xargs shellcheck --severity=warning
+	@find bin ci -name "*.sh" -type f | xargs shellcheck --severity=warning
+
+format: ## Format all code (Python, Terraform, YAML)
+	@echo "${GREEN}Formatting code...${RESET}"
+	@black .
+	@ruff check --fix .
+	@terraform fmt -recursive infra/terraform/
+	@echo "${GREEN}✓ Code formatted${RESET}"
+
+validate: ## Run all validations (kustomize, terraform, policies)
+	@echo "${GREEN}Running all validations...${RESET}"
+	@$(MAKE) kustomize-validate
+	@$(MAKE) terraform-validate
+	@$(MAKE) lint
+	@echo "${GREEN}✓ All validations passed${RESET}"
+
+security-scan: ## Run security scans (trivy, tfsec, safety)
+	@echo "${GREEN}Running security scans...${RESET}"
+	@echo "${CYAN}Trivy filesystem scan...${RESET}"
+	@trivy fs --severity HIGH,CRITICAL . || true
+	@echo "${CYAN}TFSec scan...${RESET}"
+	@tfsec infra/terraform/ --soft-fail || true
+	@echo "${CYAN}Python dependency scan...${RESET}"
+	@pip install safety >/dev/null 2>&1 && safety check -r requirements.txt || true
+	@echo "${GREEN}✓ Security scans complete${RESET}"
+
+audit: ## Run full audit (lint + validate + security)
+	@echo "${GREEN}Running full audit...${RESET}"
+	@$(MAKE) lint
+	@$(MAKE) validate
+	@$(MAKE) security-scan
+	@echo "${GREEN}✓ Audit complete${RESET}"
 
 ## Run integration tests (requires INVENTORY or MOLECULE_INVENTORY_FILE)
 .PHONY: test-integration

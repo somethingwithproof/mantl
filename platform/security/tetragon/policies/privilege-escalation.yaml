@@ -1,0 +1,63 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: privilege-escalation-detection
+  labels:
+    app.kubernetes.io/part-of: mantl-security
+    policy-category: privilege-escalation
+spec:
+  # Detect setuid/setgid calls that could indicate privilege escalation
+  kprobes:
+    - call: __x64_sys_setuid
+      syscall: true
+      args:
+        - index: 0
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - "0"
+          matchActions:
+            - action: Post
+              rateLimit: "1m"
+              rateLimitScope: process
+
+    - call: __x64_sys_setgid
+      syscall: true
+      args:
+        - index: 0
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Equal
+              values:
+                - "0"
+          matchActions:
+            - action: Post
+              rateLimit: "1m"
+              rateLimitScope: process
+
+    # Detect capability changes
+    - call: cap_capable
+      args:
+        - index: 0
+          type: nop
+        - index: 1
+          type: int
+        - index: 2
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 2
+              operator: Equal
+              values:
+                - "21"  # CAP_SYS_ADMIN
+                - "22"  # CAP_SYS_BOOT
+                - "23"  # CAP_SYS_NICE
+                - "24"  # CAP_SYS_RESOURCE
+                - "25"  # CAP_SYS_TIME
+          matchActions:
+            - action: Post

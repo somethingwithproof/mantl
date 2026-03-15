@@ -1,0 +1,92 @@
+# Tetragon - eBPF-based Security Observability and Runtime Enforcement
+# https://tetragon.io/
+
+# Enable Tetragon features
+tetragon:
+  # Export events to different sinks
+  exportFilename: /var/run/cilium/tetragon/tetragon.log
+  exportFileMaxSizeMB: 10
+  exportFileMaxBackups: 5
+  exportRateLimit: -1
+
+  # Enable process lifecycle events
+  enableProcessCred: true
+  enableProcessNs: true
+
+  # Policy configuration
+  enablePolicyFilter: true
+  enablePolicyFilterDebug: false
+
+  # Performance settings
+  btf: ""
+  procFS: /proc
+  exportAllowList: ""
+  exportDenyList: ""
+
+  # Resource limits
+  resources:
+    limits:
+      cpu: 1
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# Tetragon operator
+tetragonOperator:
+  enabled: true
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Export settings
+export:
+  # Export to stdout for log aggregation
+  stdout:
+    enabledCommand: true
+    enabledArgs: true
+
+  # Metrics for Prometheus
+  prometheus:
+    enabled: true
+    port: 2112
+    serviceMonitor:
+      enabled: true
+      labels:
+        release: prometheus
+
+# Security policies directory
+policyDirectory: /etc/tetragon/tetragon.tp.d/
+
+# Pod security context
+podSecurityContext:
+  runAsUser: 0
+  runAsGroup: 0
+
+# Container security context (privileged required for eBPF)
+securityContext:
+  privileged: true
+  capabilities:
+    add:
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - SYS_PTRACE
+      - NET_ADMIN
+      - BPF
+      - PERFMON
+
+# Node selector and tolerations
+nodeSelector: {}
+
+tolerations:
+  - operator: Exists
+
+# Enable service monitor for Prometheus
+serviceMonitor:
+  enabled: true
+  labels:
+    release: prometheus

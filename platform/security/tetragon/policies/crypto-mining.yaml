@@ -1,0 +1,67 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: crypto-mining-detection
+  labels:
+    app.kubernetes.io/part-of: mantl-security
+    policy-category: threat-detection
+spec:
+  # Detect known crypto mining binaries
+  kprobes:
+    - call: sys_execve
+      syscall: true
+      args:
+        - index: 0
+          type: string
+      selectors:
+        # Known crypto miner binary names
+        - matchArgs:
+            - index: 0
+              operator: Postfix
+              values:
+                - xmrig
+                - minerd
+                - cpuminer
+                - cgminer
+                - bfgminer
+                - ethminer
+                - nbminer
+                - t-rex
+                - gminer
+                - lolminer
+                - phoenixminer
+          matchActions:
+            - action: Post
+
+    # Detect connections to known mining pools
+    - call: tcp_connect
+      args:
+        - index: 0
+          type: sock
+      selectors:
+        # Common mining pool ports
+        - matchArgs:
+            - index: 0
+              operator: Port
+              values:
+                - "3333"
+                - "4444"
+                - "5555"
+                - "7777"
+                - "8888"
+                - "9999"
+                - "14444"
+                - "14433"
+          matchActions:
+            - action: Post
+
+  # Monitor high CPU usage processes (potential mining)
+  tracepoints:
+    - subsystem: sched
+      event: sched_process_exec
+      args:
+        - index: 0
+          type: string
+      selectors:
+        - matchActions:
+            - action: Post

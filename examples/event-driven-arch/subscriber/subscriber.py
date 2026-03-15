@@ -19,6 +19,7 @@ import logging
 import signal
 import sys
 import os
+import re
 from typing import Dict, Any
 from prometheus_client import Counter, Histogram, Gauge, start_http_server
 from datetime import datetime
@@ -36,7 +37,19 @@ STREAM_NAME = os.getenv("STREAM_NAME", "EVENTS")
 CONSUMER_NAME = os.getenv("CONSUMER_NAME", "order-processor")
 DURABLE_NAME = os.getenv("DURABLE_NAME", "order-processor-durable")
 FILTER_SUBJECT = os.getenv("FILTER_SUBJECT", "EVENTS.order_*")
-METRICS_PORT = int(os.getenv("METRICS_PORT", "9090"))
+if not re.fullmatch(r'[a-zA-Z0-9._*>\-]+', FILTER_SUBJECT):
+    raise RuntimeError(f"FILTER_SUBJECT contains invalid characters: {FILTER_SUBJECT!r}")
+
+try:
+    METRICS_PORT = int(os.getenv("METRICS_PORT", "9090"))
+except ValueError:
+    raise RuntimeError(f"METRICS_PORT must be a valid integer")
+
+try:
+    _fetch_raw = int(os.getenv("FETCH_BATCH_SIZE", "10"))
+except ValueError:
+    raise RuntimeError("FETCH_BATCH_SIZE must be a valid integer")
+FETCH_BATCH_SIZE = max(1, min(_fetch_raw, 100))
 
 # Prometheus metrics
 EVENTS_RECEIVED = Counter(
@@ -51,9 +64,9 @@ PROCESSING_DURATION = Histogram(
     ['event_type']
 )
 
-QUEUE_DEPTH = Gauge(
-    'event_queue_depth',
-    'Number of pending messages in queue'
+FETCH_BATCH_SIZE_GAUGE = Gauge(
+    'event_fetch_batch_size',
+    'Number of messages fetched in current pull batch'
 )
 
 # Global state
@@ -207,10 +220,10 @@ async def main():
         while not shutdown_requested:
             try:
                 # Fetch batch of messages
-                msgs = await psub.fetch(batch=10, timeout=5)
+                msgs = await psub.fetch(batch=FETCH_BATCH_SIZE, timeout=5)
 
                 if msgs:
-                    QUEUE_DEPTH.set(len(msgs))
+                    FETCH_BATCH_SIZE_GAUGE.set(len(msgs))
 
                     # Process messages concurrently
                     tasks = [
@@ -220,13 +233,13 @@ async def main():
                     await asyncio.gather(*tasks, return_exceptions=True)
 
                 else:
-                    # No messages, update queue depth
-                    QUEUE_DEPTH.set(0)
+                    # No messages, reset fetch batch size
+                    FETCH_BATCH_SIZE_GAUGE.set(0)
                     await asyncio.sleep(1)
 
             except nats.errors.TimeoutError:
                 # No messages available, continue
-                QUEUE_DEPTH.set(0)
+                FETCH_BATCH_SIZE_GAUGE.set(0)
                 continue
 
             except Exception as e:

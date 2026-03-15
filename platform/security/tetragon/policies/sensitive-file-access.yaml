@@ -1,0 +1,69 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: sensitive-file-access
+  labels:
+    app.kubernetes.io/part-of: mantl-security
+    policy-category: file-integrity
+spec:
+  # Monitor access to sensitive files
+  kprobes:
+    # Monitor /etc/passwd access
+    - call: fd_install
+      args:
+        - index: 0
+          type: int
+        - index: 1
+          type: file
+      selectors:
+        - matchArgs:
+            - index: 1
+              operator: Prefix
+              values:
+                - /etc/passwd
+                - /etc/shadow
+                - /etc/sudoers
+                - /etc/kubernetes
+                - /var/run/secrets/kubernetes.io
+          matchActions:
+            - action: Post
+
+    # Monitor writes to system directories
+    - call: security_file_open
+      args:
+        - index: 0
+          type: file
+        - index: 1
+          type: int
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - /etc/
+                - /usr/bin/
+                - /usr/sbin/
+                - /bin/
+                - /sbin/
+            - index: 1
+              operator: Mask
+              values:
+                - "2"  # O_WRONLY or O_RDWR
+          matchActions:
+            - action: Post
+
+    # Monitor ServiceAccount token access
+    - call: security_file_open
+      args:
+        - index: 0
+          type: file
+      selectors:
+        - matchArgs:
+            - index: 0
+              operator: Prefix
+              values:
+                - /var/run/secrets/kubernetes.io/serviceaccount/token
+          matchActions:
+            - action: Post
+              rateLimit: "1m"
+              rateLimitScope: process

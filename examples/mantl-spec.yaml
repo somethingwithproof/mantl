@@ -1,0 +1,32 @@
+apiVersion: platform.mantl.io/v1alpha1
+kind: MantlCluster
+metadata:
+  name: prod-us-east
+spec:
+  provider:
+    kind: aws
+    region: us-east-1
+    accountId: "123456789012"
+  kubernetes:
+    distribution: eks
+    version: "1.31"
+  profile:
+    size: full
+  networking:
+    domain: platform.internal.company.com
+    exposure: private
+  features:
+    observability: true
+    progressiveDelivery: false
+    security: true
+    secrets: true
+    compliance: true
+  tenants:
+    - name: data-science
+      admins:
+        - alice@example.com
+        - bob@example.com
+    - name: payments-api
+      namespace: payments
+      admins:
+        - charlie@example.com

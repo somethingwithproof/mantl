@@ -1,0 +1,50 @@
+# Talos Linux Cluster Kustomization
+# Immutable Kubernetes with API-driven configuration
+# https://www.talos.dev/
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: default
+
+resources:
+  - talos-config.yaml
+  - aws-machine-templates.yaml
+  - talos-cluster-addons.yaml
+
+# Helm charts for Talos ecosystem
+helmCharts:
+  # Sidero Metal for bare-metal Talos
+  - name: sidero
+    repo: https://sidero.dev/charts
+    version: 0.6.0
+    releaseName: sidero
+    namespace: sidero-system
+    valuesInline:
+      controllerManager:
+        replicaCount: 2
+      servingCerts:
+        generate: true
+        caLifetime: 87600h
+        certLifetime: 8760h
+
+  # Cluster API
+  - name: cluster-api-operator
+    repo: https://kubernetes-sigs.github.io/cluster-api-operator
+    version: 0.9.0
+    releaseName: capi-operator
+    namespace: capi-system
+    valuesInline:
+      manager:
+        featureGates:
+          MachinePool: true
+          ClusterResourceSet: true
+          ClusterTopology: true
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  platform.mantl.io/component: talos
+  platform.mantl.io/os: talos-linux
+
+commonAnnotations:
+  mantl.io/infrastructure-component: "talos-kubernetes"
+  mantl.io/documentation: "https://www.talos.dev/docs/"

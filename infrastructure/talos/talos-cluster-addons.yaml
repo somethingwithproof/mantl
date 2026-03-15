@@ -1,0 +1,453 @@
+# Talos Cluster Addons
+# Post-bootstrap components for Talos clusters
+---
+# ClusterResourceSet for automatic addon installation
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  name: mantl-talos-cni
+  namespace: default
+spec:
+  clusterSelector:
+    matchLabels:
+      platform.mantl.io/os: talos
+  resources:
+    - kind: ConfigMap
+      name: cilium-install
+  strategy: ApplyOnce
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cilium-install
+  namespace: default
+data:
+  cilium-helm-values.yaml: |
+    # Cilium configuration for Talos
+    cluster:
+      name: mantl-talos
+      id: 1
+
+    ipam:
+      mode: kubernetes
+
+    kubeProxyReplacement: true
+
+    k8sServiceHost: localhost
+    k8sServicePort: 7445  # Talos API proxy port
+
+    securityContext:
+      capabilities:
+        ciliumAgent:
+          - CHOWN
+          - KILL
+          - NET_ADMIN
+          - NET_RAW
+          - IPC_LOCK
+          - SYS_ADMIN
+          - SYS_RESOURCE
+          - DAC_OVERRIDE
+          - FOWNER
+          - SETGID
+          - SETUID
+        cleanCiliumState:
+          - NET_ADMIN
+          - SYS_ADMIN
+          - SYS_RESOURCE
+
+    cgroup:
+      autoMount:
+        enabled: false
+      hostRoot: /sys/fs/cgroup
+
+    hubble:
+      enabled: true
+      relay:
+        enabled: true
+      ui:
+        enabled: true
+
+    encryption:
+      enabled: true
+      type: wireguard
+
+---
+# ClusterResourceSet for metrics-server on Talos
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  name: mantl-talos-metrics-server
+  namespace: default
+spec:
+  clusterSelector:
+    matchLabels:
+      platform.mantl.io/os: talos
+  resources:
+    - kind: ConfigMap
+      name: metrics-server-install
+  strategy: ApplyOnce
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metrics-server-install
+  namespace: default
+data:
+  metrics-server.yaml: |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      labels:
+        k8s-app: metrics-server
+      name: metrics-server
+      namespace: kube-system
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      labels:
+        k8s-app: metrics-server
+        rbac.authorization.k8s.io/aggregate-to-admin: "true"
+        rbac.authorization.k8s.io/aggregate-to-edit: "true"
+        rbac.authorization.k8s.io/aggregate-to-view: "true"
+      name: system:aggregated-metrics-reader
+    rules:
+    - apiGroups:
+      - metrics.k8s.io
+      resources:
+      - pods
+      - nodes
+      verbs:
+      - get
+      - list
+      - watch
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      labels:
+        k8s-app: metrics-server
+      name: system:metrics-server
+    rules:
+    - apiGroups:
+      - ""
+      resources:
+      - nodes/metrics
+      verbs:
+      - get
+    - apiGroups:
+      - ""
+      resources:
+      - pods
+      - nodes
+      verbs:
+      - get
+      - list
+      - watch
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      labels:
+        k8s-app: metrics-server
+      name: metrics-server-auth-reader
+      namespace: kube-system
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: extension-apiserver-authentication-reader
+    subjects:
+    - kind: ServiceAccount
+      name: metrics-server
+      namespace: kube-system
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      labels:
+        k8s-app: metrics-server
+      name: metrics-server:system:auth-delegator
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:auth-delegator
+    subjects:
+    - kind: ServiceAccount
+      name: metrics-server
+      namespace: kube-system
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      labels:
+        k8s-app: metrics-server
+      name: system:metrics-server
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: system:metrics-server
+    subjects:
+    - kind: ServiceAccount
+      name: metrics-server
+      namespace: kube-system
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      labels:
+        k8s-app: metrics-server
+      name: metrics-server
+      namespace: kube-system
+    spec:
+      ports:
+      - name: https
+        port: 443
+        protocol: TCP
+        targetPort: https
+      selector:
+        k8s-app: metrics-server
+    ---
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      labels:
+        k8s-app: metrics-server
+      name: metrics-server
+      namespace: kube-system
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          k8s-app: metrics-server
+      strategy:
+        rollingUpdate:
+          maxUnavailable: 1
+      template:
+        metadata:
+          labels:
+            k8s-app: metrics-server
+        spec:
+          containers:
+          - args:
+            - --cert-dir=/tmp
+            - --secure-port=10250
+            - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+            - --kubelet-use-node-status-port
+            - --metric-resolution=15s
+            - --kubelet-insecure-tls
+            image: registry.k8s.io/metrics-server/metrics-server:v0.7.0
+            imagePullPolicy: IfNotPresent
+            livenessProbe:
+              failureThreshold: 3
+              httpGet:
+                path: /livez
+                port: https
+                scheme: HTTPS
+              periodSeconds: 10
+            name: metrics-server
+            ports:
+            - containerPort: 10250
+              name: https
+              protocol: TCP
+            readinessProbe:
+              failureThreshold: 3
+              httpGet:
+                path: /readyz
+                port: https
+                scheme: HTTPS
+              initialDelaySeconds: 20
+              periodSeconds: 10
+            resources:
+              requests:
+                cpu: 100m
+                memory: 200Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 1000
+              seccompProfile:
+                type: RuntimeDefault
+            volumeMounts:
+            - mountPath: /tmp
+              name: tmp-dir
+          nodeSelector:
+            kubernetes.io/os: linux
+          priorityClassName: system-cluster-critical
+          serviceAccountName: metrics-server
+          volumes:
+          - emptyDir: {}
+            name: tmp-dir
+
+---
+# ClusterResourceSet for Longhorn storage on Talos
+apiVersion: addons.cluster.x-k8s.io/v1beta1
+kind: ClusterResourceSet
+metadata:
+  name: mantl-talos-storage
+  namespace: default
+spec:
+  clusterSelector:
+    matchLabels:
+      platform.mantl.io/os: talos
+  resources:
+    - kind: ConfigMap
+      name: longhorn-install
+  strategy: ApplyOnce
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: longhorn-install
+  namespace: default
+data:
+  longhorn-values.yaml: |
+    # Longhorn for Talos
+    persistence:
+      defaultClass: true
+      defaultClassReplicaCount: 3
+
+    defaultSettings:
+      defaultReplicaCount: 3
+      storageOverProvisioningPercentage: 200
+      storageMinimalAvailablePercentage: 25
+      upgradeChecker: false
+      defaultDataPath: /var/lib/longhorn
+      defaultDataLocality: best-effort
+      replicaSoftAntiAffinity: true
+      replicaAutoBalance: best-effort
+      createDefaultDiskLabeledNodes: true
+      nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+      guaranteedEngineManagerCPU: 12
+      guaranteedReplicaManagerCPU: 12
+
+    longhornManager:
+      priorityClass: system-node-critical
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+
+    longhornDriver:
+      priorityClass: system-node-critical
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+
+    csi:
+      attacherReplicaCount: 2
+      provisionerReplicaCount: 2
+      resizerReplicaCount: 2
+      snapshotterReplicaCount: 2
+
+---
+# Talos-specific Network Policy
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: talos-system-access
+  namespace: kube-system
+spec:
+  description: "Allow Talos system components to communicate"
+  endpointSelector:
+    matchLabels:
+      k8s-app: kube-apiserver
+  ingress:
+    - fromEntities:
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "6443"
+              protocol: TCP
+            - port: "7445"  # Talos API proxy
+              protocol: TCP
+  egress:
+    - toEntities:
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "2379"  # etcd
+              protocol: TCP
+            - port: "2380"  # etcd peer
+              protocol: TCP
+            - port: "50000"  # Talos apid
+              protocol: TCP
+            - port: "50001"  # Talos trustd
+              protocol: TCP
+
+---
+# Talos upgrade automation with system-upgrade-controller
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: system-upgrade
+---
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: talos-upgrade
+  namespace: system-upgrade
+spec:
+  concurrency: 1
+  cordon: true
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: DoesNotExist
+  serviceAccountName: system-upgrade
+  upgrade:
+    image: ghcr.io/siderolabs/talosctl:v1.6.0
+    command: ["talosctl"]
+    args:
+      - upgrade
+      - --nodes=$(SYSTEM_UPGRADE_NODE_IP)
+      - --image=ghcr.io/siderolabs/installer:v1.6.1
+      - --preserve=true
+  version: v1.6.1
+  drain:
+    force: true
+    ignoreDaemonSets: true
+    deleteEmptyDirData: true
+    disableEviction: false
+    skipWaitForDeleteTimeout: 60
+
+---
+# Control plane upgrade plan
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: talos-upgrade-controlplane
+  namespace: system-upgrade
+spec:
+  concurrency: 1
+  cordon: true
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+  serviceAccountName: system-upgrade
+  upgrade:
+    image: ghcr.io/siderolabs/talosctl:v1.6.0
+    command: ["talosctl"]
+    args:
+      - upgrade
+      - --nodes=$(SYSTEM_UPGRADE_NODE_IP)
+      - --image=ghcr.io/siderolabs/installer:v1.6.1
+      - --preserve=true
+  version: v1.6.1
+  drain:
+    force: true
+    ignoreDaemonSets: true
+    deleteEmptyDirData: true

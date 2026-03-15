@@ -3,6 +3,16 @@ kind: Application
 metadata:
   name: platform-apps
   namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: mantl-platform
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    # Notifications annotations
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: platform-alerts
+    notifications.argoproj.io/subscribe.on-health-degraded.slack: platform-alerts
+    notifications.argoproj.io/subscribe.on-deployed.slack: platform-deploys
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -11,9 +21,38 @@ spec:
     path: clusters/production
   destination:
     server: https://kubernetes.default.svc
+    namespace: argocd
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+      allowEmpty: false
     syncOptions:
       - CreateNamespace=true
+      - PruneLast=true
+      - RespectIgnoreDifferences=true
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+      - FailOnSharedResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 5m
+    managedNamespaceMetadata:
+      labels:
+        app.kubernetes.io/managed-by: argocd
+  # Ignore differences for fields that are auto-generated
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP
+        - /spec/clusterIPs
+  # Health assessment customization
+  revisionHistoryLimit: 10

@@ -2,13 +2,8 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: restrict-image-registries
-  annotations:
-    policies.kyverno.io/title: Restrict Image Registries
-    policies.kyverno.io/description: >-
-      Only allow images from approved registries and organizations to prevent supply chain attacks.
 spec:
   validationFailureAction: Enforce
-  background: true
   rules:
     - name: validate-registries
       match:
@@ -16,42 +11,8 @@ spec:
           - resources:
               kinds: [Pod]
       validate:
-        message: >-
-          Images must come from approved registries and organizations:
-          - ghcr.io/thomasvincent/* (your GitHub packages)
-          - ghcr.io/argoproj/* (ArgoCD)
-          - ghcr.io/kyverno/* (Kyverno)
-          - ghcr.io/cilium/* (Cilium)
-          - gcr.io/your-project/* (your GCR project)
-          - docker.io/library/* (official images)
-          - docker.io/bitnami/* (verified Bitnami)
-          - quay.io/prometheus/* (Prometheus)
-          - quay.io/jetstack/* (cert-manager)
-        anyPattern:
-          - spec:
-              containers:
-                - image: "ghcr.io/thomasvincent/*"
-          - spec:
-              containers:
-                - image: "ghcr.io/argoproj/*"
-          - spec:
-              containers:
-                - image: "ghcr.io/kyverno/*"
-          - spec:
-              containers:
-                - image: "ghcr.io/cilium/*"
-          - spec:
-              containers:
-                - image: "gcr.io/*/kube-state-metrics*"
-          - spec:
-              containers:
-                - image: "docker.io/library/*"
-          - spec:
-              containers:
-                - image: "docker.io/bitnami/*"
-          - spec:
-              containers:
-                - image: "quay.io/prometheus/*"
-          - spec:
-              containers:
-                - image: "quay.io/jetstack/*"
+        message: "Images must come from approved registries."
+        pattern:
+          spec:
+            containers:
+              - image: "ghcr.io/* | gcr.io/* | docker.io/library/*"

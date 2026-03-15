@@ -20,7 +20,7 @@ from nats.js.api import StreamConfig
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 # Configure logging
@@ -144,7 +144,7 @@ async def publish_event(event: Event):
             "source": event.source,
             "type": event.type,
             "datacontenttype": "application/json",
-            "time": datetime.utcnow().isoformat() + "Z",
+            "time": datetime.now(timezone.utc).isoformat(),
             "correlationid": correlation_id,
             "data": event.data
         }
@@ -181,7 +181,7 @@ async def publish_event(event: Event):
     except Exception as e:
         EVENTS_PUBLISHED.labels(event_type=event.type, status='error').inc()
         logger.error(f"Failed to publish event: {e}")
-        raise HTTPException(status_code=500, detail=f"Publish failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/api/v1/events/publish-batch")
 async def publish_batch_events(events: list[Event]):
@@ -222,7 +222,7 @@ async def stream_info():
         }
     except Exception as e:
         logger.error(f"Failed to get stream info: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 if __name__ == "__main__":
     import uvicorn

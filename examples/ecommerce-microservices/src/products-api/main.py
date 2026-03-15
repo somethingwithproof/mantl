@@ -7,7 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, Histogram, make_asgi_app
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from pydantic import BaseModel, Field
+from decimal import Decimal
+from pydantic import BaseModel, Field, condecimal
 from typing import List, Optional
 import asyncpg
 import os
@@ -49,7 +50,7 @@ class Product(BaseModel):
     id: Optional[int] = None
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=1000)
-    price: float = Field(..., gt=0)
+    price: condecimal(max_digits=10, decimal_places=2, gt=Decimal(0))
     category: str = Field(..., min_length=1, max_length=100)
     stock: int = Field(..., ge=0)
     sku: str = Field(..., min_length=1, max_length=50)
@@ -73,7 +74,7 @@ class Product(BaseModel):
 class ProductCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    price: float
+    price: condecimal(max_digits=10, decimal_places=2, gt=Decimal(0))
     category: str
     stock: int
     sku: str
@@ -82,7 +83,7 @@ class ProductCreate(BaseModel):
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[float] = None
+    price: Optional[condecimal(max_digits=10, decimal_places=2, gt=Decimal(0))] = None
     category: Optional[str] = None
     stock: Optional[int] = None
     sku: Optional[str] = None
@@ -99,10 +100,38 @@ app = FastAPI(
 )
 
 # CORS middleware
+def _parse_cors_origins() -> list[str]:
+    raw = os.getenv("CORS_ALLOWED_ORIGINS", "")
+    if not raw:
+        logger.warning(
+            "CORS_ALLOWED_ORIGINS is not set; all cross-origin requests will be rejected"
+        )
+        return []
+    origins = [o.strip() for o in raw.split(",") if o.strip()]
+    for origin in origins:
+        if origin != "*" and not origin.startswith(("http://", "https://")):
+            raise RuntimeError(f"Invalid CORS origin: {origin}")
+    creds_raw = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower()
+    if creds_raw not in ("true", "false"):
+        raise RuntimeError(
+            f"CORS_ALLOW_CREDENTIALS must be 'true' or 'false', got: {creds_raw!r}"
+        )
+    allow_credentials = creds_raw == "true"
+    if "*" in origins and allow_credentials:
+        raise RuntimeError(
+            "CORS_ALLOWED_ORIGINS=* with CORS_ALLOW_CREDENTIALS=true is unsafe; "
+            "specify an explicit origin allowlist"
+        )
+    if "*" in origins:
+        raise RuntimeError(
+            "CORS_ALLOWED_ORIGINS=* is not allowed; specify explicit origin allowlist"
+        )
+    return origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure properly in production
-    allow_credentials=True,
+    allow_origins=_parse_cors_origins(),
+    allow_credentials=os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower() == "true",
     allow_methods=["*"],
     allow_headers=["*"],
 )
