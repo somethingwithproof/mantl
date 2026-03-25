@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: '~1.9'
       - name: Terraform fmt (repo)
@@ -62,7 +62,7 @@ jobs:
         with:
           path: ~/.terraform.d/plugin-cache
           key: ${{ runner.os }}-tf-${{ hashFiles(format('{0}/**/*.tf', matrix.path)) }}
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: '~1.9'
       - name: Init
