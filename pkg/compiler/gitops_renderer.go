@@ -2,7 +2,6 @@ package compiler
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -140,7 +139,7 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
 		content += string(rbData)
 	}
 
-	return ioutil.WriteFile(tenantFile, []byte(content), 0600)
+	return os.WriteFile(tenantFile, []byte(content), 0600)
 }
 
 // syncWaveEntry pairs a component prefix with its ArgoCD sync-wave number.
@@ -218,5 +217,5 @@ func renderApp(outputDir, name, path string) error {
 	if !strings.HasPrefix(absFile, absOut+string(filepath.Separator)) {
 		return fmt.Errorf("app name %q results in path outside output directory", name)
 	}
-	return ioutil.WriteFile(outPath, data, 0600)
+	return os.WriteFile(outPath, data, 0600)
 }

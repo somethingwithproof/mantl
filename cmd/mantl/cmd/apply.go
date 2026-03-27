@@ -37,8 +37,9 @@ var applyCmd = &cobra.Command{
 
 		// 2. Execution DAG
 		dag := &bootstrap.ExecutionDAG{
-			SpecFile: specFile,
-			BuildDir: buildDir,
+			SpecFile:     specFile,
+			BuildDir:     buildDir,
+			Distribution: cluster.Spec.Kubernetes.Distribution,
 		}
 
 		fmt.Println("Step 2/5: Provisioning infrastructure...")

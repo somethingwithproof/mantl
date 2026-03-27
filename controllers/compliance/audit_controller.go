@@ -3,7 +3,7 @@ package compliance
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"time"
@@ -71,7 +71,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	// 4. Load the Framework mapping file
 	frameworkFile := filepath.Join(r.FrameworkDir, fmt.Sprintf("%s.yaml", profile.Spec.Framework))
-	data, err := ioutil.ReadFile(frameworkFile)
+	data, err := os.ReadFile(frameworkFile)
 	if err != nil {
 		l.Error(err, "Failed to read framework file", "file", frameworkFile)
 		audit.Status.Phase = "Failed"

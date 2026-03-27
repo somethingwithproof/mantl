@@ -40,8 +40,8 @@ var allowedEvidenceKinds = map[string]bool{
 }
 
 const (
-	maxKubeNameLen   = 253 // RFC 1123 DNS subdomain max length
-	maxNamespaceLen  = 63  // Kubernetes namespace max length
+	maxKubeNameLen        = 253 // RFC 1123 DNS subdomain max length
+	maxNamespaceLen       = 63  // Kubernetes namespace max length
 	defaultCaptureTimeout = 30 * time.Second
 )
 

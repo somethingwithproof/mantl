@@ -15,8 +15,9 @@ import (
 
 // ExecutionDAG defines the sequence of platform bring-up.
 type ExecutionDAG struct {
-	SpecFile string
-	BuildDir string
+	SpecFile     string
+	BuildDir     string
+	Distribution string
 }
 
 var validKindClusterNameRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
@@ -29,14 +30,28 @@ func (d *ExecutionDAG) ProvisionInfra(provider string, clusterName string) error
 
 	fmt.Printf("Executing: terraform apply (Provider: %s)\n", provider)
 
-	// 1. Find terraform binary
-	tfPath, err := exec.LookPath("terraform")
-	if err != nil {
-		return fmt.Errorf("terraform binary not found in PATH: %w", err)
+	// 1. Derive the blueprint directory from provider and distribution.
+	//    The convention matches the directory names under infra/terraform/blueprints/:
+	//    {provider}-{distribution}  (e.g. aws-eks, gcp-gke, azure-aks)
+	distribution := d.Distribution
+	if distribution == "" {
+		return fmt.Errorf("distribution is required to select a terraform blueprint")
+	}
+	blueprintName := fmt.Sprintf("%s-%s", provider, distribution)
+	blueprintPath := filepath.Join("infra/terraform/blueprints", blueprintName)
+	if _, statErr := os.Stat(blueprintPath); os.IsNotExist(statErr) {
+		return fmt.Errorf("terraform blueprint %q not found at %s", blueprintName, blueprintPath)
 	}
 
-	// 2. Prepare workspace
-	blueprintPath := filepath.Join("infra/terraform/blueprints", fmt.Sprintf("%s-eks", provider))
+	// 2. Find terraform binary (prefer tofu, fall back to terraform)
+	tfPath, err := exec.LookPath("tofu")
+	if err != nil {
+		tfPath, err = exec.LookPath("terraform")
+		if err != nil {
+			return fmt.Errorf("neither tofu nor terraform binary found in PATH: %w", err)
+		}
+	}
+
 	tf, err := tfexec.NewTerraform(blueprintPath, tfPath)
 	if err != nil {
 		return fmt.Errorf("failed to create tfexec instance: %w", err)
@@ -54,7 +69,7 @@ func (d *ExecutionDAG) ProvisionInfra(provider string, clusterName string) error
 	// 4. Apply
 	absBuildDir, _ := filepath.Abs(d.BuildDir)
 	tfVarsPath := filepath.Join(absBuildDir, "terraform.tfvars.json")
-	
+
 	fmt.Printf("  Applying configuration with vars: %s\n", tfVarsPath)
 	if err := tf.Apply(context.Background(), tfexec.VarFile(tfVarsPath)); err != nil {
 		return fmt.Errorf("terraform apply failed: %w", err)
@@ -122,7 +137,7 @@ func (d *ExecutionDAG) InstallArgoCD() error {
 // BootstrapGitOps applies the root application to the cluster.
 func (d *ExecutionDAG) BootstrapGitOps() error {
 	fmt.Println("Executing: kubectl apply -f .mantl/build/gitops/*.yaml")
-	
+
 	gitopsDir := filepath.Join(d.BuildDir, "gitops")
 	files, err := filepath.Glob(filepath.Join(gitopsDir, "*.yaml"))
 	if err != nil {
