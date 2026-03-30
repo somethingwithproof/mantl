@@ -93,7 +93,7 @@ jobs:
           sarif_file: tfsec.sarif
           additional_args: --config-file .tfsec.yml
       - name: Upload tfsec SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: tfsec.sarif
           category: tfsec
@@ -112,7 +112,7 @@ jobs:
           config_file: .checkov.yml
           severity: MEDIUM,HIGH,CRITICAL
       - name: Upload Checkov SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: checkov.sarif
           category: checkov
