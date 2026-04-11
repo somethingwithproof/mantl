@@ -11,7 +11,7 @@ Sphinx==9.1.0
 # Configuration Management
 # Change concurrently with the required ansible version in sample.yml
 ansible==13.5.0
-ansible-lint==25.12.2
+ansible-lint==26.4.0
 
 # Utilities
 netaddr==1.3.0
