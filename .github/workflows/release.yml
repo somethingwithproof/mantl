@@ -24,7 +24,7 @@ jobs:
           mkdir -p dist
           kustomize build clusters/production > dist/cluster-production.yaml
       - name: Install ORAS
-        uses: oras-project/setup-oras@v1
+        uses: oras-project/setup-oras@v2
       - name: Push bundles to GHCR
         env:
           REPO_OWNER: ${{ github.repository_owner }}
