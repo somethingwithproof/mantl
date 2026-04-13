@@ -16,7 +16,7 @@ jobs:
         id: tag
         run: echo "TAG=${GITHUB_REF_NAME:-${{ github.event.release.tag_name }}}" >> $GITHUB_OUTPUT
       - name: Install kustomize
-        uses: imranismail/setup-kustomize@v2
+        uses: imranismail/setup-kustomize@v3
         with:
           kustomize-version: v5.4.3
       - name: Render bundles
