@@ -20,6 +20,6 @@ PyYAML==6.0.3
 # Development Tools
 pre-commit==4.5.1
 black==26.3.1
-ruff==0.15.9
+ruff==0.15.10
 yamllint==1.38.0
-mypy==1.20.0
+mypy==1.20.1
