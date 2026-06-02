@@ -12,7 +12,7 @@ Mantl is a Go and Kubernetes platform with two halves that share a vocabulary bu
 1. A **compliance operator**: CRDs under `apis/compliance/v1alpha1` reconciled by controllers under `controllers/compliance/`, fed by compliance frameworks expressed as YAML data, enforced through Kyverno policies, and producing evidence stored in object storage.
 2. A **cluster platform**: Terraform blueprints under `infra/terraform/blueprints/` that stand up hardened clusters, Helm charts under `charts/`, and the bootstrap/compile pipeline under `pkg/`.
 
-The module path is `github.com/thomasvincent/mantl`. Go 1.26.
+The module path is `github.com/thomasvincent/mantl`. Go version is pinned in `go.mod`.
 
 ## The boundary that matters
 

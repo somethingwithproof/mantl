@@ -54,9 +54,9 @@ Every GA/beta blueprint must deliver the common baseline. When editing aws-eks, 
 
 The compliance evidence path depends on this: the operator authenticates to the evidence bucket via workload identity (ADR 003), so the workload-identity wiring is not optional on a GA cluster.
 
-## Provider pinning
+## Provider version constraints
 
-`versions.tf` pins both the Terraform core version and each provider. Current aws-eks pins:
+`versions.tf` sets version constraints (lower bounds) on both the Terraform core version and each provider. Current aws-eks constraints:
 
 ```hcl
 terraform {
