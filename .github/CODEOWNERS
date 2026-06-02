@@ -1,30 +1,19 @@
-# Default owners
+# Default owner for everything not matched below.
 * @thomasvincent
 
-# Components
-/apps/ @thomasvincent
-/clusters/ @thomasvincent
-/platform/ @thomasvincent
-/infra/terraform/ @thomasvincent
+# Security-sensitive paths. Changes here require explicit review.
+
+# Compliance frameworks, controls, and evidence content.
+/compliance/ @thomasvincent
+
+# Operator reconcilers and CRD wiring.
+/controllers/ @thomasvincent
+
+# Admission and runtime policies.
 /policies/ @thomasvincent
-/tests/ @thomasvincent
 
-# These owners will be the default reviewers for all pull requests in the repository
-# and will automatically be requested for review when a pull request is opened
+# CI, release, signing, and provenance workflows.
+/.github/workflows/ @thomasvincent
 
-# Default owners for everything in the repo
-* @thomasvincent @github-actions[bot]
-
-# Python files
-*.py @thomasvincent @github-actions[bot]
-
-# Documentation files
-/docs/ @thomasvincent @github-actions[bot]
-*.md @thomasvincent @github-actions[bot]
-*.rst @thomasvincent @github-actions[bot]
-
-# Configuration files
-*.yml @thomasvincent @github-actions[bot]
-*.yaml @thomasvincent @github-actions[bot]
-*.toml @thomasvincent @github-actions[bot]
-*.ini @thomasvincent @github-actions[bot]
+# Cloud infrastructure and IAM.
+/infra/terraform/ @thomasvincent
