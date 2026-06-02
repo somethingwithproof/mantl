@@ -14,23 +14,66 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// Framework defines the structure of our compliance mapping files.
+// Framework mirrors the on-disk compliance framework YAML
+// (compliance/frameworks/<name>/framework.yaml). The file is a Kubernetes-style
+// object whose controls live under spec, so FrameworkSpec is embedded with the
+// "spec" tag: the document nests under spec while Go access stays flat
+// (framework.Controls).
 type Framework struct {
-	Name     string `json:"name"`
-	Version  string `json:"version"`
-	Controls []struct {
-		ID                string             `json:"id"`
-		Policies          []string           `json:"policies"`
-		EvidenceResources []EvidenceResource `json:"evidenceResources"`
-	} `json:"controls"`
+	FrameworkSpec `json:"spec"`
 }
 
-// EvidenceResource defines a Kubernetes resource to be captured as evidence.
+// FrameworkSpec holds the framework body: controls and their mappings.
+type FrameworkSpec struct {
+	Name     string    `json:"displayName"`
+	Version  string    `json:"version"`
+	Controls []Control `json:"controls"`
+}
+
+// Control is a single framework control with its policy and evidence mappings.
+type Control struct {
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Severity string    `json:"severity"`
+	Mappings []Mapping `json:"mappings"`
+	// EvidenceResources is retained for the audit controller, which still reads
+	// it. The framework YAML does not populate it (so it stays nil and that loop
+	// is a no-op), but keeping the field avoids breaking audit_controller.go.
+	// The audit controller migrates to Mappings/EvidenceCollector in Phase 2b.
+	EvidenceResources []EvidenceResource `json:"evidenceResources,omitempty"`
+}
+
+// EvidenceResource is a Kubernetes resource captured as evidence. Retained for
+// audit_controller.go compatibility; superseded by EvidenceCollector in Phase 2b.
 type EvidenceResource struct {
 	Kind      string `json:"kind"`
 	Name      string `json:"name,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
 	Group     string `json:"group,omitempty"`
+}
+
+// Mapping is one entry under a control: either a policy reference or an
+// evidence collector. Type is "policy" or "evidence".
+type Mapping struct {
+	Type              string             `json:"type"`
+	PolicyRef         *PolicyRef         `json:"policyRef,omitempty"`
+	EvidenceCollector *EvidenceCollector `json:"evidenceCollector,omitempty"`
+}
+
+// PolicyRef names a Kyverno policy template and its enforcement mode.
+type PolicyRef struct {
+	Template string `json:"template"`
+	Mode     string `json:"mode"`
+}
+
+// EvidenceCollector describes periodic evidence capture for a control.
+// Parsed now; consumed in Phase 2b.
+type EvidenceCollector struct {
+	Type          string   `json:"type"`
+	Schedule      string   `json:"schedule"`
+	Query         string   `json:"query,omitempty"`
+	Resources     []string `json:"resources,omitempty"`
+	RetentionDays int      `json:"retentionDays,omitempty"`
 }
 
 // ComplianceProfileReconciler reconciles a ComplianceProfile object
@@ -69,17 +112,19 @@ func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	// 3. Map controls to concrete policies
-	var policiesToEnforce []string
+	var referenced []string
 	for _, control := range framework.Controls {
-		policiesToEnforce = append(policiesToEnforce, control.Policies...)
+		for _, m := range control.Mappings {
+			if m.PolicyRef != nil && m.PolicyRef.Template != "" {
+				referenced = append(referenced, m.PolicyRef.Template)
+			}
+		}
 	}
-
-	l.Info("Dynamic mapping complete", "framework", framework.Name, "policyCount", len(policiesToEnforce))
+	l.Info("Parsed framework", "framework", framework.Name, "templateCount", len(referenced))
 
 	// 4. Update status
 	profile.Status.State = "Active"
-	profile.Status.ActivePolicies = int32(len(policiesToEnforce))
+	profile.Status.ActivePolicies = int32(len(referenced))
 	if err := r.Status().Update(ctx, &profile); err != nil {
 		return ctrl.Result{}, err
 	}
