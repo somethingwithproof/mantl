@@ -49,3 +49,6 @@ crash.*.log
 *.auto.tfvars
 !*.example.tfvars
 .terraform.lock.hcl
+
+# Go build artifacts
+/dist/
