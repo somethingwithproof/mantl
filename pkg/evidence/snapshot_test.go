@@ -252,37 +252,24 @@ func TestBuildResourceID(t *testing.T) {
 }
 
 func TestCaptureResource_ResourceID(t *testing.T) {
-	tests := []struct {
+	// Validation and resource-identifier construction must not depend on a live
+	// cluster. Exercise them directly rather than through kubectl.
+	cases := []struct {
 		name    string
 		kind    string
 		resName string
+		wantID  string
 	}{
-		{
-			name:    "kind-only resourceID when name is empty",
-			kind:    "Deployment",
-			resName: "",
-		},
-		{
-			name:    "kind/name resourceID when name is set",
-			kind:    "Deployment",
-			resName: "my-app",
-		},
+		{"kind-only when name is empty", "Deployment", "", "Deployment"},
+		{"kind/name when name is set", "Deployment", "my-app", "Deployment/my-app"},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// CaptureResource will fail at kubectl exec (unavailable in test
-			// env), but must pass all validation checks first.
-			_, err := CaptureResource(tt.kind, tt.resName, "default")
-			if err == nil {
-				t.Fatal("expected kubectl error, got nil")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := validateCaptureArgs(tc.kind, tc.resName, "default"); err != nil {
+				t.Fatalf("validateCaptureArgs returned error for valid input: %v", err)
 			}
-			errMsg := err.Error()
-			if strings.Contains(errMsg, "not permitted") ||
-				strings.Contains(errMsg, "invalid resource") ||
-				strings.Contains(errMsg, "namespace is required") ||
-				strings.Contains(errMsg, "exceeds maximum length") {
-				t.Fatalf("expected kubectl error, got validation error: %v", err)
+			if got := BuildResourceID(tc.kind, tc.resName); got != tc.wantID {
+				t.Errorf("BuildResourceID(%q, %q) = %q, want %q", tc.kind, tc.resName, got, tc.wantID)
 			}
 		})
 	}
