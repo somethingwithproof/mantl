@@ -89,9 +89,5 @@ repos:
         args: ["--severity=warning"]
         files: \.(sh|bash)$
 
-  # Security scanning
-  - repo: https://github.com/aquasecurity/trivy
-    rev: v0.58.1
-    hooks:
-      - id: trivy-config
-        args: ['--severity', 'HIGH,CRITICAL']
+  # Trivy config scanning runs in CI and via `make security-scan`. The upstream
+  # trivy pre-commit hook does not ship a usable manifest, so it is not wired here.

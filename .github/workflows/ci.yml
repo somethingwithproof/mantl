@@ -8,14 +8,14 @@ on:
 
 jobs:
   validate:
-    runs-on: [self-hosted, linux, x64]
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
 
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
-        go-version: '1.23'
+        go-version-file: go.mod
         cache: true
 
     - name: Install dependencies
@@ -24,17 +24,18 @@ jobs:
     - name: Verify dependencies
       run: go mod verify
 
+    # Build to dist/ to avoid colliding with the tracked bin/mantl bash CLI.
     - name: Build CLI
-      run: go build -v -o bin/mantl ./cmd/mantl
+      run: go build -v -o dist/mantl ./cmd/mantl
 
     - name: Run unit tests
-      run: go test -v ./...
+      run: make go-test
 
     - name: Validate spec planning
-      run: ./bin/mantl plan examples/mantl-spec.yaml
+      run: ./dist/mantl plan examples/mantl-spec.yaml
 
     - name: Build Compliance Operator
-      run: go build -v -o bin/compliance-operator ./cmd/compliance-operator
+      run: go build -v -o dist/compliance-operator ./cmd/compliance-operator
 
   lint:
     runs-on: ubuntu-latest
