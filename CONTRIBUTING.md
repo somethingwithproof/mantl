@@ -194,22 +194,44 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) for commit m
 - `build:` - Build system changes
 - `ci:` - CI configuration changes
 
+**Scopes** match the area touched, for example `compliance`, `evidence`, `ci`, `terraform`, `bootstrap`, `compiler`.
+
 **Examples:**
 ```bash
-git commit -m "feat: add SOC2 compliance framework"
-git commit -m "fix: correct Kyverno policy validation"
-git commit -m "docs: update README with quick start guide"
+git commit -m "feat(compliance): add finding controller reconcile loop"
+git commit -m "fix(evidence): correct snapshot hash ordering"
+git commit -m "chore(ci): pin release-please action to a commit SHA"
+git commit -m "refactor(terraform): split aws-eks blueprint into modules"
 ```
 
-The pre-commit hooks will validate your commit messages automatically.
+The commitizen pre-commit hook validates commit messages on `commit-msg`.
+
+Keep titles terse and single-purpose:
+- One concern per commit. If you have four things to say, write four commits.
+- No rule-of-four titles (`feat: X, Y, Z, and W`). Split them.
+- No parenthetical explanation chains in the title.
+- No metric-quoting (`fix: resolve 9 review comments`, `all tests pass`).
 
 ## Pull Request Process
+
+### Atomic PRs
+
+Keep each PR to a single concern. Aim for 1-3 files where feasible. A bug fix
+fixes the bug; a refactor refactors; file separate follow-up PRs for related
+improvements. Multi-concern PRs are slower to review and harder to revert.
+
+PR descriptions are terse and specific: intent, scope, risk, verification
+evidence (the commands you ran and what they showed), and rollback notes. No
+marketing language. Avoid words like "comprehensive", "robust", "seamless".
+The `.github/PULL_REQUEST_TEMPLATE.md` carries the section layout; small fixes
+do not need every section.
 
 ### Before Opening a PR
 
 1. **Ensure all tests pass:**
    ```bash
-   make test
+   make go-test   # Go unit tests
+   make test      # full suite
    make lint
    make validate
    ```
@@ -236,27 +258,9 @@ The pre-commit hooks will validate your commit messages automatically.
 
    Or manually on GitHub.
 
-3. **PR Description Template:**
-   ```markdown
-   ## Summary
-   Brief description of what this PR does.
-
-   ## Motivation
-   Why is this change needed?
-
-   ## Changes
-   - List of changes made
-   - One bullet per significant change
-
-   ## Testing
-   How was this tested?
-
-   ## Checklist
-   - [ ] Tests pass locally
-   - [ ] Documentation updated
-   - [ ] Conventional commit messages used
-   - [ ] Pre-commit hooks pass
-   ```
+3. **Fill in the PR template.** GitHub loads `.github/PULL_REQUEST_TEMPLATE.md`
+   automatically. Fill the sections that apply (Summary, Scope, Risk,
+   Verification, Rollback) and complete the checklist.
 
 ### PR Review Process
 
@@ -268,6 +272,12 @@ The pre-commit hooks will validate your commit messages automatically.
 ## Testing and Validation
 
 ### Local Testing
+
+**Go tests** run through the Makefile target, which scopes the package list to
+exclude vendored charts. Use it instead of `go test ./...`:
+```bash
+make go-test
+```
 
 **Run all tests:**
 ```bash
@@ -322,6 +332,14 @@ make install-dev
 ```
 
 ## Code Style Guidelines
+
+### Documentation
+
+- Every capability claim in `README.md` must map to implemented code, or carry an
+  explicit maturity label (for example `(experimental)`, `(planned)`, `(alpha)`).
+  Do not describe behavior that does not exist yet without labeling it.
+- When a change alters an architectural boundary, add or update an ADR under
+  `docs/adr/`.
 
 ### Python
 
