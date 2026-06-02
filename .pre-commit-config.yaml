@@ -68,6 +68,11 @@ repos:
           - '--args=--only=terraform_deprecated_index'
           - '--args=--only=terraform_unused_declarations'
           - '--args=--only=terraform_module_pinned_source'
+      - id: terraform_docs
+        args:
+          - --hook-config=--path-to-file=README.md
+          - --hook-config=--add-to-existing-file=true
+          - --hook-config=--create-file-if-not-exist=true
 
   # Commit message validation
   - repo: https://github.com/commitizen-tools/commitizen
@@ -83,14 +88,6 @@ repos:
       - id: shellcheck
         args: ["--severity=warning"]
         files: \.(sh|bash)$
-
-  # Terraform documentation
-  - repo: https://github.com/terraform-docs/terraform-docs
-    rev: v0.19.0
-    hooks:
-      - id: terraform-docs-go
-        args: ["markdown", "table", "--output-file", "README.md", "."]
-        files: ^infra/terraform/.*
 
   # Security scanning
   - repo: https://github.com/aquasecurity/trivy
