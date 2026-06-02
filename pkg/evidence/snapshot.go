@@ -57,6 +57,37 @@ type Snapshot struct {
 	Data        string    `json:"data"` // JSON representation of the resource
 }
 
+// validateCaptureArgs checks kind, name, and namespace against the evidence
+// collection allowlist and syntax rules. It returns nil when the arguments are
+// safe to pass to kubectl. Keeping validation separate from process execution
+// lets tests exercise the rules without a live cluster.
+func validateCaptureArgs(kind, name, namespace string) error {
+	if !validKubeKindRe.MatchString(kind) {
+		return fmt.Errorf("invalid resource kind %q", kind)
+	}
+	if !allowedEvidenceKinds[kind] {
+		return fmt.Errorf("resource kind %q is not permitted for evidence collection", kind)
+	}
+	if name != "" {
+		if len(name) > maxKubeNameLen {
+			return fmt.Errorf("resource name exceeds maximum length of %d", maxKubeNameLen)
+		}
+		if !validKubeNameRe.MatchString(name) {
+			return fmt.Errorf("invalid resource name %q", name)
+		}
+	}
+	if namespace == "" {
+		return fmt.Errorf("namespace is required for evidence collection")
+	}
+	if len(namespace) > maxNamespaceLen {
+		return fmt.Errorf("namespace exceeds maximum length of %d", maxNamespaceLen)
+	}
+	if !validNamespaceRe.MatchString(namespace) {
+		return fmt.Errorf("invalid namespace %q", namespace)
+	}
+	return nil
+}
+
 // CaptureResource uses kubectl to get a JSON representation of a resource.
 // kind must be in the allowedEvidenceKinds set, and namespace is required
 // to prevent unscoped cluster-wide collection.
@@ -71,30 +102,8 @@ func CaptureResource(kind, name, namespace string) (*Snapshot, error) {
 // CaptureResourceWithContext is like CaptureResource but accepts a
 // caller-provided context for deadline and cancellation control.
 func CaptureResourceWithContext(ctx context.Context, kind, name, namespace string) (*Snapshot, error) {
-	// Defense-in-depth: reject syntactically invalid kinds before checking the
-	// allowlist, so future allowlist additions that violate the pattern are caught.
-	if !validKubeKindRe.MatchString(kind) {
-		return nil, fmt.Errorf("invalid resource kind %q", kind)
-	}
-	if !allowedEvidenceKinds[kind] {
-		return nil, fmt.Errorf("resource kind %q is not permitted for evidence collection", kind)
-	}
-	if name != "" {
-		if len(name) > maxKubeNameLen {
-			return nil, fmt.Errorf("resource name exceeds maximum length of %d", maxKubeNameLen)
-		}
-		if !validKubeNameRe.MatchString(name) {
-			return nil, fmt.Errorf("invalid resource name %q", name)
-		}
-	}
-	if namespace == "" {
-		return nil, fmt.Errorf("namespace is required for evidence collection")
-	}
-	if len(namespace) > maxNamespaceLen {
-		return nil, fmt.Errorf("namespace exceeds maximum length of %d", maxNamespaceLen)
-	}
-	if !validNamespaceRe.MatchString(namespace) {
-		return nil, fmt.Errorf("invalid namespace %q", namespace)
+	if err := validateCaptureArgs(kind, name, namespace); err != nil {
+		return nil, err
 	}
 
 	// Place our flags before "--" so user-controlled kind/name are treated
