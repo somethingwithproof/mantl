@@ -16,7 +16,7 @@ Mantl isn't just another Kubernetes platform. It's the first to provide **Compli
 
 ## ⚡ Quick Start (3 Commands)
 
-Get a complete production-ready platform running in **under 5 minutes**:
+Spin up a local development platform on a kind cluster in a few minutes:
 
 ```bash
 git clone https://github.com/thomasvincent/mantl.git
@@ -97,26 +97,21 @@ kubectl apply -f compliance/frameworks/soc2/profile-standard.yaml
 
 ## Compliance Module
 
-Mantl's killer feature is the Compliance-as-Code module:
+Mantl's differentiator is its Compliance-as-Code module. A `ComplianceProfile`
+selects controls from a framework; controls map to admission policies; policy
+violations surface as `Finding` resources; and audits capture point-in-time
+evidence to object storage.
 
 ```bash
-# View compliance status
-$ mantl compliance status
+# Apply a compliance profile to the cluster
+kubectl apply -f compliance/frameworks/soc2/profile-standard.yaml
 
-┌────────────────────────────────────────────┐
-│           Compliance Status             │
-├────────────────────────────────────────────┤
-│ SOC2 Type II           Score: 94%      │
-│ CIS Kubernetes v1.8    Score: 97%      │
-├────────────────────────────────────────────┤
-│ Critical Findings: 2                   │
-│ Evidence Items: 1,247                  │
-│ Last Audit: 2 hours ago                │
-└────────────────────────────────────────────┘
-
-# Generate audit report
-$ mantl compliance audit --framework soc2 --output report.pdf
+# Inspect findings produced by policy violations
+kubectl get findings -A
 ```
+
+A `mantl compliance status` CLI summary is planned (see the roadmap); today,
+findings and audits are inspected through `kubectl`.
 
 Supported frameworks:
 - ✅ SOC2 Type II
@@ -125,6 +120,27 @@ Supported frameworks:
 - 🚧 PCI-DSS v4.0 (beta)
 - 📋 NIST 800-53 (planned)
 - 📋 FedRAMP (planned)
+
+### Maturity
+
+Cloud blueprints:
+
+| Cloud | Status |
+|-------|--------|
+| AWS (EKS) | GA |
+| GCP (GKE) | beta (hardening in progress) |
+| Azure (AKS) | beta (hardening in progress) |
+| Linode, Oracle, IBM, DigitalOcean | experimental |
+
+Compliance frameworks:
+
+| Framework | Status |
+|-----------|--------|
+| SOC2 Type II | policies and evidence wiring in progress |
+| CIS Kubernetes | policies in progress |
+| HIPAA, PCI-DSS | declarations only, not yet enforced |
+
+Maturity reflects what the code enforces today, not aspirations.
 
 ## Supported Clouds
 
