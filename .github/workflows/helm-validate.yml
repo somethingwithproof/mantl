@@ -1,0 +1,45 @@
+name: Helm Validate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: helm-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      # Only first-party charts under charts/ are linted. Vendored upstream
+      # charts in platform/ are excluded by path.
+      - name: Lint and template charts
+        run: |
+          set -euo pipefail
+          found=0
+          for chart in charts/*/; do
+            if [ -f "${chart}Chart.yaml" ]; then
+              found=1
+              echo "::group::helm lint ${chart}"
+              helm lint "${chart}"
+              echo "::endgroup::"
+              echo "::group::helm template ${chart}"
+              helm template "${chart}" >/dev/null
+              echo "::endgroup::"
+            fi
+          done
+          if [ "${found}" -eq 0 ]; then
+            echo "No charts found under charts/" >&2
+            exit 1
+          fi

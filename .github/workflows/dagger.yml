@@ -1,0 +1,43 @@
+name: Dagger
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dagger-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    # Kept minimal and non-blocking until a project-specific Dagger module
+    # is committed. The action runs the commands in an ephemeral engine.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build and test via Dagger
+        uses: dagger/dagger-for-github@v7
+        with:
+          version: latest
+          verb: core
+          args: >-
+            container
+            from --address=golang:1.26
+            with-mounted-directory --path=/src --source=.
+            with-workdir --path=/src
+            with-exec --args="go,build,./cmd/mantl"
+            with-exec --args="make,go-test"
+            stdout
