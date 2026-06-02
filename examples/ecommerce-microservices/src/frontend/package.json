@@ -49,6 +49,8 @@
     "@tootallnate/once": ">=3.0.1",
     "underscore": ">=1.13.8",
     "serialize-javascript": ">=7.0.3",
-    "jsonpath": "npm:jsonpath-plus@>=10.0.0"
+    "jsonpath": "npm:jsonpath-plus@>=10.0.0",
+    "cosmiconfig": { "yaml": "^1.10.3" },
+    "cssnano": { "yaml": "^1.10.3" }
   }
 }
