@@ -1,0 +1,36 @@
+name: Mutation Testing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gremlins:
+    runs-on: ubuntu-latest
+    # Informational only for now. Mutation runs do not block PRs until the
+    # score baseline is established.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install gremlins
+        run: go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
+
+      # Scoped to pkg/... to keep runtime bounded; vendored platform/ is excluded.
+      - name: Run gremlins
+        run: gremlins unleash --dry-run=false ./pkg/...

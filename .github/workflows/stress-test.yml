@@ -1,0 +1,29 @@
+name: Stress Test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * *'  # daily at 04:00 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stress-test-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # Starting point: run benchmarks only (no unit tests) across pkg/...
+      - name: Run benchmarks
+        run: go test -run='^$' -bench=. -benchmem ./pkg/...
