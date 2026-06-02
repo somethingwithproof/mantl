@@ -1,4 +1,4 @@
-.PHONY: help install-dev install-staging install-production install-small install-medium install-full clean test test-unit test-coverage test-watch lint format validate security-scan audit wizard cli-install
+.PHONY: help install-dev install-staging install-production install-small install-medium install-full clean test go-test test-unit test-coverage test-watch lint format validate security-scan audit wizard cli-install
 
 # Default target
 .DEFAULT_GOAL := help
@@ -80,6 +80,13 @@ test: ## Run all tests
 	@$(MAKE) kustomize-validate
 	@echo "${GREEN}Validating Terraform...${RESET}"
 	@$(MAKE) terraform-validate
+
+# GO_PKGS excludes vendored Helm charts under platform/ whose upstream Go tests
+# are not ours to maintain. The apis/platform package is kept.
+GO_PKGS := $(shell go list ./... | grep -v 'github.com/thomasvincent/mantl/platform/')
+
+go-test: ## Run Go unit tests excluding vendored charts
+	go test $(GO_PKGS)
 
 test-unit: ## Run unit tests only
 	@echo "${GREEN}Running unit tests...${RESET}"
