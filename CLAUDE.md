@@ -39,7 +39,7 @@ Rules that hold the boundaries:
 
 ## Module layout
 
-```
+```text
 apis/
   compliance/v1alpha1/   # ComplianceProfile, Finding, ComplianceAudit types + kubebuilder markers
   platform/v1alpha1/     # platform CRD types

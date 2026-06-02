@@ -36,6 +36,7 @@ jobs:
         with:
           # Full history improves SonarCloud blame and new-code detection.
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Go
         if: steps.guard.outputs.enabled == 'true'
@@ -50,7 +51,7 @@ jobs:
 
       - name: SonarCloud scan
         if: steps.guard.outputs.enabled == 'true'
-        uses: SonarSource/sonarcloud-github-action@v3
+        uses: SonarSource/sonarqube-scan-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

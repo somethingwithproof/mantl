@@ -24,4 +24,4 @@ make go-test
 ## Checklist
 - [ ] `make go-test` passes
 - [ ] README claims still map to implemented code (or carry a maturity label)
-- [ ] ADR added/updated if a boundary changed
+- [ ] ADR added/updated if a boundary, storage contract, test scope, or supported cloud changed

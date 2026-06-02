@@ -21,6 +21,8 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -29,7 +31,7 @@ jobs:
           cache: true
 
       - name: Install gremlins
-        run: go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
+        run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
 
       # Scoped to pkg/... to keep runtime bounded; vendored platform/ is excluded.
       - name: Run gremlins
