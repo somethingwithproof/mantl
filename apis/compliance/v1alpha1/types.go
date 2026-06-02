@@ -39,13 +39,13 @@ type ComplianceProfileList struct {
 
 // FindingSpec defines the details of a compliance finding
 type FindingSpec struct {
-	ID          string `json:"id"`
-	ControlID   string `json:"controlId"`
-	Framework   string `json:"framework"`
-	Severity    string `json:"severity"`
-	Resource    string `json:"resource"`
-	Message     string `json:"message"`
-	Status      string `json:"status"` // pass, fail, warn
+	ID        string `json:"id"`
+	ControlID string `json:"controlId"`
+	Framework string `json:"framework"`
+	Severity  string `json:"severity"`
+	Resource  string `json:"resource"`
+	Message   string `json:"message"`
+	Status    string `json:"status"` // pass, fail, warn
 }
 
 // +kubebuilder:object:root=true
@@ -76,12 +76,12 @@ type ComplianceAuditSpec struct {
 
 // ComplianceAuditStatus defines the observed state of a Compliance Audit
 type ComplianceAuditStatus struct {
-	Phase       string      `json:"phase,omitempty"` // Pending, Running, Completed, PartiallyCompleted, Failed, NoEvidence
-	StartTime   *metav1.Time `json:"startTime,omitempty"`
-	EndTime     *metav1.Time `json:"endTime,omitempty"`
-	FindingCount int32       `json:"findingCount,omitempty"`
-	FailedCount  int32       `json:"failedCount,omitempty"`
-	EvidenceURI  string      `json:"evidenceUri,omitempty"`
+	Phase        string       `json:"phase,omitempty"` // Pending, Running, Completed, PartiallyCompleted, Failed, NoEvidence
+	StartTime    *metav1.Time `json:"startTime,omitempty"`
+	EndTime      *metav1.Time `json:"endTime,omitempty"`
+	FindingCount int32        `json:"findingCount,omitempty"`
+	FailedCount  int32        `json:"failedCount,omitempty"`
+	EvidenceURI  string       `json:"evidenceUri,omitempty"`
 }
 
 // +kubebuilder:object:root=true

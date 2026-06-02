@@ -3,7 +3,7 @@ package compliance
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
@@ -28,6 +28,7 @@ type Framework struct {
 // EvidenceResource defines a Kubernetes resource to be captured as evidence.
 type EvidenceResource struct {
 	Kind      string `json:"kind"`
+	Name      string `json:"name,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
 	Group     string `json:"group,omitempty"`
 }
@@ -56,7 +57,7 @@ func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	// 2. Load the Framework mapping file
 	frameworkFile := filepath.Join(r.FrameworkDir, fmt.Sprintf("%s.yaml", profile.Spec.Framework))
-	data, err := ioutil.ReadFile(frameworkFile)
+	data, err := os.ReadFile(frameworkFile)
 	if err != nil {
 		l.Error(err, "Failed to read framework file", "file", frameworkFile)
 		return ctrl.Result{}, err
