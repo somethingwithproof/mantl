@@ -1,0 +1,41 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-change-annotations
+  annotations:
+    policies.kyverno.io/title: "Require Change-Management Annotation"
+    policies.kyverno.io/category: "SOC2"
+    policies.kyverno.io/severity: "medium"
+    policies.kyverno.io/subject: "Deployment, StatefulSet, DaemonSet"
+    policies.kyverno.io/minversion: "1.6.0"
+    policies.kyverno.io/description: |
+      Workloads must carry a 'mantl.io/change-ticket' annotation so every change
+      to a running workload is traceable to an approved change record.
+
+      Compliance: SOC2 CC8.1 (change management).
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+  - name: require-change-ticket
+    match:
+      any:
+      - resources:
+          kinds:
+          - Deployment
+          - StatefulSet
+          - DaemonSet
+    exclude:
+      any:
+      - resources:
+          namespaces:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+          - kyverno
+    validate:
+      message: "Workloads must carry the 'mantl.io/change-ticket' annotation for change traceability."
+      pattern:
+        metadata:
+          annotations:
+            mantl.io/change-ticket: "?*"

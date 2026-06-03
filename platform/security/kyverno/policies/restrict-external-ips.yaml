@@ -1,0 +1,31 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-external-ips
+  annotations:
+    policies.kyverno.io/title: "Restrict Service External IPs"
+    policies.kyverno.io/category: "SOC2"
+    policies.kyverno.io/severity: "high"
+    policies.kyverno.io/subject: "Service"
+    policies.kyverno.io/minversion: "1.6.0"
+    policies.kyverno.io/description: |
+      Services must not set spec.externalIPs. A user able to set externalIPs can
+      attract traffic for arbitrary node IPs, a known traffic-interception and
+      privilege-escalation vector.
+
+      Compliance: SOC2 CC6.6 (boundary protection).
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+  - name: no-external-ips
+    match:
+      any:
+      - resources:
+          kinds:
+          - Service
+    validate:
+      message: "Setting spec.externalIPs on a Service is not allowed."
+      pattern:
+        spec:
+          =(externalIPs): []
