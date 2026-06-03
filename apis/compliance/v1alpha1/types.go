@@ -14,6 +14,10 @@ type ComplianceProfileSpec struct {
 type ComplianceProfileStatus struct {
 	State          string `json:"state,omitempty"`
 	ActivePolicies int32  `json:"activePolicies,omitempty"`
+
+	// UnresolvedTemplates lists framework templates with no matching policy.
+	// +optional
+	UnresolvedTemplates []string `json:"unresolvedTemplates,omitempty"`
 }
 
 // +kubebuilder:object:root=true
