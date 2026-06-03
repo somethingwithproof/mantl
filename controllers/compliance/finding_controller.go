@@ -6,6 +6,7 @@ import (
 
 	complianceapi "github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -13,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -158,8 +160,41 @@ func normalizeSeverity(severity string) string {
 	}
 }
 
+// policyReportAvailable reports whether the PolicyReport CRD is registered. It
+// distinguishes a genuinely absent type (no-match) from a discovery failure:
+// only a no-match is a clean "absent" (false, nil). Any other error is returned
+// so the caller fails closed rather than silently disabling finding aggregation,
+// which would make a non-compliant cluster look clean.
+func policyReportAvailable(mapper meta.RESTMapper) (bool, error) {
+	_, err := mapper.RESTMapping(policyReportGVK.GroupKind(), policyReportGVK.Version)
+	switch {
+	case err == nil:
+		return true, nil
+	case meta.IsNoMatchError(err):
+		return false, nil
+	default:
+		return false, err
+	}
+}
+
 func (r *FindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	// PolicyReport (Kyverno) is an optional dependency. If its CRD is absent at
+	// startup, skip the watch rather than crash the manager; the controller is a
+	// no-op until Kyverno is installed and the operator is restarted. A discovery
+	// failure (not a clean absence) is propagated so the manager fails to start
+	// instead of silently disabling violation aggregation.
+	available, err := policyReportAvailable(mgr.GetRESTMapper())
+	if err != nil {
+		return fmt.Errorf("checking PolicyReport CRD availability: %w", err)
+	}
+	if !available {
+		mgr.GetLogger().Info("PolicyReport CRD not registered; FindingReconciler disabled until Kyverno is installed and the operator restarts")
+		return nil
+	}
+	report := &unstructured.Unstructured{}
+	report.SetGroupVersionKind(policyReportGVK)
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("finding-aggregator").
+		Watches(report, &handler.EnqueueRequestForObject{}).
 		Complete(r)
 }
