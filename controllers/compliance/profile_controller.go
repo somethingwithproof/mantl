@@ -120,15 +120,25 @@ func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			}
 		}
 	}
-	l.Info("Parsed framework", "framework", framework.Name, "templateCount", len(referenced))
 
-	// 4. Update status
+	index, err := buildPolicyIndex([]string{
+		"platform/security/kyverno/policies",
+		"policies/kyverno",
+		filepath.Join(r.FrameworkDir, profile.Spec.Framework, "policies"),
+	})
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	resolved, unresolved := resolveTemplates(referenced, index, templateAliases)
+	l.Info("Resolved framework policies", "framework", framework.Name,
+		"resolved", len(resolved), "unresolved", len(unresolved))
+
 	profile.Status.State = "Active"
-	profile.Status.ActivePolicies = int32(len(referenced))
+	profile.Status.ActivePolicies = int32(len(resolved))
+	profile.Status.UnresolvedTemplates = unresolved
 	if err := r.Status().Update(ctx, &profile); err != nil {
 		return ctrl.Result{}, err
 	}
-
 	return ctrl.Result{}, nil
 }
 
