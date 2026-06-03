@@ -42,8 +42,19 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if audit.Status.Phase == "Completed" || audit.Status.Phase == "PartiallyCompleted" || audit.Status.Phase == "Failed" {
+	var endTime *time.Time
+	if audit.Status.EndTime != nil {
+		endTime = &audit.Status.EndTime.Time
+	}
+	switch action, after := planAudit(audit.Status.Phase, endTime, audit.Spec.Frequency, time.Now()); action {
+	case actionDone:
 		return ctrl.Result{}, nil
+	case actionWaitRequeue:
+		return ctrl.Result{RequeueAfter: after}, nil
+	case actionRun:
+		// Clear the prior terminal state so a recurring run proceeds cleanly.
+		audit.Status.Phase = "Pending"
+		audit.Status.EndTime = nil
 	}
 
 	// 2. Fetch the associated Profile to find the Framework
@@ -153,6 +164,9 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		"duration", end.Time.Sub(audit.Status.StartTime.Time).String(),
 	)
 
+	if interval, recurring := requeueInterval(audit.Spec.Frequency); recurring {
+		return ctrl.Result{RequeueAfter: interval}, nil
+	}
 	return ctrl.Result{}, nil
 }
 
