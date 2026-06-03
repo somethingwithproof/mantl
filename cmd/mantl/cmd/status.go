@@ -61,9 +61,7 @@ var statusCmd = &cobra.Command{
 		fmt.Printf("  Security:      %v\n", cluster.Spec.Features.Security)
 		fmt.Printf("  Compliance:    %v\n", cluster.Spec.Features.Compliance)
 
-		// Compliance audit results are read from the cluster once the audit
-		// controller's Finding/ComplianceAudit surfacing lands (roadmap Phase 2).
-		fmt.Println("\nLatest Compliance Audit: No audits found.")
+		fmt.Printf("\nCompliance Score: %s\n", complianceScore())
 	},
 }
 
