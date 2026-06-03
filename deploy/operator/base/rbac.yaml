@@ -12,9 +12,10 @@ rules:
 - apiGroups: ["compliance.mantl.io"]
   resources: ["complianceprofiles", "complianceprofiles/status"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# GitOps owns ClusterPolicy application (ADR 006); the operator only reads them.
 - apiGroups: ["kyverno.io"]
   resources: ["clusterpolicies"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: [""]
   resources: ["events"]
   verbs: ["create", "patch"]

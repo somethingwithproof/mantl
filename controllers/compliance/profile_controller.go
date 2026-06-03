@@ -85,7 +85,8 @@ type ComplianceProfileReconciler struct {
 
 // +kubebuilder:rbac:groups=compliance.mantl.io,resources=complianceprofiles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=compliance.mantl.io,resources=complianceprofiles/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=kyverno.io,resources=clusterpolicies,verbs=get;list;watch;create;update;patch
+// The operator only reads ClusterPolicies; GitOps owns their application (ADR 006).
+// +kubebuilder:rbac:groups=kyverno.io,resources=clusterpolicies,verbs=get;list;watch
 
 func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
