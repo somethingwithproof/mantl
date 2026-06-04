@@ -70,8 +70,10 @@ def validate_policy_syntax(policy_file: Path) -> bool:
         return False
 
 
-def test_policy_with_pod(policy_file: Path, pod_manifest: Dict) -> Dict:
-    """Test a policy against a pod manifest using kyverno CLI."""
+# Not a test: a helper invoked by the parametrized cases below. The `test_`
+# prefix made pytest collect it as a test and fail with a missing-fixture error.
+def run_policy_against_pod(policy_file: Path, pod_manifest: Dict) -> Dict:
+    """Apply a policy against a pod manifest using the kyverno CLI."""
     try:
         # Write pod manifest to temp file
         import tempfile
@@ -131,7 +133,7 @@ def test_verify_signatures_policy_syntax(verify_signatures_policy: Path):
 def test_allowed_registries_pass(restrict_registries_policy: Path, allowed_image: str):
     """Test that allowed registry images pass validation."""
     pod = create_test_pod(allowed_image)
-    result = test_policy_with_pod(restrict_registries_policy, pod)
+    result = run_policy_against_pod(restrict_registries_policy, pod)
 
     # Policy should pass (returncode 0) or skip if CLI not available
     if result:
@@ -149,7 +151,7 @@ def test_allowed_registries_pass(restrict_registries_policy: Path, allowed_image
 def test_blocked_registries_fail(restrict_registries_policy: Path, blocked_image: str):
     """Test that unauthorized registry images are blocked."""
     pod = create_test_pod(blocked_image)
-    result = test_policy_with_pod(restrict_registries_policy, pod)
+    result = run_policy_against_pod(restrict_registries_policy, pod)
 
     # Policy should fail (returncode != 0) or skip if CLI not available
     if result:
@@ -202,7 +204,9 @@ def test_system_namespaces_excluded(verify_signatures_policy: Path):
     with open(verify_signatures_policy) as f:
         policy = yaml.safe_load(f)
 
-    excluded_namespaces = policy["spec"]["exclude"][0]["resources"]["namespaces"]
+    # exclude is a match block with an `any`/`all` list, not a bare list.
+    # The real policy uses `exclude.any[0].resources.namespaces`.
+    excluded_namespaces = policy["spec"]["exclude"]["any"][0]["resources"]["namespaces"]
     required_exclusions = [
         "kube-system",
         "kube-public",
@@ -233,7 +237,7 @@ def test_multiple_containers_validation(restrict_registries_policy: Path):
         },
     }
 
-    result = test_policy_with_pod(restrict_registries_policy, pod)
+    result = run_policy_against_pod(restrict_registries_policy, pod)
     if result:
         assert result["returncode"] == 0, "All containers should be from allowed registries"
 
@@ -254,6 +258,6 @@ def test_init_containers_validation(restrict_registries_policy: Path):
         },
     }
 
-    result = test_policy_with_pod(restrict_registries_policy, pod)
+    result = run_policy_against_pod(restrict_registries_policy, pod)
     if result:
         assert result["returncode"] == 0, "Init containers should be validated"

@@ -2,8 +2,14 @@ apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
   name: restrict-image-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Image Registries
+    policies.kyverno.io/description: >-
+      Require container images to originate from approved registries
+      (ghcr.io, gcr.io, docker.io/library).
 spec:
   validationFailureAction: Enforce
+  background: true
   rules:
     - name: validate-registries
       match:
