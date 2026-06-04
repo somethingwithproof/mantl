@@ -11,6 +11,26 @@ import pytest
 import yaml
 
 
+def _is_first_party_yaml(path: Path) -> bool:
+    """Return True for YAML that should parse as plain YAML.
+
+    Excludes vendored Helm charts and Helm-rendered templates. Their `{{ }}`
+    Go-template directives are not valid YAML until rendered, so scanning them
+    with a plain YAML parser is a category error. The scope covers anything
+    under a `charts/` or `templates/` directory, the vendored `platform/`
+    tree, and any file whose body contains a `{{` template directive.
+    """
+    parts = set(path.parts)
+    if "charts" in parts or "templates" in parts or "platform" in parts:
+        return False
+    try:
+        if "{{" in path.read_text():
+            return False
+    except (OSError, UnicodeDecodeError):
+        return False
+    return True
+
+
 class TestTerraformStructure:
     """Tests for Terraform module structure."""
 
@@ -24,16 +44,24 @@ class TestTerraformStructure:
         assert terraform_dir.exists(), f"Terraform directory not found: {terraform_dir}"
 
     def test_terraform_modules_have_main(self, terraform_dir: Path) -> None:
-        """Verify each Terraform module has a main.tf file."""
+        """Verify each Terraform module directory contains a .tf file."""
         if not terraform_dir.exists():
             pytest.skip("Terraform directory not found")
 
-        modules = [d for d in terraform_dir.iterdir() if d.is_dir() and not d.name.startswith(".")]
+        # A "module" is a directory that directly holds .tf files. Container
+        # directories (blueprints/, modules/, the nested terraform/, ...) hold
+        # only subdirectories and are not modules, so the previous top-level
+        # iteration wrongly required a .tf in them. Discover real module dirs by
+        # the presence of .tf files instead.
+        module_dirs = {
+            tf_file.parent
+            for tf_file in terraform_dir.rglob("*.tf")
+            if ".terraform" not in tf_file.parts
+        }
 
-        for module in modules:
-            # Check for at least one .tf file
+        for module in module_dirs:
             tf_files = list(module.glob("*.tf"))
-            assert len(tf_files) > 0, f"No .tf files in module: {module.name}"
+            assert len(tf_files) > 0, f"No .tf files in module: {module}"
 
     def test_terraform_files_valid_hcl(self, terraform_dir: Path) -> None:
         """Verify Terraform files contain valid HCL syntax (basic check)."""
@@ -113,6 +141,9 @@ class TestPoliciesStructure:
             pytest.skip("Policies directory not found")
 
         for yaml_file in policies_dir.rglob("*.yaml"):
+            # Skip the vendored kyverno Helm chart under policies/kyverno/charts.
+            if not _is_first_party_yaml(yaml_file):
+                continue
             try:
                 content = yaml.safe_load(yaml_file.read_text())
                 # Can be None for empty files, dict for single doc
@@ -195,6 +226,11 @@ class TestYAMLValidation:
         for yaml_file in project_root.rglob("*.yaml"):
             # Skip excluded directories
             if any(skip_dir in yaml_file.parts for skip_dir in skip_dirs):
+                continue
+
+            # Skip vendored Helm charts and Helm-templated manifests; their
+            # `{{ }}` directives are not valid YAML until rendered.
+            if not _is_first_party_yaml(yaml_file):
                 continue
 
             try:
