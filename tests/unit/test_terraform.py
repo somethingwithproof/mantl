@@ -57,9 +57,12 @@ def run_terraform_command(
         return {}
 
 
-# Substrings in `terraform init` stderr that indicate a network/download
-# problem (fetching registry modules or providers) rather than a config defect.
-_NETWORK_INIT_ERRORS = (
+# Substrings in `terraform init` stderr that indicate an environment limitation
+# rather than a config defect: no network to fetch modules/providers, or a
+# read-only / permission-constrained workspace (as in the sandboxed CI container).
+# These skip; any other init failure is a real config or source defect and fails.
+_ENV_INIT_ERRORS = (
+    # network / provider+module download
     "could not download",
     "failed to download",
     "failed to query",
@@ -72,6 +75,13 @@ _NETWORK_INIT_ERRORS = (
     "tls handshake",
     "could not retrieve",
     "registry service unavailable",
+    "failed to install provider",
+    "failed to resolve provider",
+    # filesystem / permissions
+    "permission denied",
+    "failed to create local modules directory",
+    "read-only file system",
+    "no space left",
 )
 
 
@@ -92,9 +102,9 @@ def terraform_validate(directory: Path) -> Dict:
         init = terraform_init(directory)
         if init.get("returncode") != 0:
             stderr = init.get("stderr", "")
-            if any(marker in stderr.lower() for marker in _NETWORK_INIT_ERRORS):
-                pytest.skip(f"terraform init unavailable (network) for {directory}")
-            pytest.fail(f"terraform init failed (non-network) for {directory}:\n{stderr}")
+            if any(marker in stderr.lower() for marker in _ENV_INIT_ERRORS):
+                pytest.skip(f"terraform init unavailable (environment) for {directory}")
+            pytest.fail(f"terraform init failed (config) for {directory}:\n{stderr}")
 
     return run_terraform_command(["validate", "-json"], directory)
 
