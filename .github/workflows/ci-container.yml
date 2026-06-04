@@ -16,8 +16,11 @@ jobs:
       - name: Build dev image
         run: docker build -t mantl-dev:ci .
 
+      # Scope to unit tests: tests/e2e and tests/integration assert against a
+      # live cluster (api-server reachability, RBAC, prometheus) that this
+      # container-only job does not provision.
       - name: Pytest
-        run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci pytest -v tests
+        run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci pytest -v tests/unit
 
       - name: Validate Kustomize (dev scope)
         run: |
