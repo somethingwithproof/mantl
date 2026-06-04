@@ -134,9 +134,13 @@ class TestGitHubWorkflows:
             if content is None:
                 continue
 
-            # Should have 'name', 'on', and 'jobs'
+            # Should have 'name', 'on', and 'jobs'. PyYAML follows YAML 1.1, so
+            # an unquoted `on:` trigger is parsed as the boolean key True; accept
+            # either form rather than requiring the workflows to quote the key.
             assert "name" in content, f"Missing 'name' in {workflow.name}"
-            assert "on" in content, f"Missing 'on' trigger in {workflow.name}"
+            assert "on" in content or True in content, (
+                f"Missing 'on' trigger in {workflow.name}"
+            )
             assert "jobs" in content, f"Missing 'jobs' in {workflow.name}"
 
 
@@ -182,15 +186,16 @@ class TestDockerfile:
         assert "FROM" in content, "Dockerfile missing FROM instruction"
 
     def test_dockerfile_uses_python_313(self, project_root: Path) -> None:
-        """Verify Dockerfile uses Python 3.13."""
+        """Verify Dockerfile uses Python 3.13 or newer."""
         dockerfile = project_root / "Dockerfile"
         if not dockerfile.exists():
             pytest.skip("Dockerfile not found")
 
         content = dockerfile.read_text()
-        # Check for Python 3.13 in FROM instruction
-        assert "python:3.13" in content or "3.13" in content, (
-            "Dockerfile should use Python 3.13"
+        # The image moved to 3.14; accept any supported 3.13+ minor so the test
+        # does not force a downgrade when the base image is bumped forward.
+        assert any(f"python:3.{minor}" in content for minor in (13, 14, 15)), (
+            "Dockerfile should use Python 3.13 or newer"
         )
 
 
