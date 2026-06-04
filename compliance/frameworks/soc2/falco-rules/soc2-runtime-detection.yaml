@@ -45,7 +45,7 @@ customRules:
   # CC7.2: Security Event Detection
   - rule: SOC2 Terminal Shell in Container
     desc: Detects interactive shell access
-    condition: spawned_process and container and proc.tty != 0 and proc.name in (bash, sh, zsh)
+    condition: spawned_process and container and proc.tty != 0 and proc.name in (shell_binaries)
     output: "Terminal shell in container (user=%user.name shell=%proc.name container=%container.name)"
     priority: WARNING
     tags: [SOC2-CC6.1, SOC2-CC7.2, interactive_access]
@@ -66,7 +66,7 @@ customRules:
 
   - rule: SOC2 Network Tool in Container
     desc: Detects network scanning tools
-    condition: spawned_process and container and proc.name in (nmap, nc, netcat, tcpdump)
+    condition: spawned_process and container and proc.name in (network_tools)
     output: "Network tool executed (tool=%proc.name container=%container.id)"
     priority: WARNING
     tags: [SOC2-CC7.2, reconnaissance]
