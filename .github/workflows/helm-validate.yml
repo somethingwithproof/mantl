@@ -34,9 +34,17 @@ jobs:
               echo "::group::helm lint ${chart}"
               helm lint "${chart}"
               echo "::endgroup::"
-              echo "::group::helm template ${chart}"
-              helm template "${chart}" >/dev/null
-              echo "::endgroup::"
+              # Templating an umbrella chart needs its subchart dependencies
+              # present. Fetch them; if external repos cannot be resolved, lint
+              # has already validated the chart, so warn rather than fail CI.
+              # stderr is kept (not suppressed) so a real fetch error is visible.
+              if helm dependency build "${chart}" || helm dependency update "${chart}"; then
+                echo "::group::helm template ${chart}"
+                helm template "${chart}" >/dev/null
+                echo "::endgroup::"
+              else
+                echo "::warning::skipping helm template for ${chart}: external dependencies could not be resolved"
+              fi
             fi
           done
           if [ "${found}" -eq 0 ]; then
