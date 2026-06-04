@@ -71,9 +71,9 @@ customRules:
     priority: WARNING
     tags: [SOC2-CC7.2, reconnaissance]
 
-# Macro Definitions
-- list: shell_binaries
-  items: [bash, sh, dash, ash, zsh, ksh]
+  # Macro Definitions (Falco list items belong to the customRules sequence)
+  - list: shell_binaries
+    items: [bash, sh, dash, ash, zsh, ksh]
 
-- list: network_tools
-  items: [nmap, nc, netcat, ncat, socat, tcpdump, tshark, masscan]
+  - list: network_tools
+    items: [nmap, nc, netcat, ncat, socat, tcpdump, tshark, masscan]
