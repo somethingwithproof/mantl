@@ -57,24 +57,44 @@ def run_terraform_command(
         return {}
 
 
-def terraform_init(directory: Path) -> bool:
-    """Initialize Terraform in a directory."""
-    result = run_terraform_command(
-        ["init", "-backend=false", "-no-color"], directory
-    )
-    return result.get("returncode") == 0
+# Substrings in `terraform init` stderr that indicate a network/download
+# problem (fetching registry modules or providers) rather than a config defect.
+_NETWORK_INIT_ERRORS = (
+    "could not download",
+    "failed to download",
+    "failed to query",
+    "could not query provider",
+    "error querying",
+    "connection refused",
+    "no such host",
+    "timeout",
+    "dial tcp",
+    "tls handshake",
+    "could not retrieve",
+    "registry service unavailable",
+)
+
+
+def terraform_init(directory: Path) -> Dict:
+    """Initialize Terraform in a directory; returns the command result."""
+    return run_terraform_command(["init", "-backend=false", "-no-color"], directory)
 
 
 def terraform_validate(directory: Path) -> Dict:
-    """Validate Terraform configuration."""
-    # First init if needed. `init` resolves registry modules and providers over
-    # the network; that is unavailable in offline/CI unit runs, so a failure
-    # here is an environment limitation rather than a config defect. Skip
-    # instead of failing so genuine `validate` errors in reachable configs are
-    # still caught while unreachable ones don't break the suite.
+    """Validate Terraform configuration, initializing first if needed.
+
+    `init` resolves registry modules and providers over the network. A failure
+    is only treated as an environment limitation (skip) when its stderr matches a
+    known network/download error; any other init failure is a real config or
+    source defect and fails the test.
+    """
     if not (directory / ".terraform").exists():
-        if not terraform_init(directory):
-            pytest.skip(f"terraform init unavailable (offline) for {directory}")
+        init = terraform_init(directory)
+        if init.get("returncode") != 0:
+            stderr = init.get("stderr", "")
+            if any(marker in stderr.lower() for marker in _NETWORK_INIT_ERRORS):
+                pytest.skip(f"terraform init unavailable (network) for {directory}")
+            pytest.fail(f"terraform init failed (non-network) for {directory}:\n{stderr}")
 
     return run_terraform_command(["validate", "-json"], directory)
 
