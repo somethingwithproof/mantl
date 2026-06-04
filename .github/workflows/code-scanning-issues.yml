@@ -1,9 +1,10 @@
 name: Code scanning issues
 
 on:
+  # `types` applies to code_scanning_alert; workflow_dispatch takes no types.
   code_scanning_alert:
-  workflow_dispatch:
     types: [created, reopened, closed, dismissed, fixed]
+  workflow_dispatch:
 
 permissions:
   contents: read

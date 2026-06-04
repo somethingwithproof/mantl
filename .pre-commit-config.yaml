@@ -1,3 +1,16 @@
+# Vendored Helm charts, terraform provider caches, generated code, legacy
+# artifacts, and example-app sources are not first-party and must not be linted
+# here. Scoping the hooks to first-party files keeps the run fast and meaningful.
+exclude: |
+  (?x)^(
+    platform/.*|
+    .*/charts/.*|
+    .*/\.terraform/.*|
+    examples/.*/(src|node_modules|build)/.*|
+    docs/legacy/.*|
+    .*/zz_generated\..*
+  )$
+
 repos:
   # Local hooks
   - repo: local
