@@ -93,21 +93,15 @@ check_prerequisites() {
 create_kind_cluster() {
     log_info "Creating kind cluster: $CLUSTER_NAME..."
 
-    # Determine node configuration based on profile
+    # Determine node configuration based on profile.
     local worker_nodes=1
-    local cpu_limit="2"
-    local memory_limit="4g"
 
     case $PROFILE in
         medium)
             worker_nodes=2
-            cpu_limit="4"
-            memory_limit="8g"
             ;;
         full)
             worker_nodes=3
-            cpu_limit="8"
-            memory_limit="16g"
             ;;
     esac
 
@@ -276,6 +270,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -v|--verbose)
+            # shellcheck disable=SC2034  # records the flag; set -x drives output
             VERBOSE=true
             set -x
             shift
@@ -318,7 +313,7 @@ EOF
     else
         log_warn "Cloud provider '$CLOUD_PROVIDER' detected - ensure cluster is created via Terraform"
         log_info "Run: terraform -chdir=terraform/blueprints/${CLOUD_PROVIDER}-* apply"
-        read -p "Press Enter when cluster is ready..."
+        read -r -p "Press Enter when cluster is ready..."
     fi
 
     install_argocd

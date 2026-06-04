@@ -19,8 +19,10 @@
 set -euo pipefail
 
 # Constants
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+readonly ROOT_DIR
 readonly TEMPLATE_DIR="${ROOT_DIR}/applications/templates/web-service/base"
 
 # Color output
