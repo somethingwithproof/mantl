@@ -4,8 +4,9 @@
 exclude: |
   (?x)^(
     platform/.*|
-    .*/charts/.*|
+    policies/kyverno/charts/.*|
     .*/\.terraform/.*|
+    .*/templates/.*|
     examples/.*/(src|node_modules|build)/.*|
     docs/legacy/.*|
     .*/zz_generated\..*
