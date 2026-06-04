@@ -179,14 +179,14 @@ resource "ibm_is_security_group_rule" "outbound_all" {
 
 # Create subnet for each zone
 resource "ibm_is_subnet" "iks_subnet" {
-  count                    = var.zones_count
-  name                     = "${local.name}-subnet-${count.index + 1}"
-  vpc                      = ibm_is_vpc.iks_vpc.id
-  zone                     = data.ibm_is_zones.zones.zones[count.index]
-  ipv4_cidr_block          = cidrsubnet(var.vpc_cidr, 4, count.index)
-  public_gateway           = var.enable_public_gateway ? ibm_is_public_gateway.pgw[count.index].id : null
-  resource_group           = data.ibm_resource_group.resource_group.id
-  tags                     = local.tags
+  count           = var.zones_count
+  name            = "${local.name}-subnet-${count.index + 1}"
+  vpc             = ibm_is_vpc.iks_vpc.id
+  zone            = data.ibm_is_zones.zones.zones[count.index]
+  ipv4_cidr_block = cidrsubnet(var.vpc_cidr, 4, count.index)
+  public_gateway  = var.enable_public_gateway ? ibm_is_public_gateway.pgw[count.index].id : null
+  resource_group  = data.ibm_resource_group.resource_group.id
+  tags            = local.tags
 }
 
 # Create IKS cluster with enhanced security
@@ -282,10 +282,10 @@ resource "ibm_container_vpc_worker_pool" "spot_pool" {
   }
 
   labels = {
-    "node.kubernetes.io/role"    = "workload"
-    "workload-type"              = "application"
-    "spot-instance"              = "true"
-    "kubernetes.io/lifecycle"    = "spot"
+    "node.kubernetes.io/role" = "workload"
+    "workload-type"           = "application"
+    "spot-instance"           = "true"
+    "kubernetes.io/lifecycle" = "spot"
   }
 
   taints {

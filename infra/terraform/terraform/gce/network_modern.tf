@@ -30,9 +30,9 @@ resource "google_compute_subnetwork" "mi_subnet_modern" {
 }
 
 resource "google_compute_firewall" "external_modern" {
-  count         = var.use_modern_gce_network ? 1 : 0
-  name          = "${var.short_name}-firewall-external-modern"
-  network       = google_compute_network.mi_network_modern[0].name
+  count   = var.use_modern_gce_network ? 1 : 0
+  name    = "${var.short_name}-firewall-external-modern"
+  network = google_compute_network.mi_network_modern[0].name
   # Yes, we love guardrails: allowed_cidrs keeps future-you from opening the barn door.
   source_ranges = var.allowed_cidrs
 

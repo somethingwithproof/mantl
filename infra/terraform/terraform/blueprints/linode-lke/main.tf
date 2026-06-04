@@ -38,7 +38,7 @@ resource "linode_vlan" "main" {
   label  = "${local.name}-vlan"
   region = var.region
 
-  linodes = []  # Will be populated automatically by LKE
+  linodes = [] # Will be populated automatically by LKE
 }
 
 # Cloud Firewall for Kubernetes cluster
@@ -214,8 +214,8 @@ resource "linode_object_storage_bucket" "backups" {
 
 # Object Storage keys for backup access
 resource "linode_object_storage_key" "backups" {
-  count  = var.enable_backup_bucket ? 1 : 0
-  label  = "${local.name}-backup-key"
+  count = var.enable_backup_bucket ? 1 : 0
+  label = "${local.name}-backup-key"
 
   bucket_access {
     bucket_name = linode_object_storage_bucket.backups[0].label
@@ -236,7 +236,7 @@ resource "linode_nodebalancer" "ingress" {
 
 # NodeBalancer config for HTTPS
 resource "linode_nodebalancer_config" "https" {
-  count          = var.enable_ingress_lb ? 1 : 0
+  count           = var.enable_ingress_lb ? 1 : 0
   nodebalancer_id = linode_nodebalancer.ingress[0].id
 
   protocol = "tcp"
@@ -247,14 +247,14 @@ resource "linode_nodebalancer_config" "https" {
   check_timeout  = 5
   check_attempts = 3
 
-  algorithm       = "roundrobin"
-  stickiness      = "none"
-  cipher_suite    = "recommended"
+  algorithm    = "roundrobin"
+  stickiness   = "none"
+  cipher_suite = "recommended"
 }
 
 # NodeBalancer config for HTTP
 resource "linode_nodebalancer_config" "http" {
-  count          = var.enable_ingress_lb ? 1 : 0
+  count           = var.enable_ingress_lb ? 1 : 0
   nodebalancer_id = linode_nodebalancer.ingress[0].id
 
   protocol = "tcp"
@@ -350,11 +350,11 @@ module "platform_security" {
   source = "../../modules/platform-security"
 
   # Cilium + Hubble (Flow Logs Alternative)
-  enable_cilium               = var.enable_cilium
-  hubble_ui_ingress_enabled   = var.hubble_ui_ingress_enabled
-  hubble_ui_hosts             = var.hubble_ui_hosts
-  enable_flow_logs_export     = var.enable_flow_logs_export
-  flow_logs_s3_bucket         = var.enable_backup_bucket ? linode_object_storage_bucket.backups[0].label : ""
+  enable_cilium             = var.enable_cilium
+  hubble_ui_ingress_enabled = var.hubble_ui_ingress_enabled
+  hubble_ui_hosts           = var.hubble_ui_hosts
+  enable_flow_logs_export   = var.enable_flow_logs_export
+  flow_logs_s3_bucket       = var.enable_backup_bucket ? linode_object_storage_bucket.backups[0].label : ""
 
   # Sealed Secrets (KMS Alternative)
   enable_sealed_secrets = var.enable_sealed_secrets
@@ -363,9 +363,9 @@ module "platform_security" {
   enable_external_secrets = var.enable_external_secrets
 
   # Falco (Runtime Security)
-  enable_falco       = var.enable_falco
-  falco_webhook_url  = var.falco_webhook_url
-  falco_ui_enabled   = var.falco_ui_enabled
+  enable_falco      = var.enable_falco
+  falco_webhook_url = var.falco_webhook_url
+  falco_ui_enabled  = var.falco_ui_enabled
 
   # Tailscale VPN (Private Endpoint Alternative)
   enable_tailscale        = var.enable_tailscale

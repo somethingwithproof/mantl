@@ -80,7 +80,7 @@ module "gke" {
   remove_default_node_pool = true
 
   # Security: Private cluster configuration
-  enable_private_endpoint = var.enable_private_endpoint  # Default: true (production)
+  enable_private_endpoint = var.enable_private_endpoint # Default: true (production)
   enable_private_nodes    = true
   master_ipv4_cidr_block  = "172.16.0.0/28"
 
@@ -94,7 +94,7 @@ module "gke" {
   }
 
   # Security: Enable Workload Identity
-  workload_identity = true
+  workload_identity  = true
   identity_namespace = "${var.project}.svc.id.goog"
 
   # Security: Enable Shielded Nodes

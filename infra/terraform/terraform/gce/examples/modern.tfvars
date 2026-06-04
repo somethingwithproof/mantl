@@ -1,8 +1,8 @@
 # Example tfvars for GCE modern paths
 # Network (apply with PR #46)
-use_modern_gce_network       = true
+use_modern_gce_network = true
 # After applying network_modern, set this to the output value
-modern_subnetwork_self_link  = "projects/your-proj/regions/us-central1/subnetworks/mantl-subnet"
+modern_subnetwork_self_link = "projects/your-proj/regions/us-central1/subnetworks/mantl-subnet"
 
 # Instances (apply with PR #45)
 use_modern_gce_schema = true

@@ -41,34 +41,34 @@ resource "openstack_containerinfra_clustertemplate_v1" "k8s_template" {
   docker_volume_size    = var.docker_volume_size
 
   # Network configuration
-  network_driver         = var.network_driver
-  volume_driver          = "cinder"
-  external_network_id    = data.openstack_networking_network_v2.external.id
-  fixed_network          = openstack_networking_network_v2.cluster_network.id
-  fixed_subnet           = openstack_networking_subnet_v2.cluster_subnet.id
-  dns_nameserver         = var.dns_nameserver
-  http_proxy             = var.http_proxy
-  https_proxy            = var.https_proxy
-  no_proxy               = var.no_proxy
+  network_driver      = var.network_driver
+  volume_driver       = "cinder"
+  external_network_id = data.openstack_networking_network_v2.external.id
+  fixed_network       = openstack_networking_network_v2.cluster_network.id
+  fixed_subnet        = openstack_networking_subnet_v2.cluster_subnet.id
+  dns_nameserver      = var.dns_nameserver
+  http_proxy          = var.http_proxy
+  https_proxy         = var.https_proxy
+  no_proxy            = var.no_proxy
 
   # Security features
-  tls_disabled                     = false
-  registry_enabled                 = var.enable_registry
-  floating_ip_enabled              = var.enable_floating_ip
-  master_lb_enabled                = var.enable_master_lb
+  tls_disabled        = false
+  registry_enabled    = var.enable_registry
+  floating_ip_enabled = var.enable_floating_ip
+  master_lb_enabled   = var.enable_master_lb
 
   # Additional features
   labels = merge(
     var.template_labels,
     {
-      "kube_tag"                    = var.kubernetes_version
-      "cloud_provider_enabled"      = "true"
-      "cinder_csi_enabled"          = "true"
-      "octavia_provider"            = "amphora"
-      "auto_healing_enabled"        = var.enable_auto_healing ? "true" : "false"
-      "auto_scaling_enabled"        = var.enable_auto_scaling ? "true" : "false"
-      "min_node_count"              = tostring(var.min_node_count)
-      "max_node_count"              = tostring(var.max_node_count)
+      "kube_tag"               = var.kubernetes_version
+      "cloud_provider_enabled" = "true"
+      "cinder_csi_enabled"     = "true"
+      "octavia_provider"       = "amphora"
+      "auto_healing_enabled"   = var.enable_auto_healing ? "true" : "false"
+      "auto_scaling_enabled"   = var.enable_auto_scaling ? "true" : "false"
+      "min_node_count"         = tostring(var.min_node_count)
+      "max_node_count"         = tostring(var.max_node_count)
     }
   )
 
@@ -199,8 +199,8 @@ resource "openstack_containerinfra_cluster_v1" "k8s_cluster" {
   create_timeout = var.cluster_create_timeout
 
   labels = {
-    "environment"         = var.environment
-    "managed_by"          = "terraform"
+    "environment" = var.environment
+    "managed_by"  = "terraform"
   }
 
   depends_on = [
