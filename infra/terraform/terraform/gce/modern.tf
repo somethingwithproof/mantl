@@ -49,8 +49,8 @@ data "google_compute_image" "boot" {
 # Modern control instances using shielded VMs and secure defaults
 resource "google_compute_instance" "control_modern" {
   count        = var.use_modern_gce_schema ? var.control_count : 0
-  name         = "${var.short_name}-control-${format("%02d", count.index+1)}"
-  description  = "${var.long_name} control node (modern) #${format("%02d", count.index+1)}"
+  name         = "${var.short_name}-control-${format("%02d", count.index + 1)}"
+  description  = "${var.long_name} control node (modern) #${format("%02d", count.index + 1)}"
   machine_type = var.control_type
   zone         = var.zone
   tags         = [var.short_name, "control"]
@@ -111,8 +111,8 @@ resource "google_compute_instance" "control_modern" {
 # Modern worker instances (opt-in). When enabling, set worker_count = 0 on legacy path to avoid duplicates.
 resource "google_compute_instance" "worker_modern" {
   count        = var.use_modern_gce_schema ? var.worker_count : 0
-  name         = "${var.short_name}-worker-${format("%03d", count.index+1)}"
-  description  = "${var.long_name} worker node (modern) #${format("%03d", count.index+1)}"
+  name         = "${var.short_name}-worker-${format("%03d", count.index + 1)}"
+  description  = "${var.long_name} worker node (modern) #${format("%03d", count.index + 1)}"
   machine_type = var.worker_type
   zone         = var.zone
   tags         = [var.short_name, "worker"]
@@ -164,8 +164,8 @@ resource "google_compute_instance" "worker_modern" {
 # Modern kubeworker instances (opt-in). When enabling, set kubeworker_count = 0 on legacy path to avoid duplicates.
 resource "google_compute_instance" "kubeworker_modern" {
   count        = var.use_modern_gce_schema ? var.kubeworker_count : 0
-  name         = "${var.short_name}-kubeworker-${format("%03d", count.index+1)}"
-  description  = "${var.long_name} kube worker node (modern) #${format("%03d", count.index+1)}"
+  name         = "${var.short_name}-kubeworker-${format("%03d", count.index + 1)}"
+  description  = "${var.long_name} kube worker node (modern) #${format("%03d", count.index + 1)}"
   machine_type = var.worker_type
   zone         = var.zone
   tags         = [var.short_name, "kubeworker"]

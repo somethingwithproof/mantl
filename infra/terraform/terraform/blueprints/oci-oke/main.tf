@@ -19,8 +19,8 @@ provider "oci" {
 locals {
   name = var.cluster_name
   common_tags = {
-    "ManagedBy"  = "Terraform"
-    "Platform"   = "mantl"
+    "ManagedBy"   = "Terraform"
+    "Platform"    = "mantl"
     "Environment" = var.environment
   }
 }
@@ -301,9 +301,9 @@ resource "oci_kms_vault" "oke_vault" {
 }
 
 resource "oci_kms_key" "oke_encryption_key" {
-  count          = var.enable_vault ? 1 : 0
-  compartment_id = var.compartment_id
-  display_name   = "${local.name}-encryption-key"
+  count               = var.enable_vault ? 1 : 0
+  compartment_id      = var.compartment_id
+  display_name        = "${local.name}-encryption-key"
   management_endpoint = oci_kms_vault.oke_vault[0].management_endpoint
 
   key_shape {
@@ -398,13 +398,13 @@ resource "oci_containerengine_node_pool" "system_pool" {
     dynamic "node_pool_pod_network_option_details" {
       for_each = var.use_flannel_cni ? [] : [1]
       content {
-        cni_type = "OCI_VCN_IP_NATIVE"
+        cni_type       = "OCI_VCN_IP_NATIVE"
         pod_subnet_ids = [oci_core_subnet.node_subnet.id]
       }
     }
 
     freeform_tags = merge(local.common_tags, {
-      "NodePool" = "system"
+      "NodePool"     = "system"
       "WorkloadType" = "platform"
     })
   }
@@ -459,13 +459,13 @@ resource "oci_containerengine_node_pool" "workload_pool" {
     dynamic "node_pool_pod_network_option_details" {
       for_each = var.use_flannel_cni ? [] : [1]
       content {
-        cni_type = "OCI_VCN_IP_NATIVE"
+        cni_type       = "OCI_VCN_IP_NATIVE"
         pod_subnet_ids = [oci_core_subnet.node_subnet.id]
       }
     }
 
     freeform_tags = merge(local.common_tags, {
-      "NodePool" = "workload"
+      "NodePool"     = "workload"
       "WorkloadType" = "application"
     })
   }

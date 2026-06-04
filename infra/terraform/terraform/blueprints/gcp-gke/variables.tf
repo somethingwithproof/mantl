@@ -22,7 +22,7 @@ variable "region" {
 variable "kubernetes_version" {
   description = "Kubernetes version for GKE cluster"
   type        = string
-  default     = "1.31"  # Latest stable version
+  default     = "1.31" # Latest stable version
 }
 
 variable "tags" {
@@ -66,7 +66,7 @@ variable "ip_range_services" {
 variable "enable_private_endpoint" {
   description = "Enable private endpoint (NOT recommended for development)"
   type        = bool
-  default     = true  # Default to true for production security
+  default     = true # Default to true for production security
 }
 
 variable "master_authorized_networks" {

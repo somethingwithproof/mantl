@@ -15,7 +15,7 @@ terraform {
 provider "azurerm" {
   features {
     key_vault {
-      purge_soft_delete_on_destroy = false
+      purge_soft_delete_on_destroy    = false
       recover_soft_deleted_key_vaults = true
     }
   }
@@ -162,11 +162,11 @@ resource "azurerm_log_analytics_workspace" "main" {
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_key_vault" "main" {
-  name                       = "${local.name}-kv"
-  location                   = azurerm_resource_group.main.location
-  resource_group_name        = azurerm_resource_group.main.name
-  tenant_id                  = data.azurerm_client_config.current.tenant_id
-  sku_name                   = "premium"
+  name                = "${local.name}-kv"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  sku_name            = "premium"
 
   # Security features
   enabled_for_disk_encryption     = true
@@ -306,8 +306,8 @@ resource "azurerm_kubernetes_cluster" "main" {
     only_critical_addons_enabled = true
 
     # Security features
-    os_disk_type       = "Ephemeral"
-    os_disk_size_gb    = 100
+    os_disk_type    = "Ephemeral"
+    os_disk_size_gb = 100
 
     node_labels = {
       "node-role" = "system"
@@ -336,12 +336,12 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   # Network configuration
   network_profile {
-    network_plugin      = "azure"
-    network_policy      = "calico"
-    service_cidr        = var.service_cidr
-    dns_service_ip      = var.dns_service_ip
-    load_balancer_sku   = "standard"
-    outbound_type       = "loadBalancer"
+    network_plugin    = "azure"
+    network_policy    = "calico"
+    service_cidr      = var.service_cidr
+    dns_service_ip    = var.dns_service_ip
+    load_balancer_sku = "standard"
+    outbound_type     = "loadBalancer"
   }
 
   # Azure Policy for Kubernetes

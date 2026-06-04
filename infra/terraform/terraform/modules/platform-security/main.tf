@@ -80,27 +80,25 @@ resource "helm_release" "cilium" {
 
     # Enable Prometheus metrics
     prometheus = {
-      enabled        = true
+      enabled = true
       serviceMonitor = {
         enabled = true
       }
     }
 
-    # Flow logs export
-    flowLogs = {
-      enabled = var.enable_flow_logs_export
-
-      # Export to external logging if configured
-      dynamic "export" {
-        for_each = var.flow_logs_s3_bucket != "" ? [1] : []
-        content {
+    # Flow logs export. `dynamic` blocks are invalid inside a map literal
+    # passed to yamlencode(); use merge() to add the export key conditionally.
+    flowLogs = merge(
+      { enabled = var.enable_flow_logs_export },
+      var.flow_logs_s3_bucket != "" ? {
+        export = {
           s3 = {
             bucket = var.flow_logs_s3_bucket
             prefix = "cilium-flows/"
           }
         }
-      }
-    }
+      } : {}
+    )
   })]
 
   depends_on = [kubernetes_namespace.cilium]
@@ -391,7 +389,7 @@ resource "helm_release" "cert_manager" {
 
   values = [yamlencode({
     prometheus = {
-      enabled        = true
+      enabled = true
       servicemonitor = {
         enabled = true
       }

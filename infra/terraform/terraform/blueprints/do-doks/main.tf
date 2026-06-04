@@ -108,15 +108,15 @@ resource "digitalocean_container_registry" "main" {
 
 # System node pool (for platform components)
 resource "digitalocean_kubernetes_cluster" "main" {
-  name    = local.name
-  region  = var.region
-  version = var.kubernetes_version
+  name     = local.name
+  region   = var.region
+  version  = var.kubernetes_version
   vpc_uuid = digitalocean_vpc.main.id
 
   tags = local.tags
 
   # Auto-upgrade configuration
-  auto_upgrade = var.enable_auto_upgrade
+  auto_upgrade  = var.enable_auto_upgrade
   surge_upgrade = true
 
   # Maintenance window
@@ -182,10 +182,10 @@ resource "digitalocean_kubernetes_node_pool" "spot" {
   tags = concat(local.tags, ["node-pool:spot"])
 
   labels = {
-    "node.kubernetes.io/role"    = "workload"
-    "workload-type"              = "application"
-    "spot-instance"              = "true"
-    "kubernetes.io/lifecycle"    = "spot"
+    "node.kubernetes.io/role" = "workload"
+    "workload-type"           = "application"
+    "spot-instance"           = "true"
+    "kubernetes.io/lifecycle" = "spot"
   }
 
   taint {
@@ -199,8 +199,8 @@ resource "digitalocean_kubernetes_node_pool" "spot" {
 resource "digitalocean_loadbalancer" "ingress" {
   count = var.enable_ingress_lb ? 1 : 0
 
-  name   = "${local.name}-ingress-lb"
-  region = var.region
+  name     = "${local.name}-ingress-lb"
+  region   = var.region
   vpc_uuid = digitalocean_vpc.main.id
 
   forwarding_rule {
@@ -219,13 +219,13 @@ resource "digitalocean_loadbalancer" "ingress" {
   }
 
   healthcheck {
-    protocol               = "http"
-    port                   = 80
-    path                   = "/healthz"
-    check_interval_seconds = 10
+    protocol                 = "http"
+    port                     = 80
+    path                     = "/healthz"
+    check_interval_seconds   = 10
     response_timeout_seconds = 5
-    unhealthy_threshold    = 3
-    healthy_threshold      = 3
+    unhealthy_threshold      = 3
+    healthy_threshold        = 3
   }
 
   droplet_tag = "${local.name}-worker"
@@ -429,11 +429,11 @@ module "platform_security" {
   source = "../../modules/platform-security"
 
   # Cilium + Hubble (Flow Logs Alternative)
-  enable_cilium               = var.enable_cilium
-  hubble_ui_ingress_enabled   = var.hubble_ui_ingress_enabled
-  hubble_ui_hosts             = var.hubble_ui_hosts
-  enable_flow_logs_export     = var.enable_flow_logs_export
-  flow_logs_s3_bucket         = var.enable_backup_bucket ? digitalocean_spaces_bucket.backups[0].name : ""
+  enable_cilium             = var.enable_cilium
+  hubble_ui_ingress_enabled = var.hubble_ui_ingress_enabled
+  hubble_ui_hosts           = var.hubble_ui_hosts
+  enable_flow_logs_export   = var.enable_flow_logs_export
+  flow_logs_s3_bucket       = var.enable_backup_bucket ? digitalocean_spaces_bucket.backups[0].name : ""
 
   # Sealed Secrets (KMS Alternative)
   enable_sealed_secrets = var.enable_sealed_secrets
@@ -442,9 +442,9 @@ module "platform_security" {
   enable_external_secrets = var.enable_external_secrets
 
   # Falco (Runtime Security)
-  enable_falco       = var.enable_falco
-  falco_webhook_url  = var.falco_webhook_url
-  falco_ui_enabled   = var.falco_ui_enabled
+  enable_falco      = var.enable_falco
+  falco_webhook_url = var.falco_webhook_url
+  falco_ui_enabled  = var.falco_ui_enabled
 
   # Tailscale VPN (Private Endpoint Alternative)
   enable_tailscale        = var.enable_tailscale

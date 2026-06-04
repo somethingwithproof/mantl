@@ -17,7 +17,7 @@ variable "region" {
 variable "kubernetes_version" {
   description = "Kubernetes version for EKS cluster"
   type        = string
-  default     = "1.31"  # Updated to latest stable version
+  default     = "1.31" # Updated to latest stable version
 }
 
 variable "tags" {
@@ -49,7 +49,7 @@ variable "single_nat_gateway" {
 variable "cluster_endpoint_public_access" {
   description = "Enable public access to cluster API endpoint (NOT recommended for production)"
   type        = bool
-  default     = false  # Changed to false for security - use bastion/VPN for access
+  default     = false # Changed to false for security - use bastion/VPN for access
 }
 
 ################################################################################
