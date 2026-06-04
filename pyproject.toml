@@ -71,7 +71,11 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
-fail_under = 70
+# No Python application is under test (the suite validates infra files), so the
+# default invocation does not collect coverage. Keep the gate at 0 to avoid a
+# false failure if someone runs `pytest --cov`; raise it once Python sources
+# with real coverage exist.
+fail_under = 0
 show_missing = true
 skip_covered = false
 
