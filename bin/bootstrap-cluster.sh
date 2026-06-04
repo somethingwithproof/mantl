@@ -28,11 +28,14 @@
 set -euo pipefail
 
 # Constants
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+readonly ROOT_DIR
 readonly LOG_DIR="${ROOT_DIR}/.bootstrap-logs"
 readonly BACKUP_DIR="${ROOT_DIR}/.bootstrap-backups"
-readonly TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+readonly TIMESTAMP
 readonly LOG_FILE="${LOG_DIR}/bootstrap-${TIMESTAMP}.log"
 
 # State
@@ -260,6 +263,8 @@ do_rollback() {
   info "Looking for available backups..."
 
   local latest_backup
+  # Backup names are controlled (backup-*.yaml), so ls -t by mtime is safe here.
+  # shellcheck disable=SC2012
   latest_backup=$(ls -t "${BACKUP_DIR}"/backup-*.yaml 2>/dev/null | head -1 || true)
 
   if [[ -z "$latest_backup" ]] || [[ ! -f "$latest_backup" ]]; then

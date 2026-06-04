@@ -19,8 +19,10 @@
 set -euo pipefail
 
 # Constants
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+readonly ROOT_DIR
 readonly POLICY_FILE="${ROOT_DIR}/policies/kyverno/verify-image-signatures.yaml"
 
 # Color output
@@ -123,7 +125,8 @@ validate_key_file() {
 update_policy() {
   local key_file="$1"
   local tmp_file="${POLICY_FILE}.tmp"
-  local backup_file="${POLICY_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+  local backup_file
+  backup_file="${POLICY_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
 
   # Check if policy file exists
   if [[ ! -f "$POLICY_FILE" ]]; then

@@ -4,14 +4,36 @@ set -euo pipefail
 # Mantl Platform Setup Wizard
 # Interactive configuration and deployment
 
-# Colors
+# Colors. BLUE and MAGENTA round out the palette but are not used yet.
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+# shellcheck disable=SC2034
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+# shellcheck disable=SC2034
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+usage() {
+    cat <<'EOF'
+Usage: setup-wizard.sh [--help]
+
+Interactive wizard that configures and deploys the Mantl platform. Run with no
+arguments to start the guided setup; it prompts for environment, cloud provider,
+profile, cluster name, and components.
+
+Options:
+  -h, --help    Show this help and exit.
+EOF
+}
+
+case "${1:-}" in
+    -h|--help)
+        usage
+        exit 0
+        ;;
+esac
 
 # Configuration
 ENVIRONMENT=""
@@ -52,7 +74,7 @@ prompt_choice() {
     echo ""
 
     while true; do
-        read -p "Enter choice [1-${#options[@]}]: " choice
+        read -r -p "Enter choice [1-${#options[@]}]: " choice
         if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#options[@]}" ]; then
             echo "${options[$((choice-1))]}"
             return 0
@@ -92,11 +114,11 @@ prompt_text() {
     local value
 
     if [ -n "$default" ]; then
-        read -p "$prompt [$default]: " value
+        read -r -p "$prompt [$default]: " value
         echo "${value:-$default}"
     else
         while true; do
-            read -p "$prompt: " value
+            read -r -p "$prompt: " value
             if [ -n "$value" ]; then
                 echo "$value"
                 return 0
@@ -341,7 +363,7 @@ main() {
     echo "This wizard will guide you through configuring and"
     echo "deploying your Kubernetes platform."
     echo ""
-    read -p "Press Enter to continue..."
+    read -r -p "Press Enter to continue..."
 
     step_environment
     step_cloud
