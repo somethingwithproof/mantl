@@ -159,13 +159,17 @@ class TestShellScriptDocumentation:
             content = script.read_text()
             lines = content.split("\n")
 
-            # Find first non-shebang, non-empty line
+            # Find first non-shebang, non-empty line. A `set -euo pipefail`
+            # directive placed right after the shebang is good practice and
+            # should not end the search before the descriptive header.
             has_header = False
             for line in lines[1:10]:  # Check first 10 lines after shebang
                 stripped = line.strip()
                 if stripped.startswith("#") and len(stripped) > 2:
                     has_header = True
                     break
+                if stripped.startswith(("set ", "set\t")):
+                    continue
                 if stripped and not stripped.startswith("#"):
                     break
 
