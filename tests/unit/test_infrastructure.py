@@ -5,6 +5,7 @@ Tests validate that infrastructure files exist and are properly formatted.
 
 import json
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -17,11 +18,12 @@ def _is_first_party_yaml(path: Path) -> bool:
     Excludes vendored Helm charts and Helm-rendered templates. Their `{{ }}`
     Go-template directives are not valid YAML until rendered, so scanning them
     with a plain YAML parser is a category error. The scope covers anything
-    under a `charts/` or `templates/` directory, the vendored `platform/`
-    tree, and any file whose body contains a `{{` template directive.
+    under a `charts/` or `templates/` directory and any file whose body contains
+    a `{{` template directive. First-party manifests, including those under
+    `platform/` that are not vendored charts, are still validated.
     """
     parts = set(path.parts)
-    if "charts" in parts or "templates" in parts or "platform" in parts:
+    if "charts" in parts or "templates" in parts:
         return False
     try:
         if "{{" in path.read_text():
@@ -58,10 +60,22 @@ class TestTerraformStructure:
             for tf_file in terraform_dir.rglob("*.tf")
             if ".terraform" not in tf_file.parts
         }
+        assert module_dirs, "No Terraform modules found"
 
+        # A module that declares resources/data/child-modules must have an entry
+        # file (main.tf, or the modern.tf convention used by some blueprints).
+        # Interface-only modules (just variables/outputs, no resources) are
+        # exempt. This is stronger than "has any .tf" without forcing a single
+        # filename on legitimate variations.
+        entry_names = {"main.tf", "modern.tf"}
+        decl_re = re.compile(r"^\s*(resource|data|module)\s", re.MULTILINE)
         for module in module_dirs:
             tf_files = list(module.glob("*.tf"))
-            assert len(tf_files) > 0, f"No .tf files in module: {module}"
+            has_entry = any(f.name in entry_names for f in tf_files)
+            declares = any(decl_re.search(f.read_text()) for f in tf_files)
+            assert has_entry or not declares, (
+                f"Terraform module declares resources but has no main.tf/modern.tf entry file: {module}"
+            )
 
     def test_terraform_files_valid_hcl(self, terraform_dir: Path) -> None:
         """Verify Terraform files contain valid HCL syntax (basic check)."""

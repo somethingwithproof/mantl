@@ -4,6 +4,7 @@ Tests validate that CI scripts exist, are executable, and have valid syntax.
 """
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -192,11 +193,11 @@ class TestDockerfile:
             pytest.skip("Dockerfile not found")
 
         content = dockerfile.read_text()
-        # The image moved to 3.14; accept any supported 3.13+ minor so the test
-        # does not force a downgrade when the base image is bumped forward.
-        assert any(f"python:3.{minor}" in content for minor in (13, 14, 15)), (
-            "Dockerfile should use Python 3.13 or newer"
-        )
+        # Require Python 3.13+ without pinning an upper bound, so a forward bump
+        # of the base image does not break the test.
+        minors = [int(m) for m in re.findall(r"python:3\.(\d+)", content)]
+        assert minors, "Dockerfile should use a python:3.x base image"
+        assert min(minors) >= 13, f"Dockerfile must use Python 3.13 or newer, found 3.{min(minors)}"
 
 
 class TestRequirementsFiles:
