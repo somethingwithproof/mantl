@@ -11,7 +11,7 @@ Sphinx==9.1.0
 # Configuration Management
 # Change concurrently with the required ansible version in sample.yml
 ansible==13.6.0
-ansible-lint==26.4.0
+ansible-lint==26.6.0
 
 # Utilities
 netaddr==1.3.0
@@ -20,6 +20,6 @@ PyYAML==6.0.3
 # Development Tools
 pre-commit==4.6.0
 black==26.5.1
-ruff==0.15.13
+ruff==0.15.20
 yamllint==1.38.0
 mypy==1.20.1
