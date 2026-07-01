@@ -60,7 +60,7 @@ jobs:
             }
       - name: Add issue to Security project
         if: ${{ vars.SECURITY_PROJECT_URL != '' }}
-        uses: actions/add-to-project@v1
+        uses: actions/add-to-project@v2
         with:
           project-url: ${{ vars.SECURITY_PROJECT_URL }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
