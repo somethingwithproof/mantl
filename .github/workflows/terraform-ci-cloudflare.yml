@@ -1,11 +1,12 @@
+---
 name: Terraform CI (cloudflare)
-on:
+"on":
   pull_request:
   workflow_dispatch:
     paths:
       - 'terraform/cloudflare/**'
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
       - 'terraform/cloudflare/**'
 
@@ -33,7 +34,7 @@ jobs:
       - name: Run TFLint
         run: tflint --recursive
       - name: Run tfsec (soft fail)
-        uses: aquasecurity/tfsec-action@v1.0.6
+        uses: aquasecurity/tfsec-action@v1.0.3
         with:
           working_directory: terraform/cloudflare
           soft_fail: true
