@@ -7,7 +7,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Need the base commit to diff against for changed-files scoping.
           fetch-depth: 0
