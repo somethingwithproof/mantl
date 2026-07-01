@@ -27,7 +27,7 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: '~1.9'
@@ -55,7 +55,7 @@ jobs:
       run:
         working-directory: ${{ matrix.path }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Terraform plugin cache
         run: echo "plugin_cache_dir=$HOME/.terraform.d/plugin-cache" >> $GITHUB_ENV
       - uses: actions/cache@v6
@@ -85,7 +85,7 @@ jobs:
     name: tfsec (repo)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: aquasecurity/tfsec-action@v1
         with:
           working_directory: terraform
@@ -102,7 +102,7 @@ jobs:
     name: Checkov (repo)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: bridgecrewio/checkov-action@v12
         with:
           directory: terraform

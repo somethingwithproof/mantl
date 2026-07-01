@@ -17,7 +17,7 @@ jobs:
       run:
         working-directory: terraform/cloudflare
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.14.3

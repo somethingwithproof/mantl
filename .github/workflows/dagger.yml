@@ -20,7 +20,7 @@ jobs:
     # is committed. The action runs the commands in an ephemeral engine.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
