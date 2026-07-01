@@ -2,9 +2,9 @@
 name: Terraform CI (cloudflare)
 "on":
   pull_request:
-  workflow_dispatch:
     paths:
       - 'terraform/cloudflare/**'
+  workflow_dispatch:
   push:
     branches: [main, master]
     paths:
