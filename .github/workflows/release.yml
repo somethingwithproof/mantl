@@ -1,8 +1,10 @@
+---
+# yamllint disable rule:line-length
 name: Release
-on:
+"on":
   release:
-  workflow_dispatch:
     types: [published]
+  workflow_dispatch:
 permissions:
   contents: write
   packages: write

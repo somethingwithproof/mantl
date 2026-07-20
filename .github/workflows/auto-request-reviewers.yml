@@ -1,9 +1,11 @@
+---
+# yamllint disable rule:line-length
 name: Auto-request reviews from assignees
 
-on:
+"on":
   pull_request_target:
-  workflow_dispatch:
     types: [assigned, opened, reopened, ready_for_review, edited, synchronize]
+  workflow_dispatch:
 
 permissions:
   contents: read
