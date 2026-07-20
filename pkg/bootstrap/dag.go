@@ -115,7 +115,9 @@ func (d *ExecutionDAG) InstallArgoCD() error {
 	fmt.Println("Executing: Installing ArgoCD...")
 
 	// 1. Create namespace
-	exec.Command("kubectl", "create", "namespace", "argocd").Run()
+	if err := exec.Command("kubectl", "create", "namespace", "argocd").Run(); err != nil {
+		return fmt.Errorf("failed to create argocd namespace: %w", err)
+	}
 
 	// 2. Apply install manifest
 	installUrl := "https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
@@ -129,7 +131,9 @@ func (d *ExecutionDAG) InstallArgoCD() error {
 	// 3. Wait for ArgoCD to be ready
 	fmt.Println("  Waiting for ArgoCD deployments to be ready...")
 	waitCmd := exec.Command("kubectl", "wait", "--for=condition=available", "--timeout=300s", "deployment", "-n", "argocd", "--all")
-	waitCmd.Run()
+	if err := waitCmd.Run(); err != nil {
+		return fmt.Errorf("argocd deployments did not become ready: %w", err)
+	}
 
 	return nil
 }

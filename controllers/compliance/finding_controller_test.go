@@ -51,7 +51,7 @@ func TestBuildFindingName_Basic(t *testing.T) {
 			}
 			// Verify the result is valid DNS name (only lowercase letters, digits, dashes)
 			for i, c := range got {
-				if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
+				if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' {
 					t.Errorf("buildFindingName() = %q, invalid character %q at position %d", got, c, i)
 				}
 			}
