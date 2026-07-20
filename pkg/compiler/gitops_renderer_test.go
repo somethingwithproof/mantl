@@ -81,7 +81,9 @@ func TestRenderApp_SyncWaveDeterministic(t *testing.T) {
 			t.Fatalf("iteration %d: sync-wave = %q, want %q", i, got, "2")
 		}
 
-		os.RemoveAll(subDir)
+		if err := os.RemoveAll(subDir); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

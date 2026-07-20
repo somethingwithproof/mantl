@@ -68,7 +68,9 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	if !validS3BucketRe.MatchString(r.EvidenceBucket) {
 		audit.Status.Phase = "Failed"
-		r.Status().Update(ctx, &audit)
+		if statusErr := r.Status().Update(ctx, &audit); statusErr != nil {
+			l.Error(statusErr, "Failed to persist audit failure status")
+		}
 		return ctrl.Result{}, fmt.Errorf("invalid evidence bucket name %q", r.EvidenceBucket)
 	}
 
@@ -86,7 +88,9 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err != nil {
 		l.Error(err, "Failed to read framework file", "file", frameworkFile)
 		audit.Status.Phase = "Failed"
-		r.Status().Update(ctx, &audit)
+		if statusErr := r.Status().Update(ctx, &audit); statusErr != nil {
+			l.Error(statusErr, "Failed to persist audit failure status")
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -94,7 +98,9 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err := yaml.Unmarshal(data, &framework); err != nil {
 		l.Error(err, "Failed to unmarshal framework yaml")
 		audit.Status.Phase = "Failed"
-		r.Status().Update(ctx, &audit)
+		if statusErr := r.Status().Update(ctx, &audit); statusErr != nil {
+			l.Error(statusErr, "Failed to persist audit failure status")
+		}
 		return ctrl.Result{}, err
 	}
 
