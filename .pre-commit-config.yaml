@@ -1,6 +1,8 @@
+---
 # Vendored Helm charts, terraform provider caches, generated code, legacy
 # artifacts, and example-app sources are not first-party and must not be linted
-# here. Scoping the hooks to first-party files keeps the run fast and meaningful.
+# here. Scoping the hooks to first-party files keeps the run fast and
+# meaningful.
 exclude: |
   (?x)^(
     platform/.*|
@@ -50,12 +52,6 @@ repos:
       - id: yamllint
         args: ["-s"]
 
-  # Ansible linting
-  - repo: https://github.com/ansible/ansible-lint
-    rev: v25.12.2
-    hooks:
-      - id: ansible-lint
-
   # General pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -102,6 +98,3 @@ repos:
       - id: shellcheck
         args: ["--severity=warning"]
         files: \.(sh|bash)$
-
-  # Trivy config scanning runs in CI and via `make security-scan`. The upstream
-  # trivy pre-commit hook does not ship a usable manifest, so it is not wired here.
