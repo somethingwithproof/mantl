@@ -17,11 +17,11 @@ permissions:
 jobs:
   dependabot:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
-      
+
       - name: Run Dependabot
         uses: github/dependabot-action@main
         with:
