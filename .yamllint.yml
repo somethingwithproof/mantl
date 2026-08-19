@@ -1,0 +1,33 @@
+---
+# yamllint ran with no config, so it fell back to the stock defaults and every
+# Dependabot PR touching a workflow failed the pre-commit hook on rules that do
+# not fit GitHub Actions YAML.
+extends: default
+
+ignore: |
+  # Vendored upstream Helm charts and their CRDs: ~110k findings that are not
+  # ours to reformat, and re-vendoring would revert any edits anyway.
+  **/charts/**
+  platform/observability/prometheus/**/crds/**
+
+rules:
+  # Workflows conventionally start straight at `name:` with no `---`.
+  document-start: disable
+
+  # `on:` is a workflow key, not the boolean `on`. Values are still checked.
+  truthy:
+    check-keys: false
+
+  # Disabled rather than raised: the long lines are all shell inside `run:`
+  # blocks (docker invocations, a curl with inline JSON). Wrapping them means
+  # editing commands that cannot be exercised outside CI, and the rule buys
+  # very little on embedded shell. Every other style rule still applies.
+  line-length: disable
+
+  # `uses: owner/action@<40-char-sha> # v5` is the house style for SHA pins.
+  comments:
+    min-spaces-from-content: 1
+
+  # `runs-on: [ ubuntu-latest ]` is used throughout the workflows.
+  brackets:
+    max-spaces-inside: 1
