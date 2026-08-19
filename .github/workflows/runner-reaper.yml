@@ -1,0 +1,57 @@
+name: Reap orphaned CI runners
+
+# Safety net for the ephemeral CI runners. If a CI run's stop-runner job is
+# itself cancelled or the runner infrastructure dies, a droplet could be left
+# behind. This sweeps such orphans.
+#
+# It can ONLY ever delete droplets that pass all three gates:
+#   1. carry the dedicated mantl-ci-runner tag (production droplets are never listed),
+#   2. have a name matching the mantl-ci-* CI pattern,
+#   3. are older than the orphan threshold (a normal run lasts minutes).
+# It never lists or touches anything else on the account.
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CI_RUNNER_TAG: mantl-ci-runner
+  ORPHAN_AGE_SECONDS: '7200' # 2 hours
+
+jobs:
+  reap:
+    name: Reap orphaned CI droplets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install doctl
+        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Delete orphaned CI droplets only
+        run: |
+          set -euo pipefail
+          now=$(date -u +%s)
+          # Gate 1: the list is filtered to the dedicated CI tag. Nothing else
+          # on the account is ever enumerated here.
+          doctl compute droplet list --tag-name "$CI_RUNNER_TAG" --no-header \
+            --format ID,Name,Created | while read -r id name created; do
+            # Gate 2: name must match the CI pattern.
+            case "$name" in
+              mantl-ci-*) ;;
+              *) echo "Skip non-CI name: $name"; continue ;;
+            esac
+            # Gate 3: only orphans older than the threshold.
+            created_ts=$(date -u -d "$created" +%s 2>/dev/null || echo 0)
+            age=$(( now - created_ts ))
+            if [ "$created_ts" -gt 0 ] && [ "$age" -gt "$ORPHAN_AGE_SECONDS" ]; then
+              echo "Reaping orphan droplet $id ($name), age ${age}s"
+              doctl compute droplet delete "$id" --force
+            else
+              echo "Keep $name (age ${age}s, below threshold)"
+            fi
+          done
