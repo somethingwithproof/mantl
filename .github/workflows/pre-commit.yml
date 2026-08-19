@@ -12,7 +12,7 @@ jobs:
           # Need the base commit to diff against for changed-files scoping.
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           # A hook pins python3.13 for its venv; the runner must provide it.
           python-version: '3.13'
