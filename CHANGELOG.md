@@ -90,6 +90,7 @@ See PRs: #31, #32, #33, #34, #35, #36, #37.
 * **deps:** resolve Dependabot security alerts ([#198](https://github.com/somethingwithproof/mantl/issues/198)) ([7aea8d8](https://github.com/somethingwithproof/mantl/commit/7aea8d8effc30d60757a9c649e11ca8e20d442ae))
 * **deps:** update remaining Python dependencies ([#237](https://github.com/somethingwithproof/mantl/issues/237)) ([454e9bd](https://github.com/somethingwithproof/mantl/commit/454e9bde16b9a72fbcdaf958ecb69ab52667fd9d))
 * **manifests:** repair malformed first-party YAML ([957f667](https://github.com/somethingwithproof/mantl/commit/957f66763dd53e9fb6ad3eb68bb386058041803a))
+* repair project foundations and dependencies ([#258](https://github.com/somethingwithproof/mantl/issues/258)) ([ea0cc70](https://github.com/somethingwithproof/mantl/commit/ea0cc7062435ae884cea4e8d706974c4b66676af))
 * resolve critical Python linting issues ([2a5622b](https://github.com/somethingwithproof/mantl/commit/2a5622b1e466bd06cedb3f5b1c574a0583b9c0a6))
 * resolve critical Python linting issues ([a446692](https://github.com/somethingwithproof/mantl/commit/a446692e13308542d46640aa1431be30da16b8a3))
 * **security:** harden K8s endpoints, IAM, and outputs ([#112](https://github.com/somethingwithproof/mantl/issues/112)) ([c70b291](https://github.com/somethingwithproof/mantl/commit/c70b291e76077765dc73ccdeeb42729bb9c2e14a))
