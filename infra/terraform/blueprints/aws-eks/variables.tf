@@ -5,6 +5,7 @@
 variable "cluster_name" {
   description = "Name of the EKS cluster"
   type        = string
+  default     = "mantl"
 }
 
 variable "region" {
@@ -16,21 +17,19 @@ variable "region" {
 variable "kubernetes_version" {
   description = "Kubernetes version for EKS cluster"
   type        = string
-  default     = "1.31"
+  default     = "1.31" # Updated to latest stable version
 }
 
 variable "environment" {
-  description = "Deployment environment (dev, staging, prod)"
+  description = "Environment name (e.g., production, staging, development)"
   type        = string
+  default     = "production"
 }
 
 variable "tags" {
   description = "Additional tags for all resources"
   type        = map(string)
-  default     = {
-    Project   = "Mantl"
-    ManagedBy = "Terraform"
-  }
+  default     = {}
 }
 
 ################################################################################
@@ -54,9 +53,9 @@ variable "single_nat_gateway" {
 ################################################################################
 
 variable "cluster_endpoint_public_access" {
-  description = "Enable public access to cluster API endpoint"
+  description = "Enable public access to cluster API endpoint (NOT recommended for production)"
   type        = bool
-  default     = false
+  default     = false # Changed to false for security - use bastion/VPN for access
 }
 
 ################################################################################
