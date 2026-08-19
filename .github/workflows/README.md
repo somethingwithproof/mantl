@@ -144,7 +144,7 @@ All results uploaded to GitHub Security tab for tracking.
 ```bash
 # All providers
 for provider in aws-eks gcp-gke azure-aks do-doks linode-lke oci-oke ibm-iks openstack; do
-  cd infra/terraform/terraform/blueprints/$provider
+  cd infra/terraform/blueprints/$provider
   terraform fmt -check
   terraform init -backend=false
   terraform validate

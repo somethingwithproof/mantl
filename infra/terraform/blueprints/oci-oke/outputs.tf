@@ -1,26 +1,19 @@
-output "cluster_id" {
-  description = "OCID of the OKE cluster"
-  value       = oci_containerengine_cluster.oke_cluster.id
-}
-
-output "cluster_name" {
-  description = "Name of the OKE cluster"
-  value       = oci_containerengine_cluster.oke_cluster.name
-}
+# Cluster identity and VCN outputs are defined in main.tf. This file holds
+# only the remaining, non-duplicate outputs.
 
 output "cluster_endpoint" {
   description = "Kubernetes API endpoint"
   value       = oci_containerengine_cluster.oke_cluster.endpoints[0].public_endpoint
 }
 
-output "vcn_id" {
-  description = "OCID of the VCN"
-  value       = oci_core_vcn.oke_vcn.id
+output "system_node_pool_id" {
+  description = "OCID of the system node pool"
+  value       = oci_containerengine_node_pool.system_pool.id
 }
 
-output "node_pool_id" {
-  description = "OCID of the node pool"
-  value       = oci_containerengine_node_pool.oke_node_pool.id
+output "workload_node_pool_id" {
+  description = "OCID of the workload node pool"
+  value       = oci_containerengine_node_pool.workload_pool.id
 }
 
 output "region" {

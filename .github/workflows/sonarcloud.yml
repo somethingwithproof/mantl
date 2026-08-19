@@ -1,10 +1,12 @@
+---
+# yamllint disable rule:line-length
 name: SonarCloud
 
-on:
+"on":
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 permissions:
   contents: read
@@ -16,6 +18,7 @@ concurrency:
 jobs:
   scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       # Skip cleanly when the maintainer has not provisioned SONAR_TOKEN.
       # The scan never fails CI on a missing secret.
@@ -31,7 +34,7 @@ jobs:
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         if: steps.guard.outputs.enabled == 'true'
         with:
           # Full history improves SonarCloud blame and new-code detection.
@@ -40,7 +43,7 @@ jobs:
 
       - name: Set up Go
         if: steps.guard.outputs.enabled == 'true'
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
           cache: true
@@ -51,7 +54,7 @@ jobs:
 
       - name: SonarCloud scan
         if: steps.guard.outputs.enabled == 'true'
-        uses: SonarSource/sonarqube-scan-action@v8
+        uses: SonarSource/sonarqube-scan-action@0303d6b62e310685c0e34d0b9cde218036885c4d # v5.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

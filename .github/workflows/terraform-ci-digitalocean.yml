@@ -4,14 +4,14 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'infra/terraform/terraform/blueprints/do-doks/**'
+      - 'infra/terraform/blueprints/do-doks/**'
       - 'clusters/*/overlays/digitalocean/**'
       - 'platform/dns/external-dns/digitalocean/**'
       - 'platform/base/cert-manager/acme/digitalocean/**'
       - '.github/workflows/terraform-ci-digitalocean.yml'
   pull_request:
     paths:
-      - 'infra/terraform/terraform/blueprints/do-doks/**'
+      - 'infra/terraform/blueprints/do-doks/**'
       - 'clusters/*/overlays/digitalocean/**'
       - 'platform/dns/external-dns/digitalocean/**'
       - 'platform/base/cert-manager/acme/digitalocean/**'
@@ -43,23 +43,23 @@ jobs:
 
       - name: Terraform Format Check
         id: fmt
-        working-directory: infra/terraform/terraform/blueprints/do-doks
+        working-directory: infra/terraform/blueprints/do-doks
         run: terraform fmt -check -recursive
         continue-on-error: true
 
       - name: Terraform Init
         id: init
-        working-directory: infra/terraform/terraform/blueprints/do-doks
+        working-directory: infra/terraform/blueprints/do-doks
         run: terraform init -backend=false -input=false
 
       - name: Terraform Validate
         id: validate
-        working-directory: infra/terraform/terraform/blueprints/do-doks
+        working-directory: infra/terraform/blueprints/do-doks
         run: terraform validate -no-color
 
       - name: Terraform Plan (Dry Run)
         id: plan
-        working-directory: infra/terraform/terraform/blueprints/do-doks
+        working-directory: infra/terraform/blueprints/do-doks
         run: |
           cat > terraform.tfvars << EOF
           cluster_name       = "ci-test-cluster"
@@ -95,7 +95,7 @@ jobs:
             | Validate | \`${{ steps.validate.outcome }}\` |
             | Plan | \`${{ steps.plan.outcome }}\` |
 
-            **Path**: \`infra/terraform/terraform/blueprints/do-doks\`
+            **Path**: \`infra/terraform/blueprints/do-doks\`
 
             <details><summary>Show Validation Output</summary>
 
@@ -243,7 +243,7 @@ jobs:
       - name: Run tfsec
         uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6 # v1.0.3
         with:
-          working_directory: infra/terraform/terraform/blueprints/do-doks
+          working_directory: infra/terraform/blueprints/do-doks
           soft_fail: true
 
       - name: Check for sensitive data exposure
@@ -251,13 +251,13 @@ jobs:
           echo "Checking for potential secrets in code..."
 
           # Check for hardcoded tokens
-          if grep -r "dop_v1_" infra/terraform/terraform/blueprints/do-doks/ 2>/dev/null; then
+          if grep -r "dop_v1_" infra/terraform/blueprints/do-doks/ 2>/dev/null; then
             echo "❌ Found potential DigitalOcean API token in code!"
             exit 1
           fi
 
           # Check for proper sensitive variable marking
-          if ! grep -q "sensitive.*=.*true" infra/terraform/terraform/blueprints/do-doks/variables.tf; then
+          if ! grep -q "sensitive.*=.*true" infra/terraform/blueprints/do-doks/variables.tf; then
             echo "⚠ No sensitive variables marked in variables.tf"
           fi
 
@@ -274,12 +274,12 @@ jobs:
 
       - name: Check README exists
         run: |
-          if [ -f "infra/terraform/terraform/blueprints/do-doks/README.md" ]; then
+          if [ -f "infra/terraform/blueprints/do-doks/README.md" ]; then
             echo "✓ README.md exists"
 
             # Check for required sections
             for section in "Overview" "Prerequisites" "Quick Start" "Variables" "Outputs"; do
-              if grep -q "## $section" infra/terraform/terraform/blueprints/do-doks/README.md; then
+              if grep -q "## $section" infra/terraform/blueprints/do-doks/README.md; then
                 echo "  ✓ Found section: $section"
               else
                 echo "  ⚠ Missing section: $section"
@@ -292,12 +292,12 @@ jobs:
 
       - name: Check terraform.tfvars.example exists
         run: |
-          if [ -f "infra/terraform/terraform/blueprints/do-doks/terraform.tfvars.example" ]; then
+          if [ -f "infra/terraform/blueprints/do-doks/terraform.tfvars.example" ]; then
             echo "✓ terraform.tfvars.example exists"
 
             # Verify it has required variables
             for var in "cluster_name" "region" "environment"; do
-              if grep -q "^$var" infra/terraform/terraform/blueprints/do-doks/terraform.tfvars.example; then
+              if grep -q "^$var" infra/terraform/blueprints/do-doks/terraform.tfvars.example; then
                 echo "  ✓ Found variable: $var"
               else
                 echo "  ⚠ Missing variable: $var"
@@ -312,9 +312,9 @@ jobs:
         run: |
           echo "Checking for broken internal links..."
           # This is a simple check - production would use a proper link checker
-          if grep -o '\[.*\](.*\.md)' infra/terraform/terraform/blueprints/do-doks/README.md | while read link; do
+          if grep -o '\[.*\](.*\.md)' infra/terraform/blueprints/do-doks/README.md | while read link; do
             file=$(echo "$link" | sed 's/.*(\(.*\))/\1/')
-            if [ ! -f "$file" ] && [ ! -f "infra/terraform/terraform/blueprints/do-doks/$file" ]; then
+            if [ ! -f "$file" ] && [ ! -f "infra/terraform/blueprints/do-doks/$file" ]; then
               echo "⚠ Potentially broken link: $link"
             fi
           done; then

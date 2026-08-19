@@ -12,34 +12,6 @@ target-version = "py312"
 select = ["E","F","I","B","UP","SIM"]
 exclude = ["docs/_build","legacy","build","dist"]
 
-[tool.pytest.ini_options]
-python_files = ["test_*.py"]
-python_functions = ["test_*"]
-# Removed -q for better visibility, increased maxfail for debugging
-addopts = "-v --maxfail=5 --tb=short --strict-markers"
-testpaths = ["tests"]
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
-    "e2e: marks tests as end-to-end tests",
-    "requires_docker: marks tests that require Docker",
-    "requires_kubernetes: marks tests that require a Kubernetes cluster",
-    "requires_helm: marks tests that require Helm CLI",
-    "requires_kustomize: marks tests that require Kustomize CLI",
-    "requires_argocd: marks tests that require ArgoCD CLI",
-    "yaml_validation: marks tests that validate YAML manifests",
-    "shell_scripts: marks tests that validate shell scripts",
-    "security: marks security-related tests",
-    "network_policies: marks network policy tests",
-]
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning",
-]
-# Collect test durations for optimization
-durations = 10
-durations_min = 0.1
-
 [tool.coverage.run]
 source = ["."]
 branch = true

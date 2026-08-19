@@ -75,6 +75,7 @@ cli-install: ## Install mantl CLI tool
 
 test: ## Run all tests
 	@echo "${GREEN}Running tests...${RESET}"
+	@go test ./apis/... ./cmd/... ./compliance/... ./controllers/... ./pkg/...
 	@pytest -v tests/
 	@echo "${GREEN}Validating Kustomize builds...${RESET}"
 	@$(MAKE) kustomize-validate
@@ -88,18 +89,23 @@ GO_PKGS := $(shell go list ./... | grep -v 'github.com/thomasvincent/mantl/platf
 go-test: ## Run Go unit tests excluding vendored charts
 	go test $(GO_PKGS)
 
-CONTROLLER_GEN := go run sigs.k8s.io/controller-tools/cmd/controller-gen@latest
+# Pinned so `make manifests`/`make generate` are deterministic and the CI
+# generated-code drift check does not flap on a controller-gen version bump.
+CONTROLLER_GEN := go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.21.0
 
 # Scoped to the compliance API: the platform API still lacks a +groupName marker,
 # so controller-gen cannot emit a valid CRD for it yet.
 manifests: ## Generate CRD manifests from the API markers
 	$(CONTROLLER_GEN) crd paths=./apis/compliance/... output:crd:artifacts:config=config/crd/bases
 
+# Object generation does not require CRD group markers, so keep DeepCopy methods
+# current for both the compliance and platform API packages.
 generate: ## Regenerate DeepCopy methods from the API markers
 	$(CONTROLLER_GEN) object paths=./apis/...
 
 test-unit: ## Run unit tests only
 	@echo "${GREEN}Running unit tests...${RESET}"
+	@go test ./apis/... ./cmd/... ./compliance/... ./controllers/... ./pkg/...
 	@pytest -v tests/unit/
 
 test-coverage: ## Run tests with coverage report

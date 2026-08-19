@@ -1,24 +1,111 @@
+---
+# yamllint disable rule:line-length
 name: Mantl CI
 
-on:
+"on":
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Every CI droplet is tagged with this and ONLY this tag, and named
+# mantl-ci-<run id>-<run attempt>. All teardown is filtered by the tag first and the name
+# pattern second, so the workflow can never touch other droplets on the account.
+env:
+  CI_RUNNER_TAG: mantl-ci-runner
+  # 4 vCPU / 8 GB: Go build pulls k8s, aws-sdk, controller-runtime, and prometheus,
+  # and golangci-lint is memory-hungry; 4 GB risks OOM. Ephemeral, so cost is
+  # pennies per run. Tune here if jobs get heavier or lighter.
+  CI_RUNNER_SIZE: s-4vcpu-8gb
+  CI_RUNNER_IMAGE: ubuntu-24-04-x64
+  CI_RUNNER_REGION: nyc3
+
 jobs:
-  validate:
+  start-runner:
+    name: Start DO runner
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      label: ${{ steps.create.outputs.label }}
     steps:
-      - uses: actions/checkout@v7
+      - name: Install doctl
+        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Create ephemeral runner droplet
+        id: create
+        env:
+          GH_RUNNER_PAT: ${{ secrets.GH_RUNNER_PAT }}
+          REPO: ${{ github.repository }}
+          NAME: mantl-ci-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          echo "label=${NAME}" >> "$GITHUB_OUTPUT"
+
+          # Short-lived registration token for an ephemeral self-hosted runner.
+          REG_TOKEN=$(curl -sf -X POST \
+            -H "Authorization: Bearer ${GH_RUNNER_PAT}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/actions/runners/registration-token" \
+            | jq -r .token)
+          if [ -z "${REG_TOKEN}" ] || [ "${REG_TOKEN}" = "null" ]; then
+            echo "Failed to obtain a runner registration token"; exit 1
+          fi
+
+          # cloud-init: install prerequisites, register a one-shot (--ephemeral)
+          # runner that auto-deregisters after a single job, and start it.
+          cat > user-data.sh <<EOF
+          #!/usr/bin/env bash
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -y
+          apt-get install -y git curl tar jq build-essential ca-certificates
+          id -u runner >/dev/null 2>&1 || useradd -m runner
+          cd /home/runner
+          RUNNER_VERSION=2.319.1
+          curl -sfLo runner.tar.gz \
+            "https://github.com/actions/runner/releases/download/v\${RUNNER_VERSION}/actions-runner-linux-x64-\${RUNNER_VERSION}.tar.gz"
+          mkdir -p actions-runner && tar xzf runner.tar.gz -C actions-runner
+          chown -R runner:runner /home/runner
+          cd /home/runner/actions-runner
+          sudo -u runner ./config.sh --unattended --ephemeral \
+            --url "https://github.com/${REPO}" \
+            --token "${REG_TOKEN}" \
+            --labels "${NAME}" \
+            --name "${NAME}"
+          sudo -u runner nohup ./run.sh >/home/runner/runner.log 2>&1 &
+          EOF
+
+          # Tagged with the dedicated CI tag and the deterministic CI name.
+          doctl compute droplet create "${NAME}" \
+            --image "${CI_RUNNER_IMAGE}" \
+            --size "${CI_RUNNER_SIZE}" \
+            --region "${CI_RUNNER_REGION}" \
+            --tag-name "${CI_RUNNER_TAG}" \
+            --user-data-file user-data.sh \
+            --wait --no-header --format ID,Name
+          echo "Created CI droplet ${NAME}"
+
+  build:
+    name: Build and test
+    needs: start-runner
+    runs-on: ${{ needs.start-runner.outputs.label }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: go.mod
           cache: true
@@ -29,26 +116,93 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
-      # Build to dist/ to avoid colliding with the tracked bin/mantl bash CLI.
       - name: Build CLI
-        run: go build -v -o dist/mantl ./cmd/mantl
+        run: |
+          mkdir -p dist
+          go build -v -o dist/mantl ./cmd/mantl
 
-      - name: Run unit tests
+      - name: Build compliance operator
+        run: go build -v -o dist/compliance-operator ./cmd/compliance-operator
+
+      - name: Check formatting
+        run: |
+          unformatted=$(git ls-files '*.go' | grep -v '^platform/' | xargs gofmt -l)
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: Vet
+        run: go list ./... | grep -v 'github.com/thomasvincent/mantl/platform/' | xargs go vet
+
+      - name: Unit tests
         run: make go-test
 
       - name: Validate spec planning
         run: ./dist/mantl plan examples/mantl-spec.yaml
 
-      - name: Build Compliance Operator
-        run: go build -v -o dist/compliance-operator ./cmd/compliance-operator
-
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@db9de0fc1a667e1a49d2291a1a042dff081d78f6 # v9
         with:
-          version: latest
+          version: v2.12.2
+
+      - name: Generated code is committed
+        run: |
+          make manifests
+          make generate
+          git diff --exit-code || { \
+            echo "Generated files are stale. Run 'make manifests && make generate' and commit."; \
+            exit 1; }
+
+  stop-runner:
+    name: Stop DO runner
+    needs: [start-runner, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: always()
+    steps:
+      - name: Install doctl
+        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Destroy this run's runner droplet
+        env:
+          NAME: mantl-ci-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          # Gate 2: refuse to act on anything not matching the CI name pattern.
+          case "$NAME" in
+            mantl-ci-*) ;;
+            *) echo "Refusing to act on unexpected name: $NAME"; exit 1 ;;
+          esac
+          # Gate 1: only droplets carrying the dedicated CI tag are ever listed.
+          id=$(doctl compute droplet list --tag-name "$CI_RUNNER_TAG" --no-header --format ID,Name \
+               | awk -v n="$NAME" '$2 == n { print $1 }')
+          if [ -z "$id" ]; then
+            echo "No droplet named $NAME under tag $CI_RUNNER_TAG (already cleaned up)."
+            exit 0
+          fi
+          echo "Destroying CI droplet $id ($NAME)"
+          doctl compute droplet delete "$id" --force
+
+  ci:
+    name: CI
+    needs: [start-runner, build, stop-runner]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Require build success
+        run: |
+          if [ "${{ needs.start-runner.result }}" != "success" ]; then
+            echo "start-runner job result: ${{ needs.start-runner.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.build.result }}" != "success" ]; then
+            echo "build job result: ${{ needs.build.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.stop-runner.result }}" != "success" ]; then
+            echo "stop-runner job result: ${{ needs.stop-runner.result }}"
+            exit 1
+          fi
+          echo "CI passed."

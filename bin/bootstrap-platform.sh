@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
 # Bootstrap Mantl Platform
 # Usage: ./bootstrap-platform.sh [OPTIONS]
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'

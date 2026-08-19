@@ -12,7 +12,6 @@ import os
 import re
 import shutil
 import subprocess
-from pathlib import Path
 
 import pytest
 
@@ -60,21 +59,18 @@ class TestShellScriptSyntax:
             )
 
     @pytest.mark.shell_scripts
-    @pytest.mark.skipif(
-        not shutil.which("shellcheck"),
-        reason="shellcheck not installed"
-    )
+    @pytest.mark.skipif(not shutil.which("shellcheck"), reason="shellcheck not installed")
     def test_shellcheck_passes(self, shell_scripts):
         """Run shellcheck on all scripts."""
         for script in shell_scripts:
             result = subprocess.run(
-                ["shellcheck", "-x", "-s", "bash", str(script)],
+                ["shellcheck", "--severity=error", "-x", "-s", "bash", str(script)],
                 capture_output=True,
-                text=True
+                text=True,
             )
-            assert result.returncode == 0, (
-                f"{script.name}: shellcheck found issues:\n{result.stdout}\n{result.stderr}"
-            )
+            assert (
+                result.returncode == 0
+            ), f"{script.name}: shellcheck found issues:\n{result.stdout}\n{result.stderr}"
 
 
 class TestShellScriptSafety:
@@ -94,9 +90,7 @@ class TestShellScriptSafety:
             content = script.read_text()
 
             # Check for at least one strict mode setting
-            has_strict = any(
-                re.search(pattern, content) for pattern in strict_patterns
-            )
+            has_strict = any(re.search(pattern, content) for pattern in strict_patterns)
 
             # Allow scripts that explicitly document no strict mode
             if "# Intentionally not using strict mode" in content:
@@ -173,9 +167,7 @@ class TestShellScriptDocumentation:
                 if stripped and not stripped.startswith("#"):
                     break
 
-            assert has_header, (
-                f"{script.name}: Should have header documentation explaining purpose"
-            )
+            assert has_header, f"{script.name}: Should have header documentation explaining purpose"
 
     @pytest.mark.shell_scripts
     def test_scripts_have_usage_function(self, shell_scripts):
@@ -184,16 +176,16 @@ class TestShellScriptDocumentation:
             content = script.read_text()
 
             # Check if script takes arguments
-            if "$1" in content or "${1" in content or "\"$@\"" in content:
+            if "$1" in content or "${1" in content or '"$@"' in content:
                 has_usage = (
-                    "usage()" in content or
-                    "usage ()" in content or
-                    "function usage" in content or
-                    "--help" in content
+                    "usage()" in content
+                    or "usage ()" in content
+                    or "function usage" in content
+                    or "--help" in content
                 )
-                assert has_usage, (
-                    f"{script.name}: Scripts that take arguments should have a usage function"
-                )
+                assert (
+                    has_usage
+                ), f"{script.name}: Scripts that take arguments should have a usage function"
 
 
 class TestShellScriptFunctionality:
@@ -209,12 +201,12 @@ class TestShellScriptFunctionality:
         content = script.read_text()
 
         # Check for input validation
-        assert "validate_environment" in content or "case" in content, (
-            "bootstrap-cluster.sh should validate environment input"
-        )
-        assert "validate_provider" in content or "case" in content, (
-            "bootstrap-cluster.sh should validate provider input"
-        )
+        assert (
+            "validate_environment" in content or "case" in content
+        ), "bootstrap-cluster.sh should validate environment input"
+        assert (
+            "validate_provider" in content or "case" in content
+        ), "bootstrap-cluster.sh should validate provider input"
 
     @pytest.mark.shell_scripts
     def test_bootstrap_cluster_has_rollback(self, bin_dir):
@@ -225,17 +217,16 @@ class TestShellScriptFunctionality:
 
         content = script.read_text()
 
-        assert "rollback" in content.lower(), (
-            "bootstrap-cluster.sh should support rollback functionality"
-        )
+        assert (
+            "rollback" in content.lower()
+        ), "bootstrap-cluster.sh should support rollback functionality"
 
     @pytest.mark.shell_scripts
     def test_scripts_are_executable(self, shell_scripts):
         """Verify all shell scripts are executable."""
         for script in shell_scripts:
             assert os.access(script, os.X_OK), (
-                f"{script.name}: Script should be executable. "
-                f"Run: chmod +x {script}"
+                f"{script.name}: Script should be executable. " f"Run: chmod +x {script}"
             )
 
 
@@ -244,23 +235,14 @@ class TestShellScriptIntegration:
 
     @pytest.mark.shell_scripts
     @pytest.mark.integration
-    @pytest.mark.skipif(
-        not shutil.which("bash"),
-        reason="bash not available"
-    )
+    @pytest.mark.skipif(not shutil.which("bash"), reason="bash not available")
     def test_scripts_have_valid_bash_syntax(self, shell_scripts):
         """Verify bash syntax is valid using bash -n."""
         for script in shell_scripts:
             content = script.read_text()
             if "#!/usr/bin/env bash" in content or "#!/bin/bash" in content:
-                result = subprocess.run(
-                    ["bash", "-n", str(script)],
-                    capture_output=True,
-                    text=True
-                )
-                assert result.returncode == 0, (
-                    f"{script.name}: Bash syntax error:\n{result.stderr}"
-                )
+                result = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
+                assert result.returncode == 0, f"{script.name}: Bash syntax error:\n{result.stderr}"
 
     @pytest.mark.shell_scripts
     @pytest.mark.integration
@@ -270,16 +252,10 @@ class TestShellScriptIntegration:
         if not script.exists():
             pytest.skip("bootstrap-cluster.sh not found")
 
-        result = subprocess.run(
-            [str(script), "--help"],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run([str(script), "--help"], capture_output=True, text=True)
 
         # Should exit with 0 for help
-        assert result.returncode == 0, (
-            f"--help should exit with 0, got {result.returncode}"
-        )
-        assert "usage" in result.stdout.lower() or "usage" in result.stderr.lower(), (
-            "--help should display usage information"
-        )
+        assert result.returncode == 0, f"--help should exit with 0, got {result.returncode}"
+        assert (
+            "usage" in result.stdout.lower() or "usage" in result.stderr.lower()
+        ), "--help should display usage information"

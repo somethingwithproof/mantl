@@ -27,7 +27,7 @@ customRules:
   - rule: SOC2 Read Sensitive File
     desc: Detects reading of sensitive files
     condition: >
-      open_read and container and 
+      open_read and container and
       (fd.name startswith /etc/shadow or fd.name startswith /run/secrets)
     output: "Sensitive file read (user=%user.name file=%fd.name container=%container.id)"
     priority: WARNING
@@ -36,7 +36,7 @@ customRules:
   - rule: SOC2 Clear Log Activities
     desc: Detects log clearing (evidence tampering)
     condition: >
-      open_write and container and fd.name startswith /var/log and 
+      open_write and container and fd.name startswith /var/log and
       proc.name in (truncate, rm, shred)
     output: "Log clearing activity (user=%user.name file=%fd.name)"
     priority: ALERT
