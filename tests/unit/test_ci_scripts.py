@@ -66,9 +66,7 @@ class TestCIScripts:
                 first_line.startswith(shebang) for shebang in valid_shebangs
             ), f"Missing or invalid shebang in {script.name}: {first_line}"
 
-    @pytest.mark.skipif(
-        not os.path.exists("/bin/bash"), reason="bash not available"
-    )
+    @pytest.mark.skipif(not os.path.exists("/bin/bash"), reason="bash not available")
     def test_scripts_syntax_valid(self, ci_dir: Path) -> None:
         """Verify CI scripts have valid bash syntax."""
         if not ci_dir.exists():

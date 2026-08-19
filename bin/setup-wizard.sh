@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
 # Mantl Platform Setup Wizard
 # Interactive configuration and deployment
+set -euo pipefail
 
 # Colors. BLUE and MAGENTA round out the palette but are not used yet.
 RED='\033[0;31m'
@@ -44,6 +43,16 @@ ENABLE_OBSERVABILITY=true
 ENABLE_SECURITY=true
 ENABLE_EXAMPLES=true
 CUSTOM_DOMAIN=""
+
+usage() {
+    echo "Usage: $0 [--help]"
+    echo "Run the interactive Mantl platform setup wizard."
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+    usage
+    exit 0
+fi
 
 show_banner() {
     clear

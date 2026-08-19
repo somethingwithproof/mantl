@@ -39,17 +39,17 @@ make wizard
 
 **CLI Tool** (for advanced users):
 ```bash
-./scripts/mantl init
+./bin/mantl init
 ```
 
 **Production Deployment** (cloud providers):
 ```bash
 # 1. Provision infrastructure
-cd terraform/blueprints/aws-eks  # or gcp-gke, azure-aks, etc.
+cd infra/terraform/blueprints/aws-eks  # or gcp-gke, azure-aks, etc.
 tofu init && tofu apply
 
 # 2. Bootstrap platform
-./scripts/bootstrap-platform.sh --environment production --cloud aws
+./bin/bootstrap-platform.sh --environment production --cloud aws
 
 # 3. Enable compliance
 kubectl apply -f compliance/frameworks/soc2/profile-standard.yaml
@@ -210,8 +210,8 @@ Mantl provides multiple ways to get started, from zero to production in minutes:
 |------|----------|---------|
 | **Makefile** | Quick commands | `make install-dev`, `make dashboards` |
 | **Setup Wizard** | Interactive configuration | `make wizard` |
-| **CLI Tool** | Advanced operations | `./scripts/mantl <command>` |
-| **Bootstrap Script** | Automated deployment | `./scripts/bootstrap-platform.sh` |
+| **CLI Tool** | Advanced operations | `./bin/mantl <command>` |
+| **Bootstrap Script** | Automated deployment | `./bin/bootstrap-platform.sh` |
 
 ### Example Applications
 
@@ -226,7 +226,7 @@ Deploy examples:
 ```bash
 make deploy-examples
 # or
-kubectl apply -k applications/examples/<app-name>/base
+kubectl apply -k apps/examples/<app-name>/base
 ```
 
 ## Environments

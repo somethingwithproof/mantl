@@ -10,11 +10,11 @@ import os
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Generator
+from typing import Any
 
 import pytest
-
 
 # ============================================================================
 # Path Fixtures
@@ -247,6 +247,9 @@ def pytest_configure(config: Any) -> None:
     config.addinivalue_line(
         "markers", "requires_kubernetes: marks tests that require a Kubernetes cluster"
     )
+    config.addinivalue_line(
+        "markers", "requires_cluster: marks tests that require a reachable Kubernetes cluster"
+    )
 
 
 def pytest_collection_modifyitems(config: Any, items: list[Any]) -> None:
@@ -256,11 +259,26 @@ def pytest_collection_modifyitems(config: Any, items: list[Any]) -> None:
 
     has_docker_available = shutil.which("docker") is not None
     has_kubectl_available = shutil.which("kubectl") is not None
+    has_cluster_available = False
+    if has_kubectl_available:
+        try:
+            result = subprocess.run(
+                ["kubectl", "cluster-info"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            has_cluster_available = result.returncode == 0
+        except (subprocess.TimeoutExpired, OSError):
+            has_cluster_available = False
 
     for item in items:
         if "requires_docker" in item.keywords and not has_docker_available:
             item.add_marker(skip_docker)
-        if "requires_kubernetes" in item.keywords and not has_kubectl_available:
+        if (
+            "requires_kubernetes" in item.keywords or "requires_cluster" in item.keywords
+        ) and not has_cluster_available:
             item.add_marker(skip_kubernetes)
 
 

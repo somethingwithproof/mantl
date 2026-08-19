@@ -40,10 +40,10 @@ The wizard guides you through:
 ### CLI Tool (Advanced Users)
 
 ```bash
-./scripts/mantl init           # Initialize configuration
-./scripts/mantl status         # Check platform health
-./scripts/mantl dashboards     # Open dashboards
-./scripts/mantl deploy <app>   # Deploy applications
+./bin/mantl init           # Initialize configuration
+./bin/mantl status         # Check platform health
+./bin/mantl dashboards     # Open dashboards
+./bin/mantl deploy <app>   # Deploy applications
 ```
 
 ## Manual Deployment

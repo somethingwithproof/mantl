@@ -7,6 +7,19 @@ import (
 	"time"
 )
 
+func isResourceValidationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := err.Error()
+	return strings.HasPrefix(message, "invalid resource kind") ||
+		strings.HasPrefix(message, "invalid resource name") ||
+		strings.HasPrefix(message, "resource kind ") ||
+		strings.HasPrefix(message, "namespace is required") ||
+		strings.HasPrefix(message, "invalid namespace") ||
+		strings.Contains(message, "exceeds maximum length")
+}
+
 func TestCaptureResource_Args(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -201,19 +214,7 @@ func TestCaptureResource_Args(t *testing.T) {
 
 			// When no wantErr, the call will fail because kubectl is not available
 			// in the test environment, but we verify it got past validation.
-			if err != nil && strings.Contains(err.Error(), "not permitted") {
-				t.Fatalf("unexpected validation error: %v", err)
-			}
-			if err != nil && strings.Contains(err.Error(), "namespace is required") {
-				t.Fatalf("unexpected validation error: %v", err)
-			}
-			if err != nil && strings.Contains(err.Error(), "invalid resource") {
-				t.Fatalf("unexpected validation error: %v", err)
-			}
-			if err != nil && strings.Contains(err.Error(), "invalid namespace") {
-				t.Fatalf("unexpected validation error: %v", err)
-			}
-			if err != nil && strings.Contains(err.Error(), "exceeds maximum length") {
+			if isResourceValidationError(err) {
 				t.Fatalf("unexpected validation error: %v", err)
 			}
 		})
@@ -286,9 +287,7 @@ func TestCaptureResource_EmptyStderr(t *testing.T) {
 		t.Logf("error: %v", err)
 		// stderr may or may not be empty depending on the environment;
 		// verify the error is from kubectl exec, not validation.
-		if strings.Contains(err.Error(), "not permitted") ||
-			strings.Contains(err.Error(), "invalid resource") ||
-			strings.Contains(err.Error(), "namespace is required") {
+		if isResourceValidationError(err) {
 			t.Fatalf("unexpected validation error: %v", err)
 		}
 	}
@@ -299,10 +298,7 @@ func TestCaptureResourceWithContext(t *testing.T) {
 	// and passes validation (will fail at kubectl exec).
 	ctx := context.Background()
 	_, err := CaptureResourceWithContext(ctx, "Deployment", "my-app", "default")
-	if err != nil &&
-		(strings.Contains(err.Error(), "not permitted") ||
-			strings.Contains(err.Error(), "invalid resource") ||
-			strings.Contains(err.Error(), "namespace is required")) {
+	if isResourceValidationError(err) {
 		t.Fatalf("unexpected validation error: %v", err)
 	}
 }
@@ -314,10 +310,7 @@ func TestCaptureResourceWithContext_CancelledContext(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error with cancelled context, got nil")
 	}
-	errMsg := err.Error()
-	if strings.Contains(errMsg, "not permitted") ||
-		strings.Contains(errMsg, "invalid resource") ||
-		strings.Contains(errMsg, "namespace is required") {
+	if isResourceValidationError(err) {
 		t.Fatalf("expected context or kubectl error, got validation error: %v", err)
 	}
 }
@@ -329,10 +322,7 @@ func TestCaptureResourceWithContext_ExpiredDeadline(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error with expired deadline, got nil")
 	}
-	errMsg := err.Error()
-	if strings.Contains(errMsg, "not permitted") ||
-		strings.Contains(errMsg, "invalid resource") ||
-		strings.Contains(errMsg, "namespace is required") {
+	if isResourceValidationError(err) {
 		t.Fatalf("expected context or kubectl error, got validation error: %v", err)
 	}
 }
@@ -345,9 +335,7 @@ func TestCaptureResource_DefaultTimeout(t *testing.T) {
 		t.Fatal("expected kubectl error, got nil")
 	}
 	errMsg := err.Error()
-	if strings.Contains(errMsg, "not permitted") ||
-		strings.Contains(errMsg, "invalid resource") ||
-		strings.Contains(errMsg, "namespace is required") {
+	if isResourceValidationError(err) {
 		t.Fatalf("expected kubectl error, got validation error: %v", err)
 	}
 	if !strings.Contains(errMsg, "failed to capture resource") {
