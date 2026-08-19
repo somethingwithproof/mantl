@@ -85,12 +85,8 @@ class TestTerraformStructure:
         for tf_file in terraform_dir.rglob("*.tf"):
             content = tf_file.read_text()
             # Basic syntax checks
-            assert content.count("{") == content.count(
-                "}"
-            ), f"Unmatched braces in {tf_file}"
-            assert content.count("[") == content.count(
-                "]"
-            ), f"Unmatched brackets in {tf_file}"
+            assert content.count("{") == content.count("}"), f"Unmatched braces in {tf_file}"
+            assert content.count("[") == content.count("]"), f"Unmatched brackets in {tf_file}"
 
 
 class TestKustomizeStructure:
@@ -241,6 +237,9 @@ class TestYAMLValidation:
             # Skip excluded directories
             if any(skip_dir in yaml_file.parts for skip_dir in skip_dirs):
                 continue
+            # Helm templates are Go templates and are only YAML after rendering.
+            if "charts" in yaml_file.parts:
+                continue
 
             # Skip vendored Helm charts and Helm-templated manifests; their
             # `{{ }}` directives are not valid YAML until rendered.
@@ -257,7 +256,7 @@ class TestYAMLValidation:
                 except yaml.YAMLError as e:
                     invalid_files.append(f"{yaml_file}: {e}")
 
-        assert len(invalid_files) == 0, f"Invalid YAML files found:\n" + "\n".join(invalid_files)
+        assert len(invalid_files) == 0, "Invalid YAML files found:\n" + "\n".join(invalid_files)
 
     def test_no_yaml_syntax_errors(self, project_root: Path) -> None:
         """Check for common YAML syntax issues."""

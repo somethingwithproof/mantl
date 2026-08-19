@@ -12,7 +12,7 @@ make install-dev
 make wizard
 
 # Or use the CLI
-./scripts/mantl init
+./bin/mantl init
 ```
 
 ## Development Environment
@@ -521,9 +521,9 @@ pytest --cache-clear
 
 ```bash
 # CLI tool for debugging
-./scripts/mantl health        # Check component health
-./scripts/mantl status        # Platform status
-./scripts/mantl logs <app>    # View logs
+./bin/mantl health        # Check component health
+./bin/mantl status        # Platform status
+./bin/mantl logs <app>    # View logs
 
 # Makefile targets
 make status                   # Platform status
@@ -579,7 +579,7 @@ See `.github/workflows/ci.yml` for details.
 
 - **Documentation**: Check `docs/` directory
 - **Issues**: Open an issue on GitHub
-- **CLI Help**: `./scripts/mantl help`
+- **CLI Help**: `./bin/mantl help`
 - **Makefile**: `make help`
 
 ## Additional Resources

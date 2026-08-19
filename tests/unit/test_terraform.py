@@ -354,7 +354,7 @@ def test_aws_eks_outputs_exist(aws_eks_blueprint: Path):
     required_outputs = [
         "cluster_name",
         "cluster_endpoint",
-        "cluster_id",
+        "cluster_certificate_authority_data",
     ]
 
     for output_name in required_outputs:

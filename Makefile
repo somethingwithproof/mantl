@@ -75,6 +75,7 @@ cli-install: ## Install mantl CLI tool
 
 test: ## Run all tests
 	@echo "${GREEN}Running tests...${RESET}"
+	@go test ./apis/... ./cmd/... ./compliance/... ./controllers/... ./pkg/...
 	@pytest -v tests/
 	@echo "${GREEN}Validating Kustomize builds...${RESET}"
 	@$(MAKE) kustomize-validate
@@ -104,6 +105,7 @@ generate: ## Regenerate DeepCopy methods from the API markers
 
 test-unit: ## Run unit tests only
 	@echo "${GREEN}Running unit tests...${RESET}"
+	@go test ./apis/... ./cmd/... ./compliance/... ./controllers/... ./pkg/...
 	@pytest -v tests/unit/
 
 test-coverage: ## Run tests with coverage report
