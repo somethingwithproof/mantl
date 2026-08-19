@@ -11,9 +11,11 @@ locals {
   vpc_cidr = var.vpc_cidr
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
 
-  tags = merge(var.tags, {
-    Blueprint  = "mantl"
-    GithubRepo = "github.com/thomasvincent/mantl"
+  common_tags = merge(var.tags, {
+    managed_by  = "terraform"
+    platform    = "mantl"
+    environment = var.environment
+    blueprint   = "aws"
   })
 }
 
@@ -32,7 +34,7 @@ data "aws_caller_identity" "current" {}
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.5"
+  version = "~> 5.21"
 
   name = "${local.name}-vpc"
   cidr = local.vpc_cidr
@@ -49,16 +51,124 @@ module "vpc" {
 
   # Tags required for EKS
   public_subnet_tags = {
-    "kubernetes.io/role/elb"                    = 1
-    "kubernetes.io/cluster/${local.name}"       = "owned"
+    "kubernetes.io/role/elb"              = 1
+    "kubernetes.io/cluster/${local.name}" = "owned"
   }
 
   private_subnet_tags = {
-    "kubernetes.io/role/internal-elb"           = 1
-    "kubernetes.io/cluster/${local.name}"       = "owned"
+    "kubernetes.io/role/internal-elb"     = 1
+    "kubernetes.io/cluster/${local.name}" = "owned"
   }
 
-  tags = local.tags
+  tags = local.common_tags
+}
+
+################################################################################
+# VPC Flow Logs
+################################################################################
+
+# Dedicated CMK for the flow-logs group. The key policy grants the CloudWatch
+# Logs service in this region; without that grant the log group cannot write to
+# an encrypted destination, so this is required for kms_key_id to function.
+resource "aws_kms_key" "vpc_flow_logs" {
+  description             = "CMK for VPC flow-logs CloudWatch group ${local.name}"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowAccountAdmin"
+        Effect    = "Allow"
+        Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
+        Action    = "kms:*"
+        Resource  = "*"
+      },
+      {
+        Sid       = "AllowCloudWatchLogs"
+        Effect    = "Allow"
+        Principal = { Service = "logs.${var.region}.amazonaws.com" }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey",
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/vpc/${local.name}"
+          }
+        }
+      },
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
+  name              = "/aws/vpc/${local.name}"
+  retention_in_days = 30
+  kms_key_id        = aws_kms_key.vpc_flow_logs.arn
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role" "vpc_flow_logs" {
+  name = "${local.name}-vpc-flow-logs"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "vpc-flow-logs.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy" "vpc_flow_logs" {
+  name = "${local.name}-vpc-flow-logs"
+  role = aws_iam_role.vpc_flow_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "${aws_cloudwatch_log_group.vpc_flow_logs.arn}:*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:DescribeLogGroups"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_flow_log" "vpc" {
+  vpc_id               = module.vpc.vpc_id
+  traffic_type         = "ALL"
+  log_destination_type = "cloud-watch-logs"
+  log_destination      = aws_cloudwatch_log_group.vpc_flow_logs.arn
+  iam_role_arn         = aws_iam_role.vpc_flow_logs.arn
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name}-vpc-flow-logs"
+  })
 }
 
 ################################################################################
@@ -67,7 +177,7 @@ module "vpc" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.8"
+  version = "~> 20.31"
 
   cluster_name    = local.name
   cluster_version = local.cluster_version
@@ -160,7 +270,7 @@ module "eks" {
     }
   }
 
-  tags = local.tags
+  tags = local.common_tags
 }
 
 ################################################################################
@@ -169,7 +279,7 @@ module "eks" {
 
 module "kms" {
   source  = "terraform-aws-modules/kms/aws"
-  version = "~> 2.2"
+  version = "~> 3.1"
 
   aliases               = ["eks/${local.name}"]
   description           = "KMS key for EKS cluster ${local.name} secrets encryption"
@@ -177,7 +287,7 @@ module "kms" {
 
   key_owners = [data.aws_caller_identity.current.arn]
 
-  tags = local.tags
+  tags = local.common_tags
 }
 
 ################################################################################
@@ -201,7 +311,7 @@ module "external_dns_irsa" {
     }
   }
 
-  tags = local.tags
+  tags = local.common_tags
 }
 
 # External Secrets
@@ -222,7 +332,7 @@ module "external_secrets_irsa" {
     }
   }
 
-  tags = local.tags
+  tags = local.common_tags
 }
 
 # cert-manager
@@ -242,7 +352,7 @@ module "cert_manager_irsa" {
     }
   }
 
-  tags = local.tags
+  tags = local.common_tags
 }
 
 # Cluster Autoscaler
@@ -262,7 +372,7 @@ module "cluster_autoscaler_irsa" {
     }
   }
 
-  tags = local.tags
+  tags = local.common_tags
 }
 
 # EBS CSI Driver
@@ -281,7 +391,7 @@ module "ebs_csi_irsa" {
     }
   }
 
-  tags = local.tags
+  tags = local.common_tags
 }
 
 # Load Balancer Controller
@@ -300,7 +410,7 @@ module "load_balancer_controller_irsa" {
     }
   }
 
-  tags = local.tags
+  tags = local.common_tags
 }
 
 ################################################################################

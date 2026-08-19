@@ -6,17 +6,17 @@ These tests validate Terraform syntax, configuration validity, and security best
 import json
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any
 
 import pytest
 
-
 # Test fixtures
+
 
 @pytest.fixture
 def terraform_root() -> Path:
     """Get the Terraform root directory."""
-    return Path(__file__).parent.parent.parent / "infra" / "terraform" / "terraform"
+    return Path(__file__).parent.parent.parent / "infra" / "terraform"
 
 
 @pytest.fixture
@@ -33,9 +33,8 @@ def aws_eks_blueprint(blueprints_dir: Path) -> Path:
 
 # Helper functions
 
-def run_terraform_command(
-    command: List[str], cwd: Path, timeout: int = 60
-) -> Dict[str, any]:
+
+def run_terraform_command(command: list[str], cwd: Path, timeout: int = 60) -> dict[str, Any]:
     """Run a terraform command and return the result."""
     try:
         result = subprocess.run(
@@ -85,12 +84,12 @@ _ENV_INIT_ERRORS = (
 )
 
 
-def terraform_init(directory: Path) -> Dict:
+def terraform_init(directory: Path) -> dict:
     """Initialize Terraform in a directory; returns the command result."""
     return run_terraform_command(["init", "-backend=false", "-no-color"], directory)
 
 
-def terraform_validate(directory: Path) -> Dict:
+def terraform_validate(directory: Path) -> dict:
     """Validate Terraform configuration, initializing first if needed.
 
     `init` resolves registry modules and providers over the network. A failure
@@ -109,12 +108,13 @@ def terraform_validate(directory: Path) -> Dict:
     return run_terraform_command(["validate", "-json"], directory)
 
 
-def terraform_fmt_check(directory: Path) -> Dict:
+def terraform_fmt_check(directory: Path) -> dict:
     """Check Terraform formatting."""
     return run_terraform_command(["fmt", "-check", "-recursive"], directory)
 
 
 # Format tests
+
 
 def test_terraform_formatted(terraform_root: Path):
     """Test that all Terraform files are properly formatted."""
@@ -128,6 +128,7 @@ def test_terraform_formatted(terraform_root: Path):
 
 
 # AWS EKS Blueprint tests
+
 
 def test_aws_eks_blueprint_exists(aws_eks_blueprint: Path):
     """Test that AWS EKS blueprint directory exists."""
@@ -143,9 +144,9 @@ def test_aws_eks_blueprint_validates(aws_eks_blueprint: Path):
 
     if result and result.get("returncode") == 0:
         validation = json.loads(result["stdout"])
-        assert validation["valid"] is True, (
-            f"AWS EKS blueprint validation failed:\n{json.dumps(validation, indent=2)}"
-        )
+        assert (
+            validation["valid"] is True
+        ), f"AWS EKS blueprint validation failed:\n{json.dumps(validation, indent=2)}"
 
 
 def test_aws_eks_variables_have_descriptions(aws_eks_blueprint: Path):
@@ -163,10 +164,10 @@ def test_aws_eks_variables_have_descriptions(aws_eks_blueprint: Path):
             config = hcl2.load(f)
 
         variables = config.get("variable", [])
-        for var_name, var_config in variables.items():
-            assert "description" in var_config[0], (
-                f"Variable '{var_name}' missing description"
-            )
+        for variable_block in variables:
+            for var_name, var_config in variable_block.items():
+                attrs = var_config[0] if isinstance(var_config, list) else var_config
+                assert "description" in attrs, f"Variable '{var_name}' missing description"
     except ImportError:
         pytest.skip("python-hcl2 not installed")
 
@@ -190,9 +191,7 @@ def test_aws_eks_security_defaults(aws_eks_blueprint: Path):
     assert public_access, "cluster_endpoint_public_access should default to false"
 
     # Check that latest Kubernetes version is used
-    assert 'default     = "1.31"' in content, (
-        "Should use latest stable Kubernetes version (1.31)"
-    )
+    assert 'default     = "1.31"' in content, "Should use latest stable Kubernetes version (1.31)"
 
 
 def test_aws_eks_vpc_flow_logs_enabled(aws_eks_blueprint: Path):
@@ -201,12 +200,12 @@ def test_aws_eks_vpc_flow_logs_enabled(aws_eks_blueprint: Path):
     with open(main_file) as f:
         content = f.read()
 
-    assert 'resource "aws_flow_log" "vpc"' in content, (
-        "VPC Flow Logs should be configured for security monitoring"
-    )
-    assert 'resource "aws_cloudwatch_log_group" "vpc_flow_logs"' in content, (
-        "CloudWatch Log Group for VPC Flow Logs should be configured"
-    )
+    assert (
+        'resource "aws_flow_log" "vpc"' in content
+    ), "VPC Flow Logs should be configured for security monitoring"
+    assert (
+        'resource "aws_cloudwatch_log_group" "vpc_flow_logs"' in content
+    ), "CloudWatch Log Group for VPC Flow Logs should be configured"
 
 
 def test_aws_eks_encryption_enabled(aws_eks_blueprint: Path):
@@ -215,12 +214,8 @@ def test_aws_eks_encryption_enabled(aws_eks_blueprint: Path):
     with open(main_file) as f:
         content = f.read()
 
-    assert "cluster_encryption_config" in content, (
-        "EKS cluster encryption should be enabled"
-    )
-    assert 'resources        = ["secrets"]' in content, (
-        "Secrets should be encrypted"
-    )
+    assert "cluster_encryption_config" in content, "EKS cluster encryption should be enabled"
+    assert 'resources        = ["secrets"]' in content, "Secrets should be encrypted"
 
 
 def test_aws_eks_logging_enabled(aws_eks_blueprint: Path):
@@ -236,12 +231,16 @@ def test_aws_eks_logging_enabled(aws_eks_blueprint: Path):
 
 # Multi-blueprint tests
 
-@pytest.mark.parametrize("blueprint", [
-    "aws-eks",
-    # Add other cloud providers when testing them
-    # "gcp-gke",
-    # "azure-aks",
-])
+
+@pytest.mark.parametrize(
+    "blueprint",
+    [
+        "aws-eks",
+        # Add other cloud providers when testing them
+        # "gcp-gke",
+        # "azure-aks",
+    ],
+)
 def test_blueprint_structure(blueprints_dir: Path, blueprint: str):
     """Test that each blueprint has the required file structure."""
     blueprint_dir = blueprints_dir / blueprint
@@ -251,9 +250,9 @@ def test_blueprint_structure(blueprints_dir: Path, blueprint: str):
 
     required_files = ["main.tf", "variables.tf", "outputs.tf"]
     for required_file in required_files:
-        assert (blueprint_dir / required_file).exists(), (
-            f"Blueprint {blueprint} missing {required_file}"
-        )
+        assert (
+            blueprint_dir / required_file
+        ).exists(), f"Blueprint {blueprint} missing {required_file}"
 
 
 def test_all_blueprints_validate(blueprints_dir: Path):
@@ -284,6 +283,7 @@ def test_all_blueprints_validate(blueprints_dir: Path):
 
 # Security best practices tests
 
+
 def test_no_hardcoded_secrets(terraform_root: Path):
     """Test that there are no hardcoded secrets in Terraform files."""
     import re
@@ -307,14 +307,13 @@ def test_no_hardcoded_secrets(terraform_root: Path):
             matches = re.findall(pattern, content, re.IGNORECASE)
             # Filter out obvious placeholders
             real_matches = [
-                m for m in matches
+                m
+                for m in matches
                 if "changeme" not in m.lower()
                 and "placeholder" not in m.lower()
                 and "example" not in m.lower()
             ]
-            assert not real_matches, (
-                f"Possible hardcoded secret in {tf_file}:\n{real_matches}"
-            )
+            assert not real_matches, f"Possible hardcoded secret in {tf_file}:\n{real_matches}"
 
 
 def test_resources_have_tags(aws_eks_blueprint: Path):
@@ -323,13 +322,14 @@ def test_resources_have_tags(aws_eks_blueprint: Path):
     with open(main_file) as f:
         content = f.read()
 
-    # Check that local.tags is used throughout
-    assert "tags = local.tags" in content or "tags = merge(local.tags" in content, (
-        "Resources should use consistent tagging with local.tags"
-    )
+    # Check that the unified local.common_tags is used throughout
+    assert (
+        "tags = local.common_tags" in content or "tags = merge(local.common_tags" in content
+    ), "Resources should use consistent tagging with local.common_tags"
 
 
 # Provider version tests
+
 
 def test_terraform_version_constraint():
     """Test that Terraform version is constrained."""
@@ -339,6 +339,7 @@ def test_terraform_version_constraint():
 
 
 # Output tests
+
 
 def test_aws_eks_outputs_exist(aws_eks_blueprint: Path):
     """Test that AWS EKS blueprint has useful outputs."""
@@ -357,6 +358,4 @@ def test_aws_eks_outputs_exist(aws_eks_blueprint: Path):
     ]
 
     for output_name in required_outputs:
-        assert f'output "{output_name}"' in content, (
-            f"Output '{output_name}' should be defined"
-        )
+        assert f'output "{output_name}"' in content, f"Output '{output_name}' should be defined"
