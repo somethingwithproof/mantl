@@ -1,10 +1,12 @@
+---
+# yamllint disable rule:line-length
 name: Mantl CI
 
-on:
+"on":
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -30,6 +32,7 @@ jobs:
   start-runner:
     name: Start DO runner
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       label: ${{ steps.create.outputs.label }}
     steps:
@@ -154,6 +157,7 @@ jobs:
     name: Stop DO runner
     needs: [start-runner, build]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: always()
     steps:
       - name: Install doctl
