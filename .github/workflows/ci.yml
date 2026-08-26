@@ -31,6 +31,9 @@ env:
 jobs:
   start-runner:
     name: Start DO runner
+    # Pull requests do not have the cloud credentials needed to provision an
+    # ephemeral runner. Run their builds on GitHub-hosted capacity instead.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -98,7 +101,11 @@ jobs:
   build:
     name: Build and test
     needs: start-runner
-    runs-on: ${{ needs.start-runner.outputs.label }}
+    if: >-
+      always() &&
+      (needs.start-runner.result == 'success' ||
+       github.event_name == 'pull_request')
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || needs.start-runner.outputs.label }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -158,7 +165,7 @@ jobs:
     needs: [start-runner, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: always()
+    if: always() && needs.start-runner.result == 'success'
     steps:
       - name: Install doctl
         uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
@@ -193,7 +200,8 @@ jobs:
     steps:
       - name: Require build success
         run: |
-          if [ "${{ needs.start-runner.result }}" != "success" ]; then
+          if [ "${{ github.event_name }}" != "pull_request" ] && \
+             [ "${{ needs.start-runner.result }}" != "success" ]; then
             echo "start-runner job result: ${{ needs.start-runner.result }}"
             exit 1
           fi
@@ -201,7 +209,8 @@ jobs:
             echo "build job result: ${{ needs.build.result }}"
             exit 1
           fi
-          if [ "${{ needs.stop-runner.result }}" != "success" ]; then
+          if [ "${{ github.event_name }}" != "pull_request" ] && \
+             [ "${{ needs.stop-runner.result }}" != "success" ]; then
             echo "stop-runner job result: ${{ needs.stop-runner.result }}"
             exit 1
           fi
