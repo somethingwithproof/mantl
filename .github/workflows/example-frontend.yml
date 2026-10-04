@@ -55,7 +55,7 @@ jobs:
             --publish 127.0.0.1::8080 mantl-frontend:ci)
           trap 'docker rm --force "$container" >/dev/null 2>&1 || true' EXIT
           address=$(docker port "$container" 8080/tcp)
-          curl --fail --retry 10 --retry-connrefused --retry-delay 1 "http://$address/health"
+          curl --fail --max-time 2 --retry 10 --retry-all-errors --retry-delay 1 --retry-max-time 30 "http://$address/health"
           curl --fail "http://$address/" --output /tmp/frontend-index.html
           grep -q 'assets/index-' /tmp/frontend-index.html
           test "$(docker inspect --format '{{.Config.User}}' "$container")" = nginx
