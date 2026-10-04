@@ -27,12 +27,28 @@ jobs:
     name: Reap orphaned CI droplets
     runs-on: ubuntu-latest
     steps:
+      - name: Check cleanup credentials
+        id: credentials
+        env:
+          DO_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: |
+          if [ -n "$DO_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Cleanup skipped: DIGITALOCEAN_ACCESS_TOKEN is not configured."
+            echo "### Cleanup skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo 'DIGITALOCEAN_ACCESS_TOKEN is not configured. No droplets were listed or deleted.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Install doctl
+        if: steps.credentials.outputs.configured == 'true'
         uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
       - name: Delete orphaned CI droplets only
+        if: steps.credentials.outputs.configured == 'true'
         run: |
           set -euo pipefail
           now=$(date -u +%s)

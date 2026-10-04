@@ -44,6 +44,13 @@ a scoped PAT is needed. Keep the PAT scoped to this repository.
 
 Add both under Settings to Secrets and variables to Actions.
 
+The reaper checks for `DIGITALOCEAN_ACCESS_TOKEN` before installing `doctl` or
+contacting DigitalOcean. If it is absent, the run succeeds with a notice and a
+job summary stating that cleanup was skipped; no droplets are listed or
+deleted. This supports forks that have not enabled DigitalOcean runners.
+Provision the token before relying on scheduled cleanup. A configured but
+invalid token still fails authentication normally.
+
 ## Droplet sizing
 
 Set in `ci.yml` env: `CI_RUNNER_SIZE` (default `s-4vcpu-8gb`), `CI_RUNNER_IMAGE`,
