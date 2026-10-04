@@ -87,6 +87,16 @@ docker run -p 8080:8080 frontend:1.0.0
 **Environment Variables**:
 - `REACT_APP_API_URL` - Base URL for backend APIs (default: `/api`)
 
+The frontend uses Vite with Node 24, pinned in `frontend/mise.toml`. Run
+`mise trust && mise install` from that directory, then `mise exec -- npm ci`,
+`mise exec -- npm test`, and `mise exec -- npm run build`. `npm start` serves the
+demo on port 3000; `/api` requests proxy to `http://localhost:8000`, configurable
+with `API_PROXY_TARGET`. `REACT_APP_API_URL` remains a public build-time setting
+and can also be supplied as a Docker build argument. Do not put credentials in it.
+Production output remains in `build/` and the Nginx container serves port 8080
+as its existing non-root `nginx` user. GitHub Actions checks the dependency audit,
+TypeScript build, dev/API behavior, and production container.
+
 ## Development Workflow
 
 ### Local Development

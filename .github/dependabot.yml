@@ -222,8 +222,12 @@ updates:
       prefix: "chore(deps)"
       include: "scope"
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/examples/ecommerce-microservices/src/frontend"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
-
+  - package-ecosystem: "docker"
+    directory: "/examples/ecommerce-microservices/src/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

@@ -1,0 +1,61 @@
+name: Example frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - examples/ecommerce-microservices/src/frontend/**
+      - .github/workflows/example-frontend.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - examples/ecommerce-microservices/src/frontend/**
+      - .github/workflows/example-frontend.yml
+  workflow_dispatch:
+  schedule:
+    - cron: '23 3 * * 2'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: example-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: examples/ecommerce-microservices/src/frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+        with:
+          version: '2026.10.2'
+          working_directory: examples/ecommerce-microservices/src/frontend
+      - name: Install locked dependencies
+        run: mise exec -- npm ci --ignore-scripts --no-audit --no-fund
+      - name: Audit dependencies
+        run: mise exec -- npm audit --audit-level=low
+      - name: Test dev server, API proxy, and public URL configuration
+        run: mise exec -- npm test
+      - name: Type check and build
+        run: mise exec -- npm run build
+      - name: Build and smoke-test production image
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --tag mantl-frontend:ci .
+          container=$(docker run --detach --rm \
+            --add-host products-api:127.0.0.1 --add-host orders-api:127.0.0.1 \
+            --publish 127.0.0.1::8080 mantl-frontend:ci)
+          trap 'docker rm --force "$container" >/dev/null 2>&1 || true' EXIT
+          address=$(docker port "$container" 8080/tcp)
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 "http://$address/health"
+          curl --fail "http://$address/" --output /tmp/frontend-index.html
+          grep -q 'assets/index-' /tmp/frontend-index.html
+          test "$(docker inspect --format '{{.Config.User}}' "$container")" = nginx
