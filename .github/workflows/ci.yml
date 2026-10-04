@@ -29,11 +29,35 @@ env:
   CI_RUNNER_REGION: nyc3
 
 jobs:
+  runner-config:
+    name: Select CI runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      cloud: ${{ steps.select.outputs.cloud }}
+    steps:
+      - name: Select configured runner backend
+        id: select
+        env:
+          IS_PULL_REQUEST: ${{ github.event.pull_request.number != null }}
+          DO_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+          GH_RUNNER_PAT: ${{ secrets.GH_RUNNER_PAT }}
+        run: |
+          set -euo pipefail
+          if [ "$IS_PULL_REQUEST" = "false" ] && \
+             [ -n "$DO_TOKEN" ] && [ -n "$GH_RUNNER_PAT" ]; then
+            echo "cloud=true" >> "$GITHUB_OUTPUT"
+            echo "Using configured DigitalOcean runner." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "cloud=false" >> "$GITHUB_OUTPUT"
+            echo "Using GitHub-hosted runner; cloud credentials are incomplete or this is a PR." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   start-runner:
     name: Start DO runner
-    # Pull requests do not have the cloud credentials needed to provision an
-    # ephemeral runner. Run their builds on GitHub-hosted capacity instead.
-    if: github.event_name != 'pull_request'
+    needs: runner-config
+    # Provision only when both credentials are available on a trusted event.
+    if: needs.runner-config.outputs.cloud == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -100,12 +124,14 @@ jobs:
 
   build:
     name: Build and test
-    needs: start-runner
+    needs: [runner-config, start-runner]
     if: >-
       always() &&
+      needs.runner-config.result == 'success' &&
       (needs.start-runner.result == 'success' ||
-       github.event_name == 'pull_request')
-    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || needs.start-runner.outputs.label }}
+       needs.runner-config.outputs.cloud == 'false')
+    runs-on: ${{ needs.runner-config.outputs.cloud == 'true' && needs.start-runner.outputs.label || 'ubuntu-latest' }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -162,10 +188,10 @@ jobs:
 
   stop-runner:
     name: Stop DO runner
-    needs: [start-runner, build]
+    needs: [runner-config, start-runner, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: always() && needs.start-runner.result == 'success'
+    if: always() && needs.runner-config.outputs.cloud == 'true' && needs.start-runner.result != 'skipped'
     steps:
       - name: Install doctl
         uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
@@ -194,24 +220,37 @@ jobs:
 
   ci:
     name: CI
-    needs: [start-runner, build, stop-runner]
+    needs: [runner-config, start-runner, build, stop-runner]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     if: always()
     steps:
       - name: Require build success
+        env:
+          CONFIG_RESULT: ${{ needs.runner-config.result }}
+          CLOUD_RUNNER: ${{ needs.runner-config.outputs.cloud }}
+          START_RESULT: ${{ needs.start-runner.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          STOP_RESULT: ${{ needs.stop-runner.result }}
         run: |
-          if [ "${{ github.event_name }}" != "pull_request" ] && \
-             [ "${{ needs.start-runner.result }}" != "success" ]; then
-            echo "start-runner job result: ${{ needs.start-runner.result }}"
+          if [ "$CONFIG_RESULT" != "success" ]; then
+            echo "runner-config job result: $CONFIG_RESULT"
             exit 1
           fi
-          if [ "${{ needs.build.result }}" != "success" ]; then
-            echo "build job result: ${{ needs.build.result }}"
+          case "$CLOUD_RUNNER" in
+            true|false) ;;
+            *) echo "Invalid runner selection"; exit 1 ;;
+          esac
+          if [ "$CLOUD_RUNNER" = "true" ] && [ "$START_RESULT" != "success" ]; then
+            echo "start-runner job result: $START_RESULT"
             exit 1
           fi
-          if [ "${{ github.event_name }}" != "pull_request" ] && \
-             [ "${{ needs.stop-runner.result }}" != "success" ]; then
-            echo "stop-runner job result: ${{ needs.stop-runner.result }}"
+          if [ "$BUILD_RESULT" != "success" ]; then
+            echo "build job result: $BUILD_RESULT"
+            exit 1
+          fi
+          if [ "$CLOUD_RUNNER" = "true" ] && [ "$STOP_RESULT" != "success" ]; then
+            echo "stop-runner job result: $STOP_RESULT"
             exit 1
           fi
           echo "CI passed."

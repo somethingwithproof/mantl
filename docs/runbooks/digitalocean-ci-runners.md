@@ -1,8 +1,9 @@
 # DigitalOcean Ephemeral CI Runners
 
-Mantl CI runs on ephemeral DigitalOcean droplets: one is created per CI run,
-runs the build, and is destroyed when the run finishes. There is no standing
-runner to patch or pay for while idle.
+Mantl CI uses ephemeral DigitalOcean droplets for pushes and manual runs when
+both runner credentials are configured. Otherwise it runs the same build and
+checks on GitHub-hosted capacity. Pull requests always use GitHub-hosted runners.
+There is no standing runner to patch or pay for while idle.
 
 ## Safety: CI never touches other droplets
 
@@ -32,7 +33,7 @@ threshold. Neither ever deletes by anything broad.
 3. The scheduled reaper deletes any orphan that slipped past the first two (for
    example if the `stop-runner` runner itself was cancelled).
 
-## Required secrets (provision before CI can run)
+## Optional DigitalOcean runner secrets
 
 | Secret | What it is | Scope |
 |--------|-----------|-------|
@@ -61,11 +62,12 @@ pennies per run.
 
 ## Making CI a required check
 
-Until the secrets above exist, CI runs will fail at `start-runner` (no token).
-That is expected and does not block merges, because branch protection requires
-DCO and conversation resolution, not CI yet.
+Missing either secret selects the GitHub-hosted backend before provisioning.
+The job summary records the selected backend without revealing credentials.
+Configured but invalid credentials fail the cloud runner path rather than
+silently falling back. The build must succeed on either backend for `CI` to pass.
 
-After the secrets are set and one run goes green, add the `CI` check to
+After one full run goes green, add the `CI` check to
 `main` branch protection so it becomes a required gate, matching the sibling
 repo's posture:
 
@@ -76,4 +78,6 @@ gh api -X PATCH \
 ```
 
 The `CI` check is the aggregate `ci` job, which passes only when the `build` job
-on the DO runner passes.
+on the selected runner passes; configured cloud runs must also pass provisioning
+and cleanup. Cleanup runs even after provisioning partially fails, using the
+same exact-name and dedicated-tag filters described above.
