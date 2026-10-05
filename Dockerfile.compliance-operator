@@ -1,5 +1,5 @@
-# Build the manager binary
-FROM --platform=$BUILDPLATFORM golang:1.26.7@sha256:e30143be198ab04cf7ba25fba83ab3a692ca584c994aad0bf131fa0eb32dd8c1 AS builder
+# Build the manager binary with the immutable Go 1.27.1 image.
+FROM --platform=$BUILDPLATFORM golang@sha256:e0174e51e81218523251d85d248a90d24c3d5e81543b4f07a5d66229397db190 AS builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -31,7 +31,7 @@ RUN go run ./cmd/mantl bundle build --version "$(cat compliance/bundle-version.t
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
+FROM gcr.io/distroless/static@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
 WORKDIR /
 COPY --from=builder /workspace/manager .
 COPY --from=builder /workspace/collector .
