@@ -126,7 +126,8 @@ jobs:
         if: needs.changes.outputs.ml_example == 'true'
         run: |
           mise exec -- .venv-ci/bin/python -m pip install -r examples/ml-inference-service/src/requirements.txt
-          mise exec -- .venv-ci/bin/python -m coverage run --append --source=scripts,ci ci/smoke_ml_example.py
+          mise exec -- .venv-ci/bin/python -m coverage run --source=scripts,ci ci/smoke_ml_example.py
+          mise exec -- .venv-ci/bin/python -m coverage combine --append
           mise exec -- .venv-ci/bin/python -m coverage xml -o coverage-python.xml
       - name: Retain Python coverage
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
