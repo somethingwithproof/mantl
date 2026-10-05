@@ -70,8 +70,9 @@ def compile_lock(root, target, output, constraint=None):
 def regenerate(root, check):
     """Check without changing the checkout; generate all locks before replacing any."""
     root = release_paths.source_path(root)
-    (root / "dist").mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="python-locks-", dir=root / "dist") as temporary:
+    destination = release_paths.artifact_path(root / "dist")
+    destination.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="python-locks-", dir=destination) as temporary:
         directory = Path(temporary)
         compiled = {}
         for number, target in enumerate(TARGETS):

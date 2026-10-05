@@ -81,3 +81,12 @@ def test_compilation_rejects_external_outputs_before_running(locks, tmp_path, mo
     with pytest.raises(ValueError, match="known requirements"):
         locks.compile_lock(tmp_path, "../outside", tmp_path / "dist/output.txt")
     assert not (tmp_path / "outside.txt").exists()
+
+
+def test_regeneration_rejects_symlinked_dist_before_creating_files(locks, tmp_path):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (tmp_path / "dist").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ValueError, match="symlinks"):
+        locks.regenerate(tmp_path, check=True)
+    assert list(outside.iterdir()) == []
