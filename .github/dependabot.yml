@@ -14,7 +14,8 @@ updates:
     labels:
       - dependencies
     commit-message:
-      prefix: chore(deps)
+      prefix: chore
+      include: scope
     groups:
       github-actions-minor-and-patch:
         patterns:
@@ -34,7 +35,8 @@ updates:
     labels:
       - dependencies
     commit-message:
-      prefix: chore(deps)
+      prefix: chore
+      include: scope
     groups:
       gomod-minor-and-patch:
         patterns:
@@ -55,7 +57,8 @@ updates:
     labels:
       - dependencies
     commit-message:
-      prefix: chore(deps)
+      prefix: chore
+      include: scope
     groups:
       pip-minor-and-patch:
         patterns:
@@ -76,7 +79,8 @@ updates:
     labels:
       - dependencies
     commit-message:
-      prefix: chore(deps)
+      prefix: chore
+      include: scope
     groups:
       terraform-minor-and-patch:
         patterns:
@@ -97,7 +101,8 @@ updates:
     labels:
       - dependencies
     commit-message:
-      prefix: chore(deps)
+      prefix: chore
+      include: scope
     groups:
       docker-minor-and-patch:
         patterns:
@@ -117,7 +122,8 @@ updates:
     labels:
       - dependencies
     commit-message:
-      prefix: chore(deps)
+      prefix: chore
+      include: scope
     groups:
       npm-minor-and-patch:
         patterns:
