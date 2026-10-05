@@ -44,3 +44,35 @@ Other action references remain pinned to complete commit SHAs. Review this
 exception when updating the generator or verifier, and remove it if upstream
 supports SHA-pinned reusable workflows. Published provenance does not itself
 establish a SLSA level for Mantl; an independent assessment is still required.
+
+## SPIRE node attestation
+
+Findings `AaELVxgOAzA3Gm6ElT4i` and `AaELVxgOAzA3Gm6ElT4j`
+(`kubernetes:S6431`) concern the SPIRE agent's host PID and network namespaces.
+These support process/cgroup attestation and the local kubelet route, as described
+by the pinned SPIRE workload attestor. They are accepted privileges only for the
+trusted node agent. The template now requires verified kubelet TLS and a mandatory
+CA mount, drops capabilities and removes `nodes/proxy` authorization in favor of
+`nodes/pods`. See [the prerequisites and trust-boundary review](../infrastructure/cilium/spire-security.md).
+Local tests cover the trust mount and restricted RBAC; no live attestation is claimed.
+
+## Archived Nomad TCP listener
+
+Finding `AaELVxxQAzA3Gm6ElT8g` (`terraform:S6258`) concerns the archived Nomad
+internal TCP Network Load Balancer. The AWS S3 access-log feature inspected by this
+rule records TLS listeners and requests, not this TCP listener. This is an accepted
+logging gap in an archived, unsupported module, not a claim of complete logs.
+[Archive security limits](legacy/nomad/terraform/SECURITY.md) require independently
+verified network and application audit logging before reuse. Re-review if the
+listener protocol, provider logging capabilities or archive support status changes.
+
+## Explicit GCE public-IP opt-in
+
+Findings `AaELVxu5AzA3Gm6ElT72`, `AaELVxu5AzA3Gm6ElT73` and
+`AaELVxu5AzA3Gm6ElT74` (`terraform:S6329`) concern conditional `access_config`
+blocks. Public IPs are disabled by default. These are accepted opt-in capabilities
+in the experimental VM module, guarded by a required nonempty source allowlist
+that rejects invalid CIDRs and both IPv4 and IPv6 zero-prefix ranges. Mocked,
+plan-only Terraform tests verify the private default and rejected configurations.
+Managed subnet Flow Logs are enabled; external subnets need independent review.
+See [module limits and migration requirements](../infra/terraform/gce/README.md).

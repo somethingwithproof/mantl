@@ -86,3 +86,16 @@ def test_checkpoint_does_not_advance_past_interrupted_batch(example, monkeypatch
         processor.cleanup.assert_awaited_once()
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("endpoint", ["http://collector:4317", "collector:4317", "https://"])
+def test_rejects_insecure_transport(example, monkeypatch, endpoint):
+    monkeypatch.setenv("PUSHGATEWAY_URL", endpoint)
+    validate = example.pushgateway_endpoint
+    with pytest.raises(RuntimeError, match="HTTPS"):
+        validate()
+
+
+def test_verified_transport_endpoint(example, monkeypatch):
+    monkeypatch.setenv("PUSHGATEWAY_URL", "https://collector.example:4317")
+    assert example.pushgateway_endpoint() == "https://collector.example:4317"

@@ -24,22 +24,21 @@ jobs:
     defaults:
       run:
         working-directory: apps/pausatf-wp
-    strategy:
-      matrix:
-        php:
-          - '8.2'
-          - '8.3'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
+      - uses: ./.github/actions/setup
         with:
-          php-version: ${{ matrix.php }}
-          coverage: none
-          tools: composer
+          tools: vfox:jdx/vfox-php github:composer/composer
+          working-directory: apps/pausatf-wp
+      - name: Validate and audit locked dependencies
+        run: |
+          composer_phar="$(mise where github:composer/composer)/composer.phar"
+          mise exec -- php "$composer_phar" validate --strict --no-check-publish
+          mise exec -- php "$composer_phar" audit --locked --no-interaction
       - name: Syntax-check tracked bootstrap PHP
-        run: git ls-files -z '*.php' | xargs -0 -r -n1 php -l
+        run: git ls-files -z '*.php' | xargs -0 -r -n1 mise exec -- php -l
       - name: Detect custom WordPress code
         id: custom
         run: |
@@ -53,16 +52,18 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.cache/composer
-          key: ${{ runner.os }}-php-${{ matrix.php }}-composer-${{ hashFiles('apps/pausatf-wp/composer.json', 'apps/pausatf-wp/composer.lock')
+          key: ${{ runner.os }}-php-8.4.26-composer-${{ hashFiles('apps/pausatf-wp/composer.json', 'apps/pausatf-wp/composer.lock')
             }}
-          restore-keys: ${{ runner.os }}-php-${{ matrix.php }}-composer-
+          restore-keys: ${{ runner.os }}-php-8.4.26-composer-
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+        run: |
+          composer_phar="$(mise where github:composer/composer)/composer.phar"
+          mise exec -- php "$composer_phar" install --no-interaction --prefer-dist --no-progress --no-scripts
         if: steps.custom.outputs.present == 'true'
       - name: PHPCS (WordPressCS)
-        run: vendor/bin/phpcs --standard=phpcs.xml.dist --report=full
+        run: mise exec -- php vendor/bin/phpcs --standard=phpcs.xml.dist --report=full
         if: steps.custom.outputs.present == 'true'
       - name: PHPStan
-        run: vendor/bin/phpstan analyse --no-progress
+        run: mise exec -- php vendor/bin/phpstan analyse --no-progress
         if: steps.custom.outputs.present == 'true'
     timeout-minutes: 15

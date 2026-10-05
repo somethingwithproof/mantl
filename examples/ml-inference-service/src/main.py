@@ -25,6 +25,7 @@ import time
 import os
 import joblib
 from pathlib import Path
+from urllib.parse import urlsplit
 
 # Configure logging
 logging.basicConfig(
@@ -36,9 +37,16 @@ MODEL_VERSION_ATTRIBUTE = "model.version"
 # OpenTelemetry setup
 trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
-otlp_exporter = OTLPSpanExporter(
-    endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://tempo:4317"), insecure=True
-)
+
+
+def telemetry_endpoint() -> str:
+    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://tempo:4317")
+    if urlsplit(endpoint).scheme != "https" or not urlsplit(endpoint).hostname:
+        raise RuntimeError("OTLP export requires an HTTPS endpoint")
+    return endpoint
+
+
+otlp_exporter = OTLPSpanExporter(endpoint=telemetry_endpoint(), insecure=False)
 trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_exporter))
 
 # Prometheus metrics

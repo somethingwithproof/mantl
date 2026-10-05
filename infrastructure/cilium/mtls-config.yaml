@@ -1,5 +1,6 @@
 # Cilium mTLS Configuration for Zero-Trust Service-to-Service Authentication
-# Implements automatic mutual TLS between services with certificate rotation
+# Experimental identity-authentication template; see spire-security.md prerequisites.
+# Cilium mutual authentication alone does not encrypt application traffic.
 # https://docs.cilium.io/en/stable/network/servicemesh/mutual-tls/
 ---
 # =============================================================================
@@ -260,7 +261,9 @@ data:
 
       WorkloadAttestor "k8s" {
         plugin_data {
-          skip_kubelet_verification = true
+          kubelet_secure_port = 10250
+          kubelet_ca_path = "/run/spire/kubelet-ca/ca.crt"
+          skip_kubelet_verification = false
         }
       }
     }
@@ -456,6 +459,9 @@ spec:
             - name: spire-bundle
               mountPath: /run/spire/bundle
               readOnly: true
+            - name: kubelet-ca
+              mountPath: /run/spire/kubelet-ca
+              readOnly: true
             - name: spire-agent-socket
               mountPath: /run/spire/sockets
             - name: spire-token
@@ -468,6 +474,10 @@ spec:
           configMap:
             name: spire-bundle
             optional: true
+        - name: kubelet-ca
+          configMap:
+            name: spire-kubelet-ca
+            optional: false
         - name: spire-agent-socket
           hostPath:
             path: /run/spire/sockets
@@ -546,7 +556,7 @@ metadata:
     app.kubernetes.io/part-of: mantl-security
 rules:
   - apiGroups: [""]
-    resources: ["pods", "nodes", "nodes/proxy"]
+    resources: ["pods", "nodes", "nodes/pods"]
     verbs: ["get"]
 ---
 # SPIRE Agent ClusterRoleBinding

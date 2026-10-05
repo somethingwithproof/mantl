@@ -34,120 +34,132 @@ spec:
           type: RuntimeDefault
 
       initContainers:
-      # Database migration init container
-      - name: db-migrate
-        image: products-api:1.0.0
-        imagePullPolicy: IfNotPresent
-        command: ["python", "-m", "alembic", "upgrade", "head"]
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: products-api-secrets
-              key: database-url
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
+        # Database migration init container
+        - name: db-migrate
+          image: products-api:1.0.0
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-m", "alembic", "upgrade", "head"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: products-api-secrets
+                  key: database-url
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
 
       containers:
-      - name: products-api
-        image: products-api:1.0.0
-        imagePullPolicy: IfNotPresent
+        - name: products-api
+          image: products-api:1.0.0
+          imagePullPolicy: IfNotPresent
 
-        ports:
-        - name: http
-          containerPort: 8000
-          protocol: TCP
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
 
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: products-api-secrets
-              key: database-url
-        - name: REDIS_URL
-          value: "redis://redis:6379/0"
-        - name: LOG_LEVEL
-          value: "info"
-        - name: ENVIRONMENT
-          value: "production"
-        - name: PROMETHEUS_ENABLED
-          value: "true"
-        - name: OTEL_EXPORTER_OTLP_ENDPOINT
-          value: "http://tempo.mantl-system:4317"
-        - name: OTEL_SERVICE_NAME
-          value: "products-api"
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: products-api-secrets
+                  key: database-url
+            - name: REDIS_URL
+              value: "redis://redis:6379/0"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: ENVIRONMENT
+              value: "production"
+            - name: PROMETHEUS_ENABLED
+              value: "true"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "https://tempo.mantl-system:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "products-api"
 
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
+            - name: OTEL_EXPORTER_OTLP_CERTIFICATE
+              value: /etc/transport-ca/ca.crt
+            - name: OTEL_EXPORTER_OTLP_INSECURE
+              value: 'false'
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
 
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
 
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
 
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 2
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
 
-        volumeMounts:
-        - name: tmp
-          mountPath: /tmp
-        - name: cache
-          mountPath: /app/.cache
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /app/.cache
 
+            - name: transport-ca
+              mountPath: /etc/transport-ca
+              readOnly: true
       volumes:
-      - name: tmp
-        emptyDir: {}
-      - name: cache
-        emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+        - name: transport-ca
+          configMap:
+            name: telemetry-trust
+            optional: false
+            items:
+              - key: ca.crt
+                path: ca.crt
 
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - products-api
-              topologyKey: kubernetes.io/hostname
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - products-api
+                topologyKey: kubernetes.io/hostname
 
-        # Prefer pods on different availability zones
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 50
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app.kubernetes.io/name
-                  operator: In
-                  values:
-                  - products-api
-              topologyKey: topology.kubernetes.io/zone
+            # Prefer pods on different availability zones
+            - weight: 50
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - products-api
+                topologyKey: topology.kubernetes.io/zone

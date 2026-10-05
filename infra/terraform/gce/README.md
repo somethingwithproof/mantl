@@ -1,33 +1,110 @@
-# GCE Terraform (mantl/terraform/gce)
+# Experimental GCE virtual machines
 
-This module is being modernized incrementally for Terraform 1.x and the hashicorp/google provider v7.x.
+This standalone Terraform module creates optional shielded GCE virtual machines,
+data disks and a custom-mode VPC. It does not bootstrap Kubernetes or Mantl. It
+has no recorded cloud acceptance and is not part of the supported AWS/GCP/Azure
+static parity contract. Use `infra/terraform/blueprints/gcp-gke/` for that contract.
 
-Key flags and secure defaults
-- use_modern_gce_schema (bool, default false): create control instances via modern google_compute_instance with shielded VMs, project SSH keys blocked, and no public IP by default.
-- gce_public_ip (bool, default false): when true, attaches an external IP to modern instances.
-- gce_boot_image_family (string) and gce_boot_image_project (string): resolve boot image from a family.
-- gce_boot_kms_key (string, optional): KMS key self_link for CMEK boot disk encryption.
-- allowed_cidrs (list(string), default []): source ranges for the external firewall; must be explicitly set to allow access.
-- use_modern_gce_network (bool, default false): create a custom-mode VPC + subnetwork and modern firewalls (see network_modern.tf) — introduced in a separate PR.
-- modern_subnetwork_self_link (string, optional): when set with use_modern_gce_schema, modern instances attach to this subnetwork instead of the legacy network.
+Terraform 1.9 or later is required; the Google provider is pinned in `versions.tf`.
+Select Terraform through the repository's `mise` configuration. Provide the GCP
+project through the provider's normal runtime configuration, with scoped credentials;
+never place credentials in a variables file.
 
-Examples
+All instance counts default to zero and `use_modern_gce_schema` defaults to false.
+There is no remaining monolithic legacy deployment path. To enable instances,
+provide names, zone, region, a public SSH key file and explicit role counts. Select
+`use_modern_gce_network = true` or supply `modern_subnetwork_self_link` for an
+existing subnet. The default image is Debian 12, resolved from its image family;
+this is not an immutable-image production deployment contract. Data disks and
+boot disks accept an optional `gce_boot_kms_key` for CMEK.
 
-Important: When enabling modern resources for a role, set the corresponding legacy count to 0 in the monolithic gce.tf to avoid creating duplicate nodes (e.g., set control_count = 0 or worker_count = 0 as appropriate).
+External IPs remain disabled by default. Opting in with `gce_public_ip = true`
+requires a nonempty `allowed_cidrs` list. Invalid CIDRs and IPv4 or IPv6 zero-prefix
+ranges are rejected. Review every permitted source and exposed firewall port
+before provisioning. The managed subnetwork enables full-sampling VPC Flow Logs;
+configure retention and log access separately. An externally supplied subnetwork
+requires an independent logging review. Existing state and disk lifecycle changes
+require a reviewed migration plan; do not apply these updates blindly.
 
-Minimal (legacy-compatible):
-```hcl
-allowed_cidrs = ["203.0.113.0/24"]
+Local checks do not use cloud credentials or provision resources:
+
+```sh
+mise exec -- terraform -chdir=infra/terraform/gce init -backend=false
+mise exec -- terraform -chdir=infra/terraform/gce validate
+mise exec -- terraform -chdir=infra/terraform/gce test
 ```
 
-Enable modern control instances with no public IP and attach to modern subnetwork:
-```hcl
-use_modern_gce_schema        = true
-use_modern_gce_network       = true
-modern_subnetwork_self_link  = "projects/your-proj/regions/us-central1/subnetworks/mantl-subnet"
-allowed_cidrs                = ["203.0.113.0/24"]
-```
+The test suite uses a mocked provider and plan-only runs. Its public-key fixture
+is an inert string for metadata assertions, not a usable deployment key. Tests
+verify private defaults, subnet logging, explicit public-IP opt-in and rejection
+of missing networks, malformed CIDRs and global access ranges. These checks do
+not establish deployment success, usable SSH access or log delivery.
 
-Notes
-- Legacy resources remain the default path to avoid breaking existing deployments. Opt-in to the modern paths using the flags above.
-- The monolithic gce.tf will be retired in favor of split modules in future PRs.
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+| ---- | ------- |
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.9 |
+| <a name="requirement_google"></a> [google](#requirement\_google) | 7.45.0 |
+
+## Providers
+
+| Name | Version |
+| ---- | ------- |
+| <a name="provider_google"></a> [google](#provider\_google) | 7.45.0 |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+| ---- | ---- |
+| [google_compute_disk.mi-control-lvm](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_disk) | resource |
+| [google_compute_disk.mi-kubeworker-lvm](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_disk) | resource |
+| [google_compute_disk.mi-worker-lvm](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_disk) | resource |
+| [google_compute_firewall.external_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_firewall) | resource |
+| [google_compute_firewall.internal_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_firewall) | resource |
+| [google_compute_instance.control_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_instance) | resource |
+| [google_compute_instance.kubeworker_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_instance) | resource |
+| [google_compute_instance.worker_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_instance) | resource |
+| [google_compute_network.mi_network_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_network) | resource |
+| [google_compute_subnetwork.mi_subnet_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_subnetwork) | resource |
+| [google_compute_image.boot](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/data-sources/compute_image) | data source |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+| ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_allowed_cidrs"></a> [allowed\_cidrs](#input\_allowed\_cidrs) | Source IP ranges allowed to access external firewall ports. Must be explicitly set. | `list(string)` | `[]` | no |
+| <a name="input_control_count"></a> [control\_count](#input\_control\_count) | n/a | `number` | `0` | no |
+| <a name="input_control_type"></a> [control\_type](#input\_control\_type) | n/a | `string` | `"e2-standard-2"` | no |
+| <a name="input_control_volume_size"></a> [control\_volume\_size](#input\_control\_volume\_size) | n/a | `number` | `50` | no |
+| <a name="input_datacenter"></a> [datacenter](#input\_datacenter) | n/a | `string` | `"gce"` | no |
+| <a name="input_gce_boot_image_family"></a> [gce\_boot\_image\_family](#input\_gce\_boot\_image\_family) | Boot image family for control instances. | `string` | `"debian-12"` | no |
+| <a name="input_gce_boot_image_project"></a> [gce\_boot\_image\_project](#input\_gce\_boot\_image\_project) | GCP project hosting the image family. | `string` | `"debian-cloud"` | no |
+| <a name="input_gce_boot_kms_key"></a> [gce\_boot\_kms\_key](#input\_gce\_boot\_kms\_key) | Optional self\_link of the KMS crypto key for boot disk encryption. | `string` | `""` | no |
+| <a name="input_gce_public_ip"></a> [gce\_public\_ip](#input\_gce\_public\_ip) | Explicit opt-in to external IPs; requires restricted allowed\_cidrs. | `bool` | `false` | no |
+| <a name="input_kubeworker_count"></a> [kubeworker\_count](#input\_kubeworker\_count) | n/a | `number` | `0` | no |
+| <a name="input_long_name"></a> [long\_name](#input\_long\_name) | Inputs for the experimental standalone VM module. No cluster bootstrap is performed. | `string` | n/a | yes |
+| <a name="input_modern_subnetwork_self_link"></a> [modern\_subnetwork\_self\_link](#input\_modern\_subnetwork\_self\_link) | Optional self\_link of a modern subnetwork to attach (use with use\_modern\_gce\_network). | `string` | `""` | no |
+| <a name="input_network_ipv4"></a> [network\_ipv4](#input\_network\_ipv4) | n/a | `string` | `"10.20.0.0/24"` | no |
+| <a name="input_region"></a> [region](#input\_region) | n/a | `string` | n/a | yes |
+| <a name="input_short_name"></a> [short\_name](#input\_short\_name) | n/a | `string` | n/a | yes |
+| <a name="input_ssh_key"></a> [ssh\_key](#input\_ssh\_key) | n/a | `string` | n/a | yes |
+| <a name="input_ssh_user"></a> [ssh\_user](#input\_ssh\_user) | n/a | `string` | `"mantl"` | no |
+| <a name="input_use_modern_gce_network"></a> [use\_modern\_gce\_network](#input\_use\_modern\_gce\_network) | If true, expect a modern subnetwork; set modern\_subnetwork\_self\_link accordingly. | `bool` | `false` | no |
+| <a name="input_use_modern_gce_schema"></a> [use\_modern\_gce\_schema](#input\_use\_modern\_gce\_schema) | If true, create control nodes with modern google\_compute\_instance schema. | `bool` | `false` | no |
+| <a name="input_worker_count"></a> [worker\_count](#input\_worker\_count) | n/a | `number` | `0` | no |
+| <a name="input_worker_type"></a> [worker\_type](#input\_worker\_type) | n/a | `string` | `"e2-standard-2"` | no |
+| <a name="input_worker_volume_size"></a> [worker\_volume\_size](#input\_worker\_volume\_size) | n/a | `number` | `50` | no |
+| <a name="input_zone"></a> [zone](#input\_zone) | n/a | `string` | n/a | yes |
+
+## Outputs
+
+| Name | Description |
+| ---- | ----------- |
+| <a name="output_modern_subnetwork_self_link"></a> [modern\_subnetwork\_self\_link](#output\_modern\_subnetwork\_self\_link) | n/a |
+<!-- END_TF_DOCS -->

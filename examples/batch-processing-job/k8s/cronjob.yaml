@@ -15,7 +15,7 @@ data:
   BATCH_SIZE: '1000'
   PARALLEL_WORKERS: '4'
   S3_BUCKET: mantl-data
-  PUSHGATEWAY_URL: http://prometheus-pushgateway.mantl-system:9091
+  PUSHGATEWAY_URL: https://prometheus-pushgateway.mantl-system:9091
 ---
 apiVersion: v1
 kind: Secret
@@ -76,6 +76,8 @@ spec:
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.name
+                - name: SSL_CERT_FILE
+                  value: /etc/transport-ca/ca.crt
               envFrom:
                 - configMapRef:
                     name: batch-processor-config
@@ -101,9 +103,19 @@ spec:
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp
+                - name: transport-ca
+                  mountPath: /etc/transport-ca
+                  readOnly: true
           volumes:
             - name: tmp
               emptyDir: {}
+            - name: transport-ca
+              configMap:
+                name: pushgateway-trust
+                optional: false
+                items:
+                  - key: ca.crt
+                    path: ca.crt
 ---
 # One-time setup job (run once to create schema and seed data)
 apiVersion: batch/v1

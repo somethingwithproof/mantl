@@ -3,22 +3,29 @@
 
 variable "use_modern_gce_schema" {
   description = "If true, create control nodes with modern google_compute_instance schema."
+  type        = bool
   default     = false
 }
 
 variable "gce_public_ip" {
-  description = "If true, attach an external IP to instances."
+  description = "Explicit opt-in to external IPs; requires restricted allowed_cidrs."
+  type        = bool
   default     = false
+
+  validation {
+    condition     = !var.gce_public_ip || length(var.allowed_cidrs) > 0
+    error_message = "Public IPs require an explicit, restricted allowed_cidrs list."
+  }
 }
 
 variable "gce_boot_image_family" {
   description = "Boot image family for control instances."
-  default     = "centos-7"
+  default     = "debian-12"
 }
 
 variable "gce_boot_image_project" {
   description = "GCP project hosting the image family."
-  default     = "centos-cloud"
+  default     = "debian-cloud"
 }
 
 variable "gce_boot_kms_key" {
@@ -29,6 +36,11 @@ variable "gce_boot_kms_key" {
 variable "modern_subnetwork_self_link" {
   description = "Optional self_link of a modern subnetwork to attach (use with use_modern_gce_network)."
   default     = ""
+
+  validation {
+    condition     = !var.use_modern_gce_schema || var.use_modern_gce_network || var.modern_subnetwork_self_link != ""
+    error_message = "Modern instances require either a managed modern network or an explicit existing subnetwork."
+  }
 }
 
 variable "use_modern_gce_network" {
@@ -60,18 +72,13 @@ resource "google_compute_instance" "control_modern" {
       size  = var.control_volume_size
       type  = "pd-balanced"
     }
-    dynamic "disk_encryption_key" {
-      for_each = var.gce_boot_kms_key != "" ? [1] : []
-      content {
-        kms_key_self_link = var.gce_boot_kms_key
-      }
-    }
+    kms_key_self_link = var.gce_boot_kms_key != "" ? var.gce_boot_kms_key : null
   }
 
   # Attached LVM/data disk
   # Because someone always needs more IOPS later: attach the LVM/data disk.
   attached_disk {
-    source      = element(google_compute_disk.mi-control-lvm.*.self_link, count.index)
+    source      = google_compute_disk.mi-control-lvm[count.index].self_link
     device_name = "lvm"
     mode        = "READ_WRITE"
   }
@@ -79,8 +86,7 @@ resource "google_compute_instance" "control_modern" {
   # Network
   # Networking: default to no public IP; modern subnetwork when provided.
   network_interface {
-    network    = (var.use_modern_gce_network || var.modern_subnetwork_self_link != "") ? null : google_compute_network.mi-network.name
-    subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : null
+    subnetwork = var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : var.modern_subnetwork_self_link
     dynamic "access_config" {
       for_each = var.gce_public_ip ? [1] : []
       content {}
@@ -120,23 +126,17 @@ resource "google_compute_instance" "worker_modern" {
       size  = var.worker_volume_size
       type  = "pd-balanced"
     }
-    dynamic "disk_encryption_key" {
-      for_each = var.gce_boot_kms_key != "" ? [1] : []
-      content {
-        kms_key_self_link = var.gce_boot_kms_key
-      }
-    }
+    kms_key_self_link = var.gce_boot_kms_key != "" ? var.gce_boot_kms_key : null
   }
 
   attached_disk {
-    source      = element(google_compute_disk.mi-worker-lvm.*.self_link, count.index)
+    source      = google_compute_disk.mi-worker-lvm[count.index].self_link
     device_name = "lvm"
     mode        = "READ_WRITE"
   }
 
   network_interface {
-    network    = (var.use_modern_gce_network || var.modern_subnetwork_self_link != "") ? null : google_compute_network.mi-network.name
-    subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : null
+    subnetwork = var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : var.modern_subnetwork_self_link
     dynamic "access_config" {
       for_each = var.gce_public_ip ? [1] : []
       content {}
@@ -173,23 +173,17 @@ resource "google_compute_instance" "kubeworker_modern" {
       size  = var.worker_volume_size
       type  = "pd-balanced"
     }
-    dynamic "disk_encryption_key" {
-      for_each = var.gce_boot_kms_key != "" ? [1] : []
-      content {
-        kms_key_self_link = var.gce_boot_kms_key
-      }
-    }
+    kms_key_self_link = var.gce_boot_kms_key != "" ? var.gce_boot_kms_key : null
   }
 
   attached_disk {
-    source      = element(google_compute_disk.mi-kubeworker-lvm.*.self_link, count.index)
+    source      = google_compute_disk.mi-kubeworker-lvm[count.index].self_link
     device_name = "lvm"
     mode        = "READ_WRITE"
   }
 
   network_interface {
-    network    = (var.use_modern_gce_network || var.modern_subnetwork_self_link != "") ? null : google_compute_network.mi-network.name
-    subnetwork = var.modern_subnetwork_self_link != "" ? var.modern_subnetwork_self_link : null
+    subnetwork = var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : var.modern_subnetwork_self_link
     dynamic "access_config" {
       for_each = var.gce_public_ip ? [1] : []
       content {}

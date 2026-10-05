@@ -17,6 +17,7 @@ import asyncpg
 import boto3
 import logging
 import signal
+from urllib.parse import urlsplit
 import sys
 import time
 import os
@@ -57,7 +58,17 @@ def _parse_int_env(name: str, default: int, min_val: int, max_val: int) -> int:
 
 BATCH_SIZE = _parse_int_env("BATCH_SIZE", 1000, 1, 50000)
 PARALLEL_WORKERS = _parse_int_env("PARALLEL_WORKERS", 4, 1, 32)
-PUSHGATEWAY_URL = os.getenv("PUSHGATEWAY_URL", "http://prometheus-pushgateway:9091")
+
+
+def pushgateway_endpoint() -> str:
+    endpoint = os.getenv("PUSHGATEWAY_URL", "https://prometheus-pushgateway:9091")
+    parsed = urlsplit(endpoint)
+    if parsed.scheme != "https" or not parsed.hostname:
+        raise RuntimeError("Pushgateway requires an HTTPS endpoint")
+    return endpoint
+
+
+PUSHGATEWAY_URL = pushgateway_endpoint()
 JOB_NAME = os.getenv("JOB_NAME", "batch-processor")
 if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_\-]*", JOB_NAME):
     raise RuntimeError(f"JOB_NAME contains invalid characters: {JOB_NAME!r}")
@@ -90,10 +101,10 @@ JOB_COMPLETION_TIME = Gauge(
 shutdown_requested = asyncio.Event()
 
 
-async def wait_for_shutdown(timeout: float):
+async def wait_for_shutdown(backoff_seconds: float):
     """Wake immediately on shutdown, or resume after the backoff interval."""
     with suppress(TimeoutError):
-        async with asyncio.timeout(timeout):
+        async with asyncio.timeout(backoff_seconds):
             await shutdown_requested.wait()
 
 

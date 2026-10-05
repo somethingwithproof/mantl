@@ -168,7 +168,12 @@ async def publish_to_broker(event: Event):
         logger.info(
             "Event published: %s",
             json.dumps(
-                {"id": event_id, "type": event.type, "subject": subject, "seq": ack.seq},
+                {
+                    "id": event_id,
+                    "type": event.type.replace("\r", "").replace("\n", ""),
+                    "subject": subject.replace("\r", "").replace("\n", ""),
+                    "seq": ack.seq,
+                },
                 ensure_ascii=True,
             ),
         )

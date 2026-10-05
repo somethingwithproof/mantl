@@ -27,7 +27,7 @@ def test_ready_and_publish_contract(example, monkeypatch, caplog):
         record = next(r for r in caplog.records if r.message.startswith("Event published:"))
         assert "\n" not in record.message
         assert "\r" not in record.message
-        assert "\\r\\n" in record.message
+        assert "order.createdforged" in record.message
         for failure, status in [(TimeoutError(), 504), (RuntimeError("broker failed"), 500)]:
             js.publish.side_effect = failure
             with pytest.raises(example.HTTPException) as error:
