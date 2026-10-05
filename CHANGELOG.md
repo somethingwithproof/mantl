@@ -19,6 +19,20 @@ Terraform modernization and hardening across cloud modules:
   - Add modern worker and edge VM resources under the same flag; reminder to set legacy counts to 0 when enabling.
 
 See PRs: #31, #32, #33, #34, #35, #36, #37.
+## [0.3.0](https://github.com/somethingwithproof/mantl/compare/v0.2.0...v0.3.0) (2026-10-05)
+
+
+### Features
+
+* add durable compliance execution and release architecture ([#289](https://github.com/somethingwithproof/mantl/issues/289)) ([bbba53f](https://github.com/somethingwithproof/mantl/commit/bbba53f63af9fb3098c96c332b8420d60232b8b4))
+
+
+### Bug Fixes
+
+* **ci:** skip runner reaper when DigitalOcean is unconfigured ([#272](https://github.com/somethingwithproof/mantl/issues/272)) ([6587038](https://github.com/somethingwithproof/mantl/commit/658703828e8e8d960d3784252a90d1ce443012c0))
+* prepare API registration and tooling for dependency upgrades ([#307](https://github.com/somethingwithproof/mantl/issues/307)) ([b362888](https://github.com/somethingwithproof/mantl/commit/b3628882e5e9dd9a04373cc0565daaf1a3aca58b))
+* run CI on GitHub-hosted runners without cloud credentials ([#277](https://github.com/somethingwithproof/mantl/issues/277)) ([90fac72](https://github.com/somethingwithproof/mantl/commit/90fac720472372d630c3529b7edb5bf2bc6d8a0e))
+
 ## [0.2.0](https://github.com/somethingwithproof/mantl/compare/v0.1.0...v0.2.0) (2026-08-19)
 
 
