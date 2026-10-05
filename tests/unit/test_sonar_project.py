@@ -85,3 +85,49 @@ def test_public_repository_can_use_public_analysis(monkeypatch):
         },
     )
     assert module.verify("fixture-token", PROPERTIES, "public") == "fixture_project"
+
+
+def test_cli_verifies_properties_and_repository_visibility(tmp_path, monkeypatch, capsys):
+    module = load_script("verify_sonar_project")
+    (tmp_path / "sonar-project.properties").write_text(
+        "# fixture\n\nsonar.projectKey = fixture_project\nsonar.organization=fixture_org\n"
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("SONAR_TOKEN", "fixture-token")
+    monkeypatch.setenv("MANTL_REPOSITORY_VISIBILITY", "public")
+    monkeypatch.setattr(module.urllib.request, "urlopen", lambda *_a, **_k: io.BytesIO(b"{}"))
+    monkeypatch.setattr(
+        module.json,
+        "load",
+        lambda _: {
+            "component": {"key": "fixture_project", "qualifier": "TRK", "visibility": "public"}
+        },
+    )
+    assert module.main() == 0
+    output = capsys.readouterr()
+    assert "Verified SonarCloud project: fixture_project" in output.out
+    assert "fixture-token" not in output.out + output.err
+
+
+def test_cli_missing_credential_fails_without_network(tmp_path, monkeypatch, capsys):
+    module = load_script("verify_sonar_project")
+    (tmp_path / "sonar-project.properties").write_text(
+        "sonar.projectKey=fixture_project\nsonar.organization=fixture_org\n"
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("SONAR_TOKEN", raising=False)
+    monkeypatch.setattr(module.urllib.request, "urlopen", lambda *_a, **_k: pytest.fail("request"))
+    assert module.main() == 1
+    assert "SONAR_TOKEN is missing" in capsys.readouterr().err
+
+
+def test_transport_failure_does_not_disclose_exception_details(monkeypatch):
+    module = load_script("verify_sonar_project")
+
+    def respond(*_a, **_k):
+        raise urllib.error.URLError("sensitive transport context")
+
+    monkeypatch.setattr(module.urllib.request, "urlopen", respond)
+    with pytest.raises(RuntimeError, match="could not reach") as error:
+        module.verify("fixture-token", PROPERTIES)
+    assert "sensitive" not in str(error.value)
