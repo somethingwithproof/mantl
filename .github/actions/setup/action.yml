@@ -10,6 +10,11 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Limit automatic installation to requested tools
+      shell: bash
+      run: |
+        echo 'MISE_AUTO_INSTALL=false' >> "$GITHUB_ENV"
+        echo 'MISE_EXEC_AUTO_INSTALL=false' >> "$GITHUB_ENV"
     - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
       with:
         version: '2026.10.2'

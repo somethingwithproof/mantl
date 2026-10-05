@@ -6,6 +6,9 @@ name: Example frontend
   workflow_dispatch: {}
   schedule:
     - cron: 23 3 * * 2
+env:
+  MISE_AUTO_INSTALL: 'false'
+  MISE_EXEC_AUTO_INSTALL: 'false'
 permissions:
   contents: read
 concurrency:

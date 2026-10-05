@@ -3,6 +3,9 @@
 name: Publish control content
 'on':
   workflow_dispatch: {}
+env:
+  MISE_AUTO_INSTALL: 'false'
+  MISE_EXEC_AUTO_INSTALL: 'false'
 permissions:
   contents: read
 concurrency:

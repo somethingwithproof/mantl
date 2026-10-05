@@ -10,7 +10,8 @@ public analysis project is refused.
 Provision the project with `main` as its main branch and bind it to
 `somethingwithproof/mantl` in SonarCloud. Disable automatic analysis when using
 this CI-based workflow. Set `SONAR_TOKEN` as a GitHub Actions repository secret
-using an analysis credential with access to this project. Read credentials from
+using an analysis credential with access to this project. Provision the same
+secret in Dependabot secrets so dependency PRs can run the required scan. Read credentials from
 Keychain or the environment at runtime; never commit or print their values.
 
 Core CI invokes the reusable `SonarCloud quality gate` job on main pushes and

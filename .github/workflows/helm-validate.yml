@@ -35,6 +35,12 @@ jobs:
         run: |
           for chart in charts/*/; do
             test -f "${chart}Chart.yaml" || continue
+            mise exec -- helm dependency list "$chart" |
+            while read -r name _version repository _status; do
+              case "$repository" in
+                https://*) mise exec -- helm repo add "$name" "$repository" ;;
+              esac
+            done
             mise exec -- helm dependency build "$chart"
             mise exec -- helm lint "$chart"
             mise exec -- helm template mantl "$chart" > "$RUNNER_TEMP/chart.yaml"
