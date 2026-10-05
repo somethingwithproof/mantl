@@ -326,11 +326,14 @@ async def create_product(product: ProductCreate, db=Depends(get_db)):
             )
 
             PRODUCT_OPERATIONS.labels(operation="create", status="success").inc()
-            logger.info("Created product: %s", json.dumps(product.sku, ensure_ascii=True))
+            log_sku = product.sku.replace("\r", "").replace("\n", "")
+            logger.info("Created product: %s", json.dumps(log_sku, ensure_ascii=True))
             return dict(row)
         except asyncpg.UniqueViolationError:
             PRODUCT_OPERATIONS.labels(operation="create", status="duplicate").inc()
-            raise HTTPException(status_code=409, detail="Product with this SKU already exists") from None
+            raise HTTPException(
+                status_code=409, detail="Product with this SKU already exists"
+            ) from None
         except Exception:
             logger.exception("Failed to create product")
             PRODUCT_OPERATIONS.labels(operation="create", status="error").inc()

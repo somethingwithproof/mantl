@@ -37,8 +37,9 @@ def test_failure_and_status_contracts(example, caplog):
             execute=AsyncMock(side_effect=RuntimeError("database failed")),
         )
         for name, args, kwargs in calls:
+            handler = getattr(example, name)
             with pytest.raises(example.HTTPException) as error:
-                await getattr(example, name)(*args, db=db, **kwargs)
+                await handler(*args, db=db, **kwargs)
             assert error.value.status_code == 500
             assert caplog.records[-1].exc_info is not None
         db.fetchrow.side_effect = None
@@ -47,16 +48,18 @@ def test_failure_and_status_contracts(example, caplog):
             ("get_product", (1,)),
             ("update_product", (1, example.ProductUpdate(name="fixture"))),
         ]:
+            handler = getattr(example, name)
             with pytest.raises(example.HTTPException) as error:
-                await getattr(example, name)(*args, db=db)
+                await handler(*args, db=db)
             assert error.value.status_code == 404
         db.execute.side_effect = None
         db.execute.return_value = "DELETE 0"
         with pytest.raises(example.HTTPException) as error:
             await example.delete_product(1, db=db)
         assert error.value.status_code == 404
+        empty_update = example.ProductUpdate()
         with pytest.raises(example.HTTPException) as error:
-            await example.update_product(1, example.ProductUpdate(), db=db)
+            await example.update_product(1, empty_update, db=db)
         assert error.value.status_code == 400
         db.fetchrow.side_effect = example.asyncpg.UniqueViolationError("duplicate")
         with pytest.raises(example.HTTPException) as error:
@@ -76,7 +79,7 @@ def test_safe_log_and_readiness_failure(example, caplog):
         assert await example.create_product(product, db=db) == {"id": 1}
         record = next(r for r in caplog.records if r.message.startswith("Created product:"))
         assert "\n" not in record.message
-        assert "\\r\\n" in record.message
+        assert "skuforged" in record.message
 
         class UnavailablePool:
             def acquire(self):

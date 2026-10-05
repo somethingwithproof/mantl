@@ -16,8 +16,9 @@ def test_model_errors_and_predictions(example, caplog):
             ("predict_batch", example.BatchPredictionRequest(instances=[{"feature1": 1}])),
         ]
         for name, request in calls:
+            handler = getattr(example, name)
             with pytest.raises(example.HTTPException) as error:
-                await getattr(example, name)(request)
+                await handler(request)
             assert error.value.status_code == 404
         example.models["v1"] = example.DemoModel("fixture", "v1")
         assert (await example.ready())["models"] == 1
@@ -30,8 +31,9 @@ def test_model_errors_and_predictions(example, caplog):
             predict_batch=Mock(side_effect=RuntimeError("model failed")),
         )
         for name, request in calls:
+            handler = getattr(example, name)
             with pytest.raises(example.HTTPException) as error:
-                await getattr(example, name)(request)
+                await handler(request)
             assert error.value.status_code == 500
             assert caplog.records[-1].exc_info is not None
 

@@ -129,15 +129,15 @@ async def ready():
     return {"status": "ready", "nats_connected": True}
 
 
-@app.post(
-    "/api/v1/events/publish",
-    response_model=EventResponse,
-    responses={
-        500: {"description": "Internal operation failed"},
-        504: {"description": "Publish timeout"},
-    },
-)
-async def publish_event(event: Event):
+class PublishFailure(Exception):
+    """Broker failure independent of HTTP response handling."""
+
+    def __init__(self, status_code: int, message: str):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+async def publish_to_broker(event: Event):
     """Publish an event to NATS"""
     try:
         _, js = await get_nats_connection()
@@ -180,12 +180,28 @@ async def publish_event(event: Event):
     except TimeoutError:
         EVENTS_PUBLISHED.labels(event_type=event.type, status="timeout").inc()
         logger.exception("Timeout publishing event type")
-        raise HTTPException(status_code=504, detail="Publish timeout") from None
+        raise PublishFailure(504, "Publish timeout") from None
 
     except Exception:
         EVENTS_PUBLISHED.labels(event_type=event.type, status="error").inc()
         logger.exception("Failed to publish event")
-        raise HTTPException(status_code=500, detail="Internal server error") from None
+        raise PublishFailure(500, "Internal server error") from None
+
+
+@app.post(
+    "/api/v1/events/publish",
+    response_model=EventResponse,
+    responses={
+        500: {"description": "Internal operation failed"},
+        504: {"description": "Publish timeout"},
+    },
+)
+async def publish_event(event: Event):
+    """Map broker failures to the documented HTTP response contract."""
+    try:
+        return await publish_to_broker(event)
+    except PublishFailure as error:
+        raise HTTPException(status_code=error.status_code, detail=str(error)) from error
 
 
 @app.post("/api/v1/events/publish-batch", responses={400: {"description": "Invalid request"}})
@@ -197,7 +213,7 @@ async def publish_batch_events(events: list[Event]):
     results = []
     for event in events:
         try:
-            result = await publish_event(event)
+            result = await publish_to_broker(event)
             results.append(result)
         except Exception:
             logger.exception("Failed to publish event in batch")

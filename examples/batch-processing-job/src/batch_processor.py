@@ -93,7 +93,8 @@ shutdown_requested = asyncio.Event()
 async def wait_for_shutdown(timeout: float):
     """Wake immediately on shutdown, or resume after the backoff interval."""
     with suppress(TimeoutError):
-        await asyncio.wait_for(shutdown_requested.wait(), timeout=timeout)
+        async with asyncio.timeout(timeout):
+            await shutdown_requested.wait()
 
 
 def signal_handler(signum, frame):
