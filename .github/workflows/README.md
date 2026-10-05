@@ -23,7 +23,8 @@ only documentation. ADR 009 records the ownership and test-scope rules.
 | control-bundle.yml | Independently versioned, signed immutable control content | Manual on main |
 | dependabot-auto-merge.yml | Native protected auto-merge for Dependabot PRs | Dependabot metadata events, hourly, manual |
 | auto-request-reviewers.yml | Request reviews from non-author assignees without checking out PR code | PR metadata events, manual |
-| runner-reaper.yml | Legacy tagged orphan-runner cleanup; new CI creates no cloud runners | Manual |
+| runner-reaper.yml | Legacy tagged orphan-runner cleanup on GitHub-hosted infrastructure | Manual |
+| digitalocean-runner-smoke.yml | Dedicated single-job runner prerequisites, mise and Docker validation | Relevant same-repository PR, manual |
 | wp-ci.yml | Legacy WordPress PHP compatibility/syntax and custom-code checks | Relevant application changes, manual |
 
 Release Please explicitly dispatches CI on its generated PR head branch. This
@@ -32,6 +33,12 @@ a personal access token. CI verifies the PR is open and the dispatched commit
 matches its current head before selecting checks or attaching Sonar analysis.
 
 ## Runtime and cache policy
+
+Eligible Linux jobs can use the dedicated ephemeral DigitalOcean pool after the
+provisioning smoke test succeeds and `DO_RUNNERS_ENABLED=true` is configured.
+Fork/metadata events and the legacy reaper retain GitHub-hosted routing; the
+external provenance generator owns its runner selection. See
+[the rollout and rollback contract](../../docs/digitalocean-runners.md).
 
 Core runtimes and validation tools are pinned in mise.toml; the shared setup action
 installs only the tools a job uses. The example frontend has its own mise
