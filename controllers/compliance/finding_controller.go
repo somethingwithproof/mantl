@@ -54,13 +54,7 @@ func (r *FindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		gvk.Kind = "ClusterPolicyReport"
 	}
 	report.SetGroupVersionKind(gvk)
-	destination := req.Namespace
-	if destination == "" {
-		destination = r.Namespace
-		if destination == "" {
-			destination = "mantl-compliance-system"
-		}
-	}
+	destination := reportDestination(req.Namespace, r.Namespace)
 	source := digest(gvk.Kind + "/" + req.Namespace + "/" + req.Name)[:32]
 	var previous complianceapi.FindingList
 	if err := r.List(ctx, &previous, client.InNamespace(destination), client.MatchingLabels{"mantl.io/report": source}); err != nil {
@@ -68,22 +62,7 @@ func (r *FindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	err := r.Get(ctx, req.NamespacedName, report)
 	if err != nil {
-		if !errors.IsNotFound(err) {
-			return ctrl.Result{}, err
-		}
-		for i := range previous.Items {
-			f := &previous.Items[i]
-			if f.Annotations == nil {
-				f.Annotations = map[string]string{}
-			}
-			f.Annotations["mantl.io/observed-at"] = time.Now().UTC().Format(time.RFC3339Nano)
-			f.Spec.Status = "unknown"
-			f.Spec.Message = "Source PolicyReport deleted; current evaluation unavailable"
-			if err := r.persistFinding(ctx, f, false); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, r.unavailableReport(ctx, previous.Items, err)
 	}
 	var profiles complianceapi.ComplianceProfileList
 	if r.FrameworkDir != "" {
@@ -97,131 +76,14 @@ func (r *FindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, fmt.Errorf("PolicyReport has invalid or missing results")
 	}
 	for _, item := range results {
-		result, ok := item.(map[string]interface{})
-		if !ok {
-			return ctrl.Result{}, fmt.Errorf("PolicyReport contains malformed result")
-		}
-		state, _, _ := unstructured.NestedString(result, "result")
-		policy, _, _ := unstructured.NestedString(result, "policy")
-		rule, _, _ := unstructured.NestedString(result, "rule")
-		if policy == "" || rule == "" || state == "" {
-			return ctrl.Result{}, fmt.Errorf("PolicyReport result lacks identity or evaluation")
-		}
-		resourceItems, _, resourceErr := unstructured.NestedSlice(result, "resources")
-		if resourceErr != nil {
-			return ctrl.Result{}, resourceErr
-		}
-		message, _, _ := unstructured.NestedString(result, "message")
-		severity, _, _ := unstructured.NestedString(result, "severity")
-		controls := []string{}
-		frameworks := []string{}
-		for _, profile := range profiles.Items {
-			if req.Namespace != "" {
-				namespaces := profile.Spec.Namespaces
-				if len(namespaces) == 0 {
-					namespaces = []string{profile.Namespace}
-				}
-				allowed := false
-				for _, ns := range namespaces {
-					if ns == req.Namespace {
-						allowed = true
-					}
-				}
-				if !allowed {
-					continue
-				}
-			}
-			fw, loadErr := framework.LoadSelected(r.FrameworkDir, profile.Spec.Framework, profile.Spec.Version, profile.Spec.BundleDigest, profile.Spec.IncludeControls)
-			if loadErr != nil {
-				return ctrl.Result{}, loadErr
-			}
-			for _, c := range fw.Controls {
-				if !framework.Selected(c.ID, profile.Spec.IncludeControls) {
-					continue
-				}
-				for _, m := range c.Mappings {
-					if m.PolicyRef == nil {
-						continue
-					}
-					template := m.PolicyRef.Template
-					alias := templateAliases[template]
-					if policy == template || policy == alias || policy == profile.Spec.Framework+"-"+template {
-						controls = append(controls, c.ID)
-						frameworks = append(frameworks, profile.Spec.Framework)
-					}
-				}
-			}
-		}
-		sort.Strings(controls)
-		sort.Strings(frameworks)
-		controlID := policy
-		frameworkID := "kyverno"
-		if len(controls) > 0 {
-			controlID = strings.Join(controls, ",")
-			frameworkID = strings.Join(frameworks, ",")
-		}
-		for _, resourceItem := range resourceItems {
-			res, ok := resourceItem.(map[string]interface{})
-			if !ok {
-				return ctrl.Result{}, fmt.Errorf("invalid PolicyReport resource")
-			}
-			kind, _, _ := unstructured.NestedString(res, "kind")
-			ns, _, _ := unstructured.NestedString(res, "namespace")
-			name, _, _ := unstructured.NestedString(res, "name")
-			uid, _, _ := unstructured.NestedString(res, "uid")
-			if name == "" || kind == "" {
-				return ctrl.Result{}, fmt.Errorf("PolicyReport resource lacks identity")
-			}
-			findingName := buildFindingName(policy, rule, ns, name) + "-" + digest(source + kind + uid)[:12]
-			if len(findingName) > 253 {
-				findingName = strings.Trim(findingName[:220], "-") + "-" + digest(findingName)[:24]
-			}
-			seen[findingName] = true
-			var f complianceapi.Finding
-			getErr := r.Get(ctx, types.NamespacedName{Name: findingName, Namespace: destination}, &f)
-			if getErr != nil && !errors.IsNotFound(getErr) {
-				return ctrl.Result{}, getErr
-			}
-			if errors.IsNotFound(getErr) && state == "pass" {
-				continue
-			}
-			f.Name = findingName
-			f.Namespace = destination
-			if f.Labels == nil {
-				f.Labels = map[string]string{}
-			}
-			f.Labels["mantl.io/report"] = source
-			status := state
-			if state == "pass" {
-				status = "resolved"
-			} else if state != "fail" && state != "warn" {
-				status = "unknown"
-			}
-			if f.Annotations == nil {
-				f.Annotations = map[string]string{}
-			}
-			f.Annotations["mantl.io/observed-at"] = time.Now().UTC().Format(time.RFC3339Nano)
-			f.Spec = complianceapi.FindingSpec{ID: findingName, ControlID: controlID, Framework: frameworkID, Severity: normalizeSeverity(severity), Resource: fmt.Sprintf("%s/%s/%s", kind, ns, name), Message: message, Status: status}
-			err = r.persistFinding(ctx, &f, errors.IsNotFound(getErr))
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+		if err := r.reconcileReportResult(ctx, req.Namespace, destination, source, item, profiles.Items, seen); err != nil {
+			return ctrl.Result{}, err
 		}
 	}
-	for i := range previous.Items {
-		f := &previous.Items[i]
-		if !seen[f.Name] {
-			if f.Annotations == nil {
-				f.Annotations = map[string]string{}
-			}
-			f.Annotations["mantl.io/observed-at"] = time.Now().UTC().Format(time.RFC3339Nano)
-			f.Spec.Status = "resolved"
-			f.Spec.Message = "Violation absent from current PolicyReport"
-			if err := r.persistFinding(ctx, f, false); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
+	if err := r.markPreviousFindings(ctx, previous.Items, seen, "resolved", "Violation absent from current PolicyReport"); err != nil {
+		return ctrl.Result{}, err
 	}
+
 	return ctrl.Result{}, nil
 }
 func digest(value string) string {
@@ -327,4 +189,162 @@ func (r *FindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 	return builder.Complete(r)
+}
+
+func (r *FindingReconciler) controlsForPolicy(namespace, policy string, profiles []complianceapi.ComplianceProfile) ([]string, []string, error) {
+	controls, frameworks := []string{}, []string{}
+	for _, profile := range profiles {
+		if !framework.NamespaceSelected(profile.Spec.Namespaces, profile.Namespace, namespace) {
+			continue
+		}
+		fw, loadErr := framework.LoadSelected(r.FrameworkDir, profile.Spec.Framework, profile.Spec.Version, profile.Spec.BundleDigest, profile.Spec.IncludeControls)
+		if loadErr != nil {
+			return nil, nil, loadErr
+		}
+		matched := framework.PolicyControls(fw, profile.Spec.IncludeControls, profile.Spec.Framework, policy, templateAliases)
+		controls = append(controls, matched...)
+		for range matched {
+			frameworks = append(frameworks, profile.Spec.Framework)
+		}
+	}
+	return controls, frameworks, nil
+}
+
+type findingReportResult struct {
+	policy, rule, state, message, severity, control, framework string
+}
+
+func (r *FindingReconciler) persistReportResource(ctx context.Context, destination, source string, details findingReportResult, resourceItem interface{}) (string, error) {
+	policy, rule, state, message, severity := details.policy, details.rule, details.state, details.message, details.severity
+	controlID, frameworkID := details.control, details.framework
+	res, ok := resourceItem.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("invalid PolicyReport resource")
+	}
+	kind, _, _ := unstructured.NestedString(res, "kind")
+	ns, _, _ := unstructured.NestedString(res, "namespace")
+	name, _, _ := unstructured.NestedString(res, "name")
+	uid, _, _ := unstructured.NestedString(res, "uid")
+	if name == "" || kind == "" {
+		return "", fmt.Errorf("PolicyReport resource lacks identity")
+	}
+	findingName := buildFindingName(policy, rule, ns, name) + "-" + digest(source + kind + uid)[:12]
+	if len(findingName) > 253 {
+		findingName = strings.Trim(findingName[:220], "-") + "-" + digest(findingName)[:24]
+	}
+	var f complianceapi.Finding
+	getErr := r.Get(ctx, types.NamespacedName{Name: findingName, Namespace: destination}, &f)
+	if getErr != nil && !errors.IsNotFound(getErr) {
+		return "", getErr
+	}
+	if errors.IsNotFound(getErr) && state == "pass" {
+		return findingName, nil
+	}
+	f.Name = findingName
+	f.Namespace = destination
+	if f.Labels == nil {
+		f.Labels = map[string]string{}
+	}
+	f.Labels["mantl.io/report"] = source
+	status := state
+	if state == "pass" {
+		status = "resolved"
+	} else if state != "fail" && state != "warn" {
+		status = "unknown"
+	}
+	if f.Annotations == nil {
+		f.Annotations = map[string]string{}
+	}
+	f.Annotations[observedAtAnnotation] = time.Now().UTC().Format(time.RFC3339Nano)
+	f.Spec = complianceapi.FindingSpec{ID: findingName, ControlID: controlID, Framework: frameworkID, Severity: normalizeSeverity(severity), Resource: fmt.Sprintf("%s/%s/%s", kind, ns, name), Message: message, Status: status}
+	err := r.persistFinding(ctx, &f, errors.IsNotFound(getErr))
+	if err != nil {
+		return "", err
+	}
+	return findingName, nil
+}
+
+func (r *FindingReconciler) markPreviousFindings(ctx context.Context, previous []complianceapi.Finding, seen map[string]bool, state, message string) error {
+	for i := range previous {
+		f := &previous[i]
+		if seen != nil && seen[f.Name] {
+			continue
+		}
+		if f.Annotations == nil {
+			f.Annotations = map[string]string{}
+		}
+		f.Annotations[observedAtAnnotation] = time.Now().UTC().Format(time.RFC3339Nano)
+		f.Spec.Status, f.Spec.Message = state, message
+		if err := r.persistFinding(ctx, f, false); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *FindingReconciler) reconcileReportResult(ctx context.Context, namespace, destination, source string, item interface{}, profiles []complianceapi.ComplianceProfile, seen map[string]bool) error {
+
+	details, resourceItems, err := parseFindingResult(item)
+	if err != nil {
+		return err
+	}
+	policy := details.policy
+	controls, frameworks, mappingErr := r.controlsForPolicy(namespace, policy, profiles)
+	if mappingErr != nil {
+		return mappingErr
+	}
+	sort.Strings(controls)
+	sort.Strings(frameworks)
+	controlID := policy
+	frameworkID := "kyverno"
+	if len(controls) > 0 {
+		controlID = strings.Join(controls, ",")
+		frameworkID = strings.Join(frameworks, ",")
+	}
+	details.control, details.framework = controlID, frameworkID
+	for _, resourceItem := range resourceItems {
+		name, err := r.persistReportResource(ctx, destination, source, details, resourceItem)
+		if err != nil {
+			return err
+		}
+		seen[name] = true
+	}
+	return nil
+}
+
+func parseFindingResult(item interface{}) (findingReportResult, []interface{}, error) {
+	result, ok := item.(map[string]interface{})
+	if !ok {
+		return findingReportResult{}, nil, fmt.Errorf("PolicyReport contains malformed result")
+	}
+	state, _, _ := unstructured.NestedString(result, "result")
+	policy, _, _ := unstructured.NestedString(result, "policy")
+	rule, _, _ := unstructured.NestedString(result, "rule")
+	if policy == "" || rule == "" || state == "" {
+		return findingReportResult{}, nil, fmt.Errorf("PolicyReport result lacks identity or evaluation")
+	}
+	resourceItems, _, resourceErr := unstructured.NestedSlice(result, "resources")
+	if resourceErr != nil {
+		return findingReportResult{}, nil, resourceErr
+	}
+	message, _, _ := unstructured.NestedString(result, "message")
+	severity, _, _ := unstructured.NestedString(result, "severity")
+	return findingReportResult{policy: policy, rule: rule, state: state, message: message, severity: severity}, resourceItems, nil
+}
+
+func reportDestination(namespace, configured string) string {
+	if namespace != "" {
+		return namespace
+	}
+	if configured != "" {
+		return configured
+	}
+	return "mantl-compliance-system"
+}
+
+func (r *FindingReconciler) unavailableReport(ctx context.Context, previous []complianceapi.Finding, err error) error {
+	if !errors.IsNotFound(err) {
+		return err
+	}
+	return r.markPreviousFindings(ctx, previous, nil, "unknown", "Source PolicyReport deleted; current evaluation unavailable")
 }

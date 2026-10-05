@@ -55,11 +55,27 @@ func (m *ComplianceMonitor) refresh(ctx context.Context) {
 	}
 	m.errors.Set(0)
 	gaps, failed, open := 0, 0, 0
-	age := float64(-1)
 	for _, p := range profiles.Items {
 		gaps += len(p.Status.UnresolvedTemplates)
 	}
-	for _, a := range audits.Items {
+	auditGaps, auditFailures, oldest := auditMetrics(audits.Items)
+	gaps += auditGaps
+	failed += auditFailures
+	age := oldest
+	for _, f := range findings.Items {
+		if f.Spec.Status == "fail" {
+			open++
+		}
+	}
+	m.gaps.Set(float64(gaps))
+	m.failed.Set(float64(failed))
+	m.findings.Set(float64(open))
+	m.age.Set(age)
+}
+
+func auditMetrics(audits []api.ComplianceAudit) (gaps, failed int, age float64) {
+	age = -1
+	for _, a := range audits {
 		gaps += len(a.Status.CoverageGaps)
 		if a.Status.Phase == "Failed" || a.Status.Phase == "PartiallyCompleted" {
 			failed++
@@ -71,13 +87,5 @@ func (m *ComplianceMonitor) refresh(ctx context.Context) {
 			}
 		}
 	}
-	for _, f := range findings.Items {
-		if f.Spec.Status == "fail" {
-			open++
-		}
-	}
-	m.gaps.Set(float64(gaps))
-	m.failed.Set(float64(failed))
-	m.findings.Set(float64(open))
-	m.age.Set(age)
+	return gaps, failed, age
 }

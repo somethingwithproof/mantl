@@ -28,34 +28,18 @@ func (r *FindingReconciler) persistFinding(ctx context.Context, f *api.Finding, 
 		return fmt.Errorf("cluster identity required for finding history")
 	}
 	desired := f.Spec
-	if f.Status.LastQueuedState != desired.Status {
-		if len(f.Status.Pending) >= 64 {
-			f.Status.HistoryGap = true
-			if err := r.Status().Update(ctx, f); err != nil {
-				return err
-			}
-			f.Spec = desired
-			f.Spec.Status = "unknown"
-			f.Spec.Message = "Finding history backlog prevents a current lifecycle record"
-			if err := r.Update(ctx, f); err != nil {
-				return err
-			}
-			return fmt.Errorf("finding history backlog full")
-		}
-		at := time.Now().UTC()
-		transition := api.FindingTransition{ID: evidence.Hash([]byte(string(f.UID) + "/" + desired.Status + "/" + at.Format(time.RFC3339Nano))), State: desired.Status, At: metav1.NewTime(at), Control: desired.ControlID, Framework: desired.Framework, Resource: desired.Resource}
-		f.Status.Pending = append(f.Status.Pending, transition)
-		f.Status.LastQueuedState = desired.Status
-		if err := r.Status().Update(ctx, f); err != nil {
-			return err
-		}
-		f.Spec = desired
+	if err := r.queueFindingTransition(ctx, f, desired); err != nil {
+		return err
 	}
 	if !creating {
 		if err := r.Update(ctx, f); err != nil {
 			return err
 		}
 	}
+	return r.flushFindingHistory(ctx, f)
+}
+
+func (r *FindingReconciler) flushFindingHistory(ctx context.Context, f *api.Finding) error {
 	for len(f.Status.Pending) > 0 {
 		transition := f.Status.Pending[0]
 		payload, err := json.Marshal(struct {
@@ -79,6 +63,33 @@ func (r *FindingReconciler) persistFinding(ctx context.Context, f *api.Finding, 
 		if err = r.Status().Update(ctx, f); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (r *FindingReconciler) queueFindingTransition(ctx context.Context, f *api.Finding, desired api.FindingSpec) error {
+	if f.Status.LastQueuedState != desired.Status {
+		if len(f.Status.Pending) >= 64 {
+			f.Status.HistoryGap = true
+			if err := r.Status().Update(ctx, f); err != nil {
+				return err
+			}
+			f.Spec = desired
+			f.Spec.Status = "unknown"
+			f.Spec.Message = "Finding history backlog prevents a current lifecycle record"
+			if err := r.Update(ctx, f); err != nil {
+				return err
+			}
+			return fmt.Errorf("finding history backlog full")
+		}
+		at := time.Now().UTC()
+		transition := api.FindingTransition{ID: evidence.Hash([]byte(string(f.UID) + "/" + desired.Status + "/" + at.Format(time.RFC3339Nano))), State: desired.Status, At: metav1.NewTime(at), Control: desired.ControlID, Framework: desired.Framework, Resource: desired.Resource}
+		f.Status.Pending = append(f.Status.Pending, transition)
+		f.Status.LastQueuedState = desired.Status
+		if err := r.Status().Update(ctx, f); err != nil {
+			return err
+		}
+		f.Spec = desired
 	}
 	return nil
 }

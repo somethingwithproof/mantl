@@ -63,44 +63,7 @@ func (p *FleetPublisher) publish(ctx context.Context) error {
 	if err := p.Client.List(ctx, &findings); err != nil {
 		return err
 	}
-	var events []fleet.Event
-	event := func(object client.Object, kind string, at time.Time) fleet.Event {
-		return fleet.Event{ID: evidence.Hash([]byte(kind + "/" + string(object.GetUID()) + "/" + object.GetResourceVersion())), Kind: kind, ResourceUID: string(object.GetUID()), Namespace: object.GetNamespace(), Name: object.GetName(), ObservedAt: at}
-	}
-	for _, run := range runs.Items {
-		if run.Status.EndTime == nil {
-			continue
-		}
-		e := event(&run, "AuditRun", run.Status.EndTime.Time)
-		e.Profile = run.Spec.Profile
-		e.Result = run.Status.Phase
-		e.EvidenceURI = run.Status.EvidenceURI
-		e.ManifestHash = run.Status.ManifestHash
-		events = append(events, e)
-	}
-	for _, evaluation := range evaluations.Items {
-		if evaluation.Status.ObservedAt == nil {
-			continue
-		}
-		e := event(&evaluation, "ControlEvaluation", evaluation.Status.ObservedAt.Time)
-		e.Profile = evaluation.Spec.Profile
-		e.Control = evaluation.Spec.Control
-		e.Result = evaluation.Status.Result
-		e.Coverage = evaluation.Status.Coverage
-		e.Freshness = evaluation.Status.Freshness
-		e.EvidenceURI = evaluation.Status.EvidenceURI
-		events = append(events, e)
-	}
-	for _, finding := range findings.Items {
-		at, err := time.Parse(time.RFC3339Nano, finding.Annotations["mantl.io/observed-at"])
-		if err != nil {
-			continue
-		}
-		e := event(&finding, "Finding", at)
-		e.Control = finding.Spec.ControlID
-		e.Result = finding.Spec.Status
-		events = append(events, e)
-	}
+	events := snapshotFleetEvents(runs.Items, evaluations.Items, findings.Items)
 	if p.Sent == nil {
 		p.Sent = map[string]bool{}
 	}
@@ -127,4 +90,46 @@ func (p *FleetPublisher) publish(ctx context.Context) error {
 		p.Sent = map[string]bool{}
 	}
 	return nil
+}
+
+func snapshotFleetEvents(runs []api.AuditRun, evaluations []api.ControlEvaluation, findings []api.Finding) []fleet.Event {
+	var events []fleet.Event
+	event := func(object client.Object, kind string, at time.Time) fleet.Event {
+		return fleet.Event{ID: evidence.Hash([]byte(kind + "/" + string(object.GetUID()) + "/" + object.GetResourceVersion())), Kind: kind, ResourceUID: string(object.GetUID()), Namespace: object.GetNamespace(), Name: object.GetName(), ObservedAt: at}
+	}
+	for _, run := range runs {
+		if run.Status.EndTime == nil {
+			continue
+		}
+		e := event(&run, "AuditRun", run.Status.EndTime.Time)
+		e.Profile = run.Spec.Profile
+		e.Result = run.Status.Phase
+		e.EvidenceURI = run.Status.EvidenceURI
+		e.ManifestHash = run.Status.ManifestHash
+		events = append(events, e)
+	}
+	for _, evaluation := range evaluations {
+		if evaluation.Status.ObservedAt == nil {
+			continue
+		}
+		e := event(&evaluation, "ControlEvaluation", evaluation.Status.ObservedAt.Time)
+		e.Profile = evaluation.Spec.Profile
+		e.Control = evaluation.Spec.Control
+		e.Result = evaluation.Status.Result
+		e.Coverage = evaluation.Status.Coverage
+		e.Freshness = evaluation.Status.Freshness
+		e.EvidenceURI = evaluation.Status.EvidenceURI
+		events = append(events, e)
+	}
+	for _, finding := range findings {
+		at, err := time.Parse(time.RFC3339Nano, finding.Annotations[observedAtAnnotation])
+		if err != nil {
+			continue
+		}
+		e := event(&finding, "Finding", at)
+		e.Control = finding.Spec.ControlID
+		e.Result = finding.Spec.Status
+		events = append(events, e)
+	}
+	return events
 }
