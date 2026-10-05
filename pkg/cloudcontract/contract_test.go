@@ -60,30 +60,15 @@ func TestAWSContractRejectsSecurityRegressions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
 			for _, provider := range []string{"aws-eks", "gcp-gke", "azure-aks"} {
-				relative := filepath.Join("infra/terraform/blueprints", provider)
-				files, err := filepath.Glob(filepath.Join("../..", relative, "*.tf"))
-				if err != nil {
-					t.Fatal(err)
-				}
-				target := filepath.Join(root, relative)
-				if err := os.MkdirAll(target, 0700); err != nil {
-					t.Fatal(err)
-				}
-				for _, file := range files {
-					data, err := os.ReadFile(file)
-					if err != nil {
-						t.Fatal(err)
+				copyBlueprintFixture(t, root, provider, func(name string, data []byte) []byte {
+					if provider != "aws-eks" || name != "main.tf" {
+						return data
 					}
-					if provider == "aws-eks" && filepath.Base(file) == "main.tf" {
-						if !strings.Contains(string(data), tc.before) {
-							t.Fatalf("fixture missing %q", tc.before)
-						}
-						data = []byte(strings.ReplaceAll(string(data), tc.before, tc.after))
+					if !strings.Contains(string(data), tc.before) {
+						t.Fatalf("fixture missing %q", tc.before)
 					}
-					if err := os.WriteFile(filepath.Join(target, filepath.Base(file)), data, 0600); err != nil {
-						t.Fatal(err)
-					}
-				}
+					return []byte(strings.ReplaceAll(string(data), tc.before, tc.after))
+				})
 			}
 			results, err := Validate(root)
 			if err != nil {
@@ -95,5 +80,28 @@ func TestAWSContractRejectsSecurityRegressions(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func copyBlueprintFixture(t *testing.T, root, provider string, edit func(string, []byte) []byte) {
+	t.Helper()
+	relative := filepath.Join("infra/terraform/blueprints", provider)
+	files, err := filepath.Glob(filepath.Join("../..", relative, "*.tf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(root, relative)
+	if err := os.MkdirAll(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range files {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data = edit(filepath.Base(file), data)
+		if err := os.WriteFile(filepath.Join(target, filepath.Base(file)), data, 0600); err != nil {
+			t.Fatal(err)
+		}
 	}
 }

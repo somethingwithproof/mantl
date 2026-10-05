@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/thomasvincent/mantl/pkg/toolcommand"
 	"os"
 	"os/exec"
 	"strings"
@@ -25,12 +26,10 @@ const healthJSONPath = `jsonpath={range .items[*]}{.status.sync.status},{.status
 // kubectlHealthQuery returns the raw ArgoCD application status (stdout only). It
 // is a package var so tests can exercise platformHealth without a live cluster.
 var kubectlHealthQuery = func(ctx context.Context) ([]byte, error) {
-	if _, err := exec.LookPath("kubectl"); err != nil {
-		return nil, fmt.Errorf("kubectl not found in PATH: %w", err)
-	}
+
 	// Output (not CombinedOutput) so kubectl warnings on stderr never reach the
 	// parser; stderr is surfaced via ExitError on failure instead.
-	out, err := exec.CommandContext(ctx, "kubectl", kubectlArgs("get", "applications", "-n", "argocd", "-o", healthJSONPath)...).Output()
+	out, err := toolcommand.Kubectl(ctx, kubectlArgs("get", "applications", "-n", "argocd", "-o", healthJSONPath)...).Output()
 	if err != nil {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) && len(ee.Stderr) > 0 {

@@ -11,10 +11,10 @@ import (
 	"github.com/thomasvincent/mantl/pkg/evidence"
 	"github.com/thomasvincent/mantl/pkg/framework"
 	"github.com/thomasvincent/mantl/pkg/runtimeevents"
+	"github.com/thomasvincent/mantl/pkg/toolcommand"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sigs.k8s.io/yaml"
 	"strings"
@@ -29,7 +29,7 @@ var queryCompliance = func(ctx context.Context, kind, name, namespace string) ([
 		args = append(args, name)
 	}
 	args = append(args, "-n", namespace, "-o", "json")
-	data, err := exec.CommandContext(ctx, "kubectl", kubectlArgs(args...)...).Output()
+	data, err := toolcommand.Kubectl(ctx, kubectlArgs(args...)...).Output()
 	if err != nil {
 		return nil, fmt.Errorf("query %s: %w", kind, err)
 	}
