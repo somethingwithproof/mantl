@@ -29,12 +29,12 @@ func Parse(data []byte) (Signal, error) {
 	}
 	at, err := time.Parse(time.RFC3339Nano, event.Time)
 	if err != nil || event.Rule == "" {
-		return Signal{}, fmt.Errorf("Falco event requires a rule and RFC3339 timestamp")
+		return Signal{}, fmt.Errorf("falco event requires a rule and RFC3339 timestamp")
 	}
 	namespace, _ := event.Fields["k8s.ns.name"].(string)
 	pod, _ := event.Fields["k8s.pod.name"].(string)
 	if len(validation.IsDNS1123Label(namespace)) != 0 || len(validation.IsDNS1123Subdomain(pod)) != 0 {
-		return Signal{}, fmt.Errorf("Falco event requires Kubernetes namespace and pod identity")
+		return Signal{}, fmt.Errorf("falco event requires Kubernetes namespace and pod identity")
 	}
 	severity := ""
 	switch strings.ToUpper(event.Priority) {

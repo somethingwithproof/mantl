@@ -104,7 +104,7 @@ func (s *S3Store) Get(ctx context.Context, ref ObjectRef) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read evidence: %w", err)
 	}
-	defer out.Body.Close()
+	defer func() { _ = out.Body.Close() }()
 	if out.ObjectLockMode != types.ObjectLockModeCompliance || out.ObjectLockRetainUntilDate == nil || out.ObjectLockRetainUntilDate.Before(time.Now().UTC()) {
 		return nil, fmt.Errorf("evidence object lacks active COMPLIANCE retention")
 	}

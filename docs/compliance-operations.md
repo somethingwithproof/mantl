@@ -115,3 +115,8 @@ than passing. Signing and release publication were not changed.
 Cloud identity and encryption edits still require the repository's pre-merge
 security review. Static validation cannot establish actual role propagation,
 private endpoint reachability, admission behavior, or recovery success.
+
+CI retains Checkov SARIF reports as `terraform-security-sarif` artifacts for 14
+days. Set the repository variable `ENABLE_CODE_SCANNING_SARIF=true` only after
+GitHub code scanning is available to upload those reports into the Security tab.
+Scan execution and report retention are required even when that integration is off.

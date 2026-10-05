@@ -13,7 +13,7 @@ import (
 
 func TestProfileInvalidConfigurationClearsPriorCoverage(t *testing.T) {
 	scheme := runtime.NewScheme()
-	api.AddToScheme(scheme)
+	requireNoError(t, api.AddToScheme(scheme))
 	profile := &api.ComplianceProfile{ObjectMeta: metav1.ObjectMeta{Name: "profile", Namespace: "tenant"}, Spec: api.ComplianceProfileSpec{Framework: "soc2", Version: "bad"}, Status: api.ComplianceProfileStatus{State: "Active", ActivePolicies: 5}}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(profile).WithObjects(profile).Build()
 	r := ComplianceProfileReconciler{Client: c, FrameworkDir: "../../compliance/frameworks"}
@@ -21,8 +21,15 @@ func TestProfileInvalidConfigurationClearsPriorCoverage(t *testing.T) {
 	if _, err := r.Reconcile(context.Background(), req); err == nil {
 		t.Fatal("invalid profile succeeded")
 	}
-	c.Get(context.Background(), req.NamespacedName, profile)
+	requireNoError(t, c.Get(context.Background(), req.NamespacedName, profile))
 	if profile.Status.State != "Invalid" || profile.Status.ActivePolicies != 0 || len(profile.Status.UnresolvedTemplates) == 0 {
 		t.Fatal("invalid profile retained prior successful status")
+	}
+}
+
+func requireNoError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
 	}
 }

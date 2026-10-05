@@ -50,8 +50,8 @@ func (f *fakeReader) Capture(_ context.Context, resource, namespace string, at t
 func auditFixture(t *testing.T) (*ComplianceAuditReconciler, client.Client, ctrl.Request, *fakeReader, *memoryStore) {
 	t.Helper()
 	dir := t.TempDir()
-	os.Mkdir(filepath.Join(dir, "fixture"), 0700)
-	os.WriteFile(filepath.Join(dir, "fixture/framework.yaml"), []byte(`spec:
+	requireNoError(t, os.Mkdir(filepath.Join(dir, "fixture"), 0700))
+	requireNoError(t, os.WriteFile(filepath.Join(dir, "fixture/framework.yaml"), []byte(`spec:
   version: "1"
   controls:
     - id: C1
@@ -61,9 +61,9 @@ func auditFixture(t *testing.T) (*ComplianceAuditReconciler, client.Client, ctrl
             type: config-snapshot
             schedule: "0 * * * *"
             resources: [networkpolicies]
-`), 0600)
+`), 0600))
 	scheme := runtime.NewScheme()
-	api.AddToScheme(scheme)
+	requireNoError(t, api.AddToScheme(scheme))
 	profile := &api.ComplianceProfile{ObjectMeta: metav1.ObjectMeta{Name: "profile", Namespace: "tenant"}, Spec: api.ComplianceProfileSpec{Framework: "fixture", Version: "1"}}
 	audit := &api.ComplianceAudit{ObjectMeta: metav1.ObjectMeta{Name: "audit", Namespace: "tenant", UID: "uid"}, Spec: api.ComplianceAuditSpec{Profile: "profile", Frequency: "framework"}}
 	c := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(audit).WithObjects(profile, audit).Build()
@@ -80,14 +80,14 @@ func TestAuditCollectsStoresAndSchedules(t *testing.T) {
 		t.Fatal(err)
 	}
 	var audit api.ComplianceAudit
-	c.Get(context.Background(), req.NamespacedName, &audit)
+	requireNoError(t, c.Get(context.Background(), req.NamespacedName, &audit))
 	if audit.Status.Phase != "Completed" || audit.Status.ManifestHash == "" || audit.Status.EvidenceURI == "" || res.RequeueAfter != 45*time.Minute {
 		t.Fatalf("status=%+v result=%+v", audit.Status, res)
 	}
 	manifestFound := false
 	for _, data := range store.objects {
 		var m evidence.Manifest
-		json.Unmarshal(data, &m)
+		requireNoError(t, json.Unmarshal(data, &m))
 		if m.SchemaVersion == 1 {
 			manifestFound = true
 			if len(m.Objects) != 1 || m.Objects[0].Control != "C1" || m.Objects[0].Version == "" {
@@ -98,12 +98,16 @@ func TestAuditCollectsStoresAndSchedules(t *testing.T) {
 	if !manifestFound {
 		t.Fatal("no manifest stored")
 	}
-	r.Reconcile(context.Background(), req)
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
 	if reader.calls != 1 {
 		t.Fatal("duplicate capture before due")
 	}
 	r.Now = func() time.Time { return time.Date(2026, 1, 1, 13, 1, 0, 0, time.UTC) }
-	r.Reconcile(context.Background(), req)
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
 	if reader.calls != 2 {
 		t.Fatal("scheduled capture did not run")
 	}
@@ -115,7 +119,7 @@ func TestAuditCaptureAndManifestFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	var audit api.ComplianceAudit
-	c.Get(context.Background(), req.NamespacedName, &audit)
+	requireNoError(t, c.Get(context.Background(), req.NamespacedName, &audit))
 	if audit.Status.Phase != "Failed" || len(audit.Status.CoverageGaps) == 0 || len(audit.Status.CollectorTimes) > 0 {
 		t.Fatalf("failure hidden: %+v", audit.Status)
 	}
@@ -124,14 +128,16 @@ func TestAuditCaptureAndManifestFailures(t *testing.T) {
 	if _, err := r.Reconcile(context.Background(), req); err == nil {
 		t.Fatal("manifest failure hidden")
 	}
-	c.Get(context.Background(), req.NamespacedName, &audit)
+	requireNoError(t, c.Get(context.Background(), req.NamespacedName, &audit))
 	start := audit.Status.StartTime.Time
 	if audit.Status.EvidenceURI != "" {
 		t.Fatal("failed run retained success URI")
 	}
 	store.fail = false
-	r.Reconcile(context.Background(), req)
-	c.Get(context.Background(), req.NamespacedName, &audit)
+	if _, err := r.Reconcile(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	requireNoError(t, c.Get(context.Background(), req.NamespacedName, &audit))
 	if !audit.Status.StartTime.Time.Equal(start) {
 		t.Fatal("restart lost run identity")
 	}

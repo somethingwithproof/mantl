@@ -38,7 +38,7 @@ func TestExportRejectsTamperedObjects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer gz.Close()
+	defer func() { _ = gz.Close() }()
 	tr := tar.NewReader(gz)
 	files := 0
 	for {

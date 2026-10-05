@@ -79,8 +79,8 @@ var exportCmd = &cobra.Command{Use: "export AUDIT", Short: "Download and verify 
 	if err != nil {
 		return err
 	}
-	defer os.Remove(temp.Name())
-	defer temp.Close()
+	defer func() { _ = os.Remove(temp.Name()) }()
+	defer func() { _ = temp.Close() }()
 	if err := evidence.Export(ctx, store, ref, temp); err != nil {
 		return err
 	}
@@ -90,8 +90,8 @@ var exportCmd = &cobra.Command{Use: "export AUDIT", Short: "Download and verify 
 	if err := os.Rename(temp.Name(), exportOutput); err != nil {
 		return err
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), "Verified evidence written to", exportOutput)
-	return nil
+	_, err = fmt.Fprintln(cmd.OutOrStdout(), "Verified evidence written to", exportOutput)
+	return err
 }}
 var falcoFrameworkDir string
 var falcoMappings string
@@ -101,7 +101,7 @@ var falcoCmd = &cobra.Command{Use: "ingest-falco EVENT.json", Short: "Convert a 
 		return err
 	}
 	if info.Size() > 1024*1024 {
-		return fmt.Errorf("Falco event exceeds 1 MiB")
+		return fmt.Errorf("falco event exceeds 1 MiB")
 	}
 	data, err := os.ReadFile(args[0])
 	if err != nil {
@@ -121,7 +121,7 @@ var falcoCmd = &cobra.Command{Use: "ingest-falco EVENT.json", Short: "Convert a 
 	}
 	control := mappings[signal.Rule]
 	if control == "" {
-		return fmt.Errorf("Falco rule has no reviewed control mapping")
+		return fmt.Errorf("falco rule has no reviewed control mapping")
 	}
 	fw, err := framework.Load(falcoFrameworkDir, "soc2", "")
 	if err != nil {
@@ -134,7 +134,7 @@ var falcoCmd = &cobra.Command{Use: "ingest-falco EVENT.json", Short: "Convert a 
 		}
 	}
 	if !found {
-		return fmt.Errorf("Falco mapping references an unknown SOC2 control")
+		return fmt.Errorf("falco mapping references an unknown SOC2 control")
 	}
 	finding := api.Finding{TypeMeta: metav1.TypeMeta{APIVersion: "compliance.mantl.io/v1alpha1", Kind: "Finding"}, ObjectMeta: metav1.ObjectMeta{Name: signal.ID, Namespace: complianceNamespace, Labels: map[string]string{"mantl.io/source": "falco"}, Annotations: map[string]string{"mantl.io/observed-at": signal.At.Format(time.RFC3339Nano)}}, Spec: api.FindingSpec{ID: signal.ID, ControlID: control, Framework: "soc2", Severity: signal.Severity, Resource: "Pod/" + signal.Namespace + "/" + signal.Pod, Message: signal.Rule, Status: "fail"}}
 	payload, err := yaml.Marshal(finding)
