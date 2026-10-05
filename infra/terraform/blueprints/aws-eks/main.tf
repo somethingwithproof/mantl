@@ -304,7 +304,9 @@ module "external_dns_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
 
-  name = "${local.name}-external-dns"
+  name            = "${local.name}-external-dns"
+  use_name_prefix = false
+  policy_name     = "${local.name}-external-dns"
 
   attach_external_dns_policy    = true
   external_dns_hosted_zone_arns = var.route53_zone_arns
@@ -324,7 +326,9 @@ module "external_secrets_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
 
-  name = "${local.name}-external-secrets"
+  name            = "${local.name}-external-secrets"
+  use_name_prefix = false
+  policy_name     = "${local.name}-external-secrets"
 
   attach_external_secrets_policy        = true
   external_secrets_ssm_parameter_arns   = var.ssm_parameter_arns
@@ -345,7 +349,9 @@ module "cert_manager_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
 
-  name = "${local.name}-cert-manager"
+  name            = "${local.name}-cert-manager"
+  use_name_prefix = false
+  policy_name     = "${local.name}-cert-manager"
 
   attach_cert_manager_policy    = true
   cert_manager_hosted_zone_arns = var.route53_zone_arns
@@ -365,7 +371,9 @@ module "cluster_autoscaler_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
 
-  name = "${local.name}-cluster-autoscaler"
+  name            = "${local.name}-cluster-autoscaler"
+  use_name_prefix = false
+  policy_name     = "${local.name}-cluster-autoscaler"
 
   attach_cluster_autoscaler_policy = true
   cluster_autoscaler_cluster_names = [module.eks.cluster_name]
@@ -385,7 +393,9 @@ module "ebs_csi_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
 
-  name = "${local.name}-ebs-csi"
+  name            = "${local.name}-ebs-csi"
+  use_name_prefix = false
+  policy_name     = "${local.name}-ebs-csi"
 
   attach_ebs_csi_policy = true
 
@@ -404,7 +414,9 @@ module "load_balancer_controller_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
   version = "~> 6.8"
 
-  name = "${local.name}-aws-load-balancer-controller"
+  name            = "${local.name}-aws-load-balancer-controller"
+  use_name_prefix = false
+  policy_name     = "${local.name}-aws-load-balancer-controller"
 
   attach_load_balancer_controller_policy = true
 

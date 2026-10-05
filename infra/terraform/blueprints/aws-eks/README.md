@@ -23,12 +23,40 @@ and AWS provider 6. Kubernetes and Helm providers remain on their supported
 major version 2. The public blueprint variables and output names are unchanged.
 
 Before upgrading an existing deployment, back up Terraform state and inspect a
-plan against that deployment. The IAM module consolidates its policy resources
-and renames its role resource addresses; follow the upstream state migration
-instructions instead of accepting role replacement. Review the EKS node AMI,
+plan against that deployment. The IAM module consolidates its policy resources. All six IRSA modules retain
+their role resource address (`aws_iam_role.this[0]`) and set
+`use_name_prefix = false` to preserve their role names and ARNs. Review the EKS node AMI,
 IMDS hop limit, OIDC issuer, monitoring, and add-on changes for your workloads.
 IRSA trust remains limited to the existing namespace/service-account pairs.
 No state migration or cloud apply is performed by local validation or CI.
+
+### IRSA policy state migration
+
+`migrations.tf` declares both policy and policy-attachment address moves for
+all six modules. Terraform includes these moves in a reviewed plan; no separate
+`terraform state mv` commands or role-state removal are required. For each row,
+`module.<module>.aws_iam_policy.<old>[0]` moves to
+`module.<module>.aws_iam_policy.this[0]`, and the matching
+`aws_iam_role_policy_attachment.<old>[0]` moves to
+`aws_iam_role_policy_attachment.this[0]`.
+
+| Module | Old policy and attachment resource name |
+| --- | --- |
+| `external_dns_irsa` | `external_dns` |
+| `external_secrets_irsa` | `external_secrets` |
+| `cert_manager_irsa` | `cert_manager` |
+| `cluster_autoscaler_irsa` | `cluster_autoscaler` |
+| `ebs_csi_irsa` | `ebs_csi` |
+| `load_balancer_controller_irsa` | `load_balancer_controller` |
+
+Back up the state for the selected backend and workspace before planning. Do
+not remove or import any of the six role resources: their addresses stay the
+same. Stop if the plan replaces an IRSA role or changes a role name/ARN.
+Managed policies move to unique, fixed cluster/component names, replacing the
+old generated policy names; review their replacements, attachment ordering and
+permission changes in a maintenance window. State-address moves alone do not
+prevent policy replacements or establish uninterrupted access. Review the
+EKS OIDC-provider changes with the corresponding trust-policy updates.
 
 - [EKS 21 migration guide](https://github.com/terraform-aws-modules/terraform-aws-eks/blob/v21.26.0/docs/UPGRADE-21.0.md)
 - [IAM 6 migration guide](https://github.com/terraform-aws-modules/terraform-aws-iam/blob/v6.8.0/docs/UPGRADE-6.0.md)
@@ -184,9 +212,9 @@ aws eks describe-cluster --name mantl --query cluster.identity.oidc.issuer
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6.67.0 |
-| <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.12.0, < 3.0.0 |
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | >= 2.27.0, < 3.0.0 |
-| <a name="requirement_tls"></a> [tls](#requirement\_tls) | >= 4.0.0, < 5.0.0 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.17.0 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~> 2.38.0 |
+| <a name="requirement_tls"></a> [tls](#requirement\_tls) | ~> 4.4.0 |
 
 ## Providers
 
