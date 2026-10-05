@@ -19,7 +19,8 @@ this is not an immutable-image production deployment contract. Data disks and
 boot disks accept an optional `gce_boot_kms_key` for CMEK.
 
 External IPs remain disabled by default. Opting in with `gce_public_ip = true`
-requires a nonempty `allowed_cidrs` list. Invalid CIDRs and IPv4 or IPv6 zero-prefix
+requires the managed network and a nonempty `allowed_cidrs` list, so the source
+firewall is actually installed. Invalid CIDRs and IPv4 or IPv6 zero-prefix
 ranges are rejected. Review every permitted source and exposed firewall port
 before provisioning. The managed subnetwork enables full-sampling VPC Flow Logs;
 configure retention and log access separately. An externally supplied subnetwork

@@ -13,8 +13,8 @@ variable "gce_public_ip" {
   default     = false
 
   validation {
-    condition     = !var.gce_public_ip || length(var.allowed_cidrs) > 0
-    error_message = "Public IPs require an explicit, restricted allowed_cidrs list."
+    condition     = !var.gce_public_ip || (var.use_modern_gce_network && length(var.allowed_cidrs) > 0)
+    error_message = "Public IPs require the managed network and an explicit, restricted allowed_cidrs list."
   }
 }
 

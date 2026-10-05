@@ -71,7 +71,7 @@ listener protocol, provider logging capabilities or archive support status chang
 Findings `AaELVxu5AzA3Gm6ElT72`, `AaELVxu5AzA3Gm6ElT73` and
 `AaELVxu5AzA3Gm6ElT74` (`terraform:S6329`) concern conditional `access_config`
 blocks. Public IPs are disabled by default. These are accepted opt-in capabilities
-in the experimental VM module, guarded by a required nonempty source allowlist
+in the experimental VM module, guarded by a required managed network and nonempty source allowlist
 that rejects invalid CIDRs and both IPv4 and IPv6 zero-prefix ranges. Mocked,
 plan-only Terraform tests verify the private default and rejected configurations.
 Managed subnet Flow Logs are enabled; external subnets need independent review.
