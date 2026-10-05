@@ -10,7 +10,7 @@ only documentation. ADR 009 records the ownership and test-scope rules.
 | sonarcloud.yml | Project/visibility verification and server quality gate; consumes CI coverage | Reusable, manual |
 | pre-commit.yml | Changed-file hooks and actionlint, required by core CI | Reusable, manual |
 | compliance-runtime.yml | Disposable Kubernetes/PostgreSQL integration, operator image and package snapshots | Reusable for runtime changes, manual |
-| terraform-validate.yml | Eight blueprints plus the security module, supported-provider TFLint, security report | Reusable for infrastructure changes, manual |
+| terraform-validate.yml | Eight blueprints, the security module and experimental GCE mock plans, supported-provider TFLint, security report | Reusable for infrastructure changes, manual |
 | helm-validate.yml | Locked chart dependencies, first-party charts and stable GitOps manifests | Reusable for manifest changes, manual |
 | developer-image.yml | Cached development-image build and tool/user smoke checks | Reusable for Dockerfile/dependency changes, manual |
 | example-frontend.yml | Locked npm install/audit, tests, build and container smoke checks | Reusable for frontend changes, weekly, manual |
@@ -27,10 +27,12 @@ only documentation. ADR 009 records the ownership and test-scope rules.
 | digitalocean-runner-smoke.yml | Dedicated single-job runner prerequisites, mise and Docker validation | Relevant same-repository PR, manual |
 | wp-ci.yml | Legacy WordPress PHP compatibility/syntax and custom-code checks | Relevant application changes, manual |
 
-Release Please explicitly dispatches CI on its generated PR head branch. This
-allows release PRs created with GITHUB_TOKEN to satisfy required checks without
-a personal access token. CI verifies the PR is open and the dispatched commit
-matches its current head before selecting checks or attaching Sonar analysis.
+Release Please dispatches preflight CI on its generated PR head branch. CI verifies
+the PR is open and the dispatched commit matches its current head before selecting
+checks or attaching Sonar analysis. GitHub does not count workflow_dispatch job
+checks toward required PR checks. A maintainer must push the reviewed release
+branch through authenticated Git to trigger the normal pull_request checks before
+merging a PR created with GITHUB_TOKEN; the preflight does not replace those gates.
 
 ## Runtime and cache policy
 
@@ -42,8 +44,8 @@ external provenance generator owns its runner selection. See
 
 Core runtimes and validation tools are pinned in mise.toml; the shared setup action
 installs only the tools a job uses. The example frontend has its own mise
-configuration. The legacy PHP compatibility matrix uses its pinned native PHP
-setup action. External actions are pinned to full commit IDs, with native
+configuration. WordPress checks use mise-pinned PHP 8.4.26 and Composer 2.10.3,
+validate and audit the lockfile, and check custom code when present. External actions are pinned to full commit IDs, with native
 Dependabot maintaining them. The SLSA generator deliberately uses its supported
 version tag so its verifier can identify the trusted reusable workflow.
 
