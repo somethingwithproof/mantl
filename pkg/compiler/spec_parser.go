@@ -56,6 +56,9 @@ func Validate(cluster *v1alpha1.MantlCluster) error {
 	if !dnsName.MatchString(cluster.Name) || len(cluster.Name) > 63 {
 		return fmt.Errorf("metadata.name must be a DNS label")
 	}
+	if cluster.Spec.Environment != "" && cluster.Spec.Environment != "dev" && cluster.Spec.Environment != "staging" && cluster.Spec.Environment != "production" {
+		return fmt.Errorf("unsupported environment")
+	}
 	pairs := map[string]string{"local": "kind", "aws": "eks", "gcp": "gke", "azure": "aks", "do": "doks", "linode": "lke", "oci": "oke", "ibm": "iks", "openstack": "kubernetes"}
 	if distribution, ok := pairs[cluster.Spec.Provider.Kind]; !ok || distribution != cluster.Spec.Kubernetes.Distribution {
 		return fmt.Errorf("unsupported provider/distribution combination")

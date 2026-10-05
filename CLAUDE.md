@@ -101,7 +101,9 @@ rest are labeled experimental and carry no CI or parity guarantee (ADR 005).
   directly will fail on vendored chart tests.
 - Controller behavior is tested in `controllers/compliance/*_test.go`. Keep
   reconcile logic testable by pushing pure logic into `pkg/`.
-- No test may depend on a live cluster or a working `kubectl`. The evidence package
+- Unit tests must not depend on a live cluster or a working `kubectl`. ADR 008
+  permits explicit `integration`-tagged disposable API/PostgreSQL fixtures in a
+  separate CI job; no developer cloud credentials are required. The evidence package
   separates argument validation from process execution precisely so the rules can be
   exercised without a cluster (`pkg/evidence/snapshot_test.go`). When a code path
   shells out to `kubectl`, test the validation and the error path, not a live call.
@@ -125,9 +127,10 @@ These areas are sensitive and require review before merge:
 - IAM and cloud credentials. The operator needs scoped roles (for example IRSA) to
   write evidence. Grant least privilege; do not widen a role to make a test pass.
 - Supply chain. The release path signs artifacts with Cosign (keyless OIDC) and
-  generates SLSA Level 3 provenance and SBOMs (`.github/workflows/release.yml`,
+  generates provenance and SBOMs (`.github/workflows/release.yml`,
   `.github/workflows/slsa-provenance.yml`). Changes to signing, provenance, or
-  workflow permissions are security changes.
+  workflow permissions are security changes. No SLSA level is claimed without a
+  separate assessment.
 
 Report vulnerabilities through GitHub Security Advisories, not public issues. See
 `SECURITY.md`.

@@ -3,4 +3,7 @@ kind: Namespace
 metadata:
   labels:
     control-plane: controller-manager
+    opencost.io/team: platform
+    opencost.io/project: mantl
+    environment: production
   name: mantl-compliance-system

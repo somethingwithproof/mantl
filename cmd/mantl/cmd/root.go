@@ -5,11 +5,13 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/thomasvincent/mantl/pkg/version"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "mantl",
-	Short: "Mantl is a spec-driven platform compiler and runtime",
+	Version: version.Version + " (" + version.Commit + ")",
+	Use:     "mantl",
+	Short:   "Mantl is a spec-driven platform compiler and runtime",
 	Long: `Mantl takes a declarative platform specification and compiles it into
 infrastructure, GitOps topology, and compliance policies.`,
 }

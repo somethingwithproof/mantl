@@ -1,0 +1,40 @@
+version: 2
+project_name: mantl
+builds:
+  - id: mantl
+    main: ./cmd/mantl
+    binary: mantl
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X github.com/thomasvincent/mantl/pkg/version.Version={{.Version}} -X github.com/thomasvincent/mantl/pkg/version.Commit={{.FullCommit}} -X github.com/thomasvincent/mantl/pkg/version.Date={{.Date}}
+archives:
+  - id: cli
+    ids: [mantl]
+    formats: [tar.gz]
+    name_template: 'mantl_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    files: [LICENSE, README.md, docs/compliance-operations.md, docs/releases.md]
+nfpms:
+  - id: linux
+    ids: [mantl]
+    package_name: mantl
+    vendor: somethingwithproof
+    homepage: https://github.com/somethingwithproof/mantl
+    maintainer: Mantl maintainers
+    description: Kubernetes platform compiler and compliance evidence CLI
+    license: Apache-2.0
+    formats: [deb, rpm]
+    bindir: /usr/bin
+    contents:
+      - src: LICENSE
+        dst: /usr/share/licenses/mantl/LICENSE
+      - src: docs/releases.md
+        dst: /usr/share/doc/mantl/releases.md
+checksum:
+  name_template: cli-checksums.txt
+changelog:
+  disable: true
+release:
+  disable: true

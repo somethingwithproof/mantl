@@ -7,6 +7,7 @@ package framework
 // (framework.Controls).
 type Framework struct {
 	FrameworkSpec `json:"spec"`
+	ContentDigest string `json:"-"`
 }
 
 // FrameworkSpec holds the framework body: controls and their mappings.

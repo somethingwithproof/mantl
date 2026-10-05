@@ -7,6 +7,10 @@ import (
 
 // MantlClusterSpec defines the desired state of a MantlCluster
 type MantlClusterSpec struct {
+	// Environment labels generated namespaces for reviewed admission policies.
+	// +kubebuilder:validation:Enum=dev;staging;production
+	// +optional
+	Environment string `json:"environment,omitempty"`
 	// Provider configuration
 	Provider ProviderSpec `json:"provider"`
 

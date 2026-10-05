@@ -2,6 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ${{ values.name }}
+  labels:
+    app.kubernetes.io/name: ${{ values.name }}
+    app.kubernetes.io/part-of: mantl
+    app.kubernetes.io/version: v1
+    app.kubernetes.io/managed-by: backstage
 spec:
   replicas: 2
   selector:
@@ -11,7 +16,12 @@ spec:
     metadata:
       labels:
         app: ${{ values.name }}
+        app.kubernetes.io/name: ${{ values.name }}
+        app.kubernetes.io/part-of: mantl
+        app.kubernetes.io/version: v1
+        app.kubernetes.io/managed-by: backstage
     spec:
+      serviceAccountName: ${{ values.name }}
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true

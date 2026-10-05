@@ -39,12 +39,22 @@ spec:
           spec:
             description: ComplianceProfileSpec defines the desired state of ComplianceProfile
             properties:
+              bundleDigest:
+                description: BundleDigest pins a verified control-content manifest,
+                  independent of framework version.
+                pattern: ^sha256:[a-f0-9]{64}$
+                type: string
               framework:
                 type: string
               includeControls:
                 items:
                   type: string
                 type: array
+              maxEvidenceAgeSeconds:
+                format: int64
+                maximum: 31536000
+                minimum: 60
+                type: integer
               namespaces:
                 description: Namespaces restrict evidence collection. Defaults to
                   the profile namespace.

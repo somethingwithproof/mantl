@@ -1,0 +1,92 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: controlevaluations.compliance.mantl.io
+spec:
+  group: compliance.mantl.io
+  names:
+    kind: ControlEvaluation
+    listKind: ControlEvaluationList
+    plural: controlevaluations
+    singular: controlevaluation
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              bundleDigest:
+                type: string
+              control:
+                type: string
+              framework:
+                type: string
+              profile:
+                type: string
+            required:
+            - control
+            - framework
+            - profile
+            type: object
+          status:
+            properties:
+              coverage:
+                type: string
+              evidenceUri:
+                type: string
+              exceptionNames:
+                items:
+                  type: string
+                type: array
+              findingCount:
+                format: int32
+                type: integer
+              freshness:
+                type: string
+              observedAt:
+                format: date-time
+                type: string
+              reason:
+                type: string
+              result:
+                enum:
+                - pass
+                - fail
+                - unknown
+                - error
+                - not-applicable
+                type: string
+            required:
+            - coverage
+            - freshness
+            - result
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

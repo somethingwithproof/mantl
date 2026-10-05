@@ -1,16 +1,33 @@
 name: release-please
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch: {}
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      released: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: google-github-actions/release-please-action@v4
+      - uses: google-github-actions/release-please-action@e4dc86ba9405554aeba3c6bb2d169500e7d3b4ee
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.released == 'true'
+    permissions:
+      actions: read
+      contents: write
+      packages: write
+      id-token: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.release-please.outputs.tag }}

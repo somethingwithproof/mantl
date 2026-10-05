@@ -10,6 +10,9 @@ outside Kubernetes etcd. The current compliance runtime is beta.
 | Go CLI | Spec planning, bootstrap, live status, static cloud validation |
 | GitOps | ArgoCD owns policy deployment and lifecycle |
 | SOC2 | Packaged controls/policies, profile coverage, findings and config snapshots; unsupported collectors are reported as gaps |
+| Audit execution (beta) | Durable AuditRuns and isolated, scoped collector Jobs |
+| Evaluations (beta) | Coverage/freshness states, approved exceptions and linked finding history |
+| Fleet API (beta) | Enrolled mTLS metadata ingestion, tenant PostgreSQL RLS and replay |
 | Evidence | Versioned S3 Object Lock objects, minimum retention, manifests and verified export |
 | Cloud blueprints | AWS/GCP/Azure static contracts; deployment and recovery acceptance remain environment-specific |
 | Other clouds | Experimental; no parity guarantee |
@@ -20,6 +23,14 @@ outside Kubernetes etcd. The current compliance runtime is beta.
 
 Policy checks and evidence collection support an audit workflow; they do not
 constitute SOC2, HIPAA, or PCI certification.
+
+## Installation
+
+Download the CLI tar.gz, deb or rpm from a tagged GitHub release and verify its
+checksums and signature. Use the matching platform bundle through `--source-dir`
+for bootstrap, and the digest-pinned installation manifest for the operator.
+See [release installation and verification](docs/releases.md). The release
+workflow is implemented; local snapshot assets do not constitute a published release.
 
 ## Development
 
@@ -44,5 +55,6 @@ legacy paths and do not define the current operator contract.
 - [Contribution guidance](CONTRIBUTING.md)
 - [Security reporting](SECURITY.md)
 
-Release packaging is tracked separately. Do not infer production readiness from
+[Runtime architecture and migration](docs/architecture-runtime.md) describes the
+new beta adapters and their operational prerequisites. Do not infer production readiness from
 a chart being present or a Terraform configuration passing static validation.

@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mantl-fleet
+  labels: &labels
+    app.kubernetes.io/name: mantl-fleet
+    app.kubernetes.io/part-of: mantl
+    app.kubernetes.io/version: development
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mantl-fleet
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      serviceAccountName: mantl-fleet
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: fleet
+          image: mantl-compliance-operator:development
+          command: [/fleet]
+          args:
+            - --tls-cert=/etc/fleet/tls/tls.crt
+            - --tls-key=/etc/fleet/tls/tls.key
+            - --client-ca=/etc/fleet/tls/client-ca.crt
+            - --enrollments=/etc/fleet/enrollments/enrollments.json
+            - --evidence-bucket=$(EVIDENCE_BUCKET)
+          env:
+            - name: MANTL_FLEET_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: fleet-database
+                  key: url
+            - name: EVIDENCE_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: fleet-storage
+                  key: bucket
+          ports:
+            - containerPort: 8443
+              name: tls
+          readinessProbe:
+            tcpSocket:
+              port: tls
+          livenessProbe:
+            tcpSocket:
+              port: tls
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/fleet/tls
+              readOnly: true
+            - name: enrollments
+              mountPath: /etc/fleet/enrollments
+              readOnly: true
+      volumes:
+        - name: tls
+          secret:
+            secretName: fleet-tls  # pragma: allowlist secret
+        - name: enrollments
+          configMap:
+            name: fleet-enrollments

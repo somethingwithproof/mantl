@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mantl-fleet
+  labels:
+    app.kubernetes.io/name: mantl-fleet
+    app.kubernetes.io/part-of: mantl
+    app.kubernetes.io/version: development
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  selector:
+    app.kubernetes.io/name: mantl-fleet
+  ports:
+    - name: tls
+      port: 8443
+      targetPort: tls
