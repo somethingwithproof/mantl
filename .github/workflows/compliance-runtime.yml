@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492
         with:
           version: '2026.10.2'
       - name: Test first-party code and static cloud contracts
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492
         with:
           version: '2026.10.2'
       - name: Create a database role that cannot bypass tenant isolation
@@ -76,7 +76,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492
         with:
           version: '2026.10.2'
       - name: Build downloadable packages and verify control content
