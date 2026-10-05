@@ -45,6 +45,13 @@ ArgoCD remains the policy owner (ADR 006). Remediation produces reviewed Git
 changes. Existing CRDs remain readable during migration; new types are additive.
 Control selection and tenant isolation must not weaken when metadata is missing.
 
+GitHub Actions owns required pull-request checks, hosted Sonar analysis and release
+publication. The root Jenkinsfile is a compatibility entrypoint for local Go,
+Python and formatting checks on an existing Jenkins worker. It uses the same mise
+pins and canonical test commands; it does not duplicate GitHub release jobs,
+provision clusters, or publish notifications. The Jenkins GitOps example produces
+a manifest artifact for review rather than pushing an unreviewed deployment change.
+
 ## Consequences
 
 Release snapshots and local deterministic tests validate implementation. Hosted

@@ -58,10 +58,10 @@ nginx -c nginx.conf -p .
 ### Build Container
 
 ```bash
-docker build -t mantl-website:latest .
+docker build -t mantl-website:1.0.0 .
 
 # Run locally
-docker run -p 8080:8080 mantl-website:latest
+docker run -p 8080:8080 mantl-website:1.0.0
 
 # Test
 curl http://localhost:8080/
@@ -344,14 +344,11 @@ jobs:
       run: |
         cd examples/static-website
         docker build -t ${{ secrets.REGISTRY }}/mantl-website:${{ github.sha }} .
-        docker tag ${{ secrets.REGISTRY }}/mantl-website:${{ github.sha }} \
-                   ${{ secrets.REGISTRY }}/mantl-website:latest
 
     - name: Push to registry
       run: |
         echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ secrets.REGISTRY }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
         docker push ${{ secrets.REGISTRY }}/mantl-website:${{ github.sha }}
-        docker push ${{ secrets.REGISTRY }}/mantl-website:latest
 
     - name: Update Kubernetes deployment
       run: |

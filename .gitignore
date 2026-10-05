@@ -65,3 +65,6 @@ crash.*.log
 /.venv-ci/
 /.venv-audit/
 /charts/*/charts/
+
+/.venv-jenkins/
+/.venv-ml/
