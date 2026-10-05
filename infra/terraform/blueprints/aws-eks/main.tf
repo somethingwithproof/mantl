@@ -4,9 +4,9 @@
 ################################################################################
 
 locals {
-  name            = var.cluster_name
-  cluster_version = var.kubernetes_version
-  region          = var.region
+  name               = var.cluster_name
+  kubernetes_version = var.kubernetes_version
+  region             = var.region
 
   vpc_cidr = var.vpc_cidr
   azs      = slice(data.aws_availability_zones.available.names, 0, 3)
@@ -34,7 +34,7 @@ data "aws_caller_identity" "current" {}
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.21"
+  version = "~> 6.7"
 
   name = "${local.name}-vpc"
   cidr = local.vpc_cidr
@@ -181,10 +181,10 @@ resource "aws_flow_log" "vpc" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.31"
+  version = "~> 21.26"
 
-  cluster_name    = local.name
-  cluster_version = local.cluster_version
+  name               = local.name
+  kubernetes_version = local.kubernetes_version
 
   # Networking
   vpc_id                   = module.vpc.vpc_id
@@ -192,22 +192,22 @@ module "eks" {
   control_plane_subnet_ids = module.vpc.intra_subnets
 
   # Cluster access
-  cluster_endpoint_public_access  = var.cluster_endpoint_public_access
-  enable_irsa                     = true
-  cluster_endpoint_private_access = true
+  endpoint_public_access  = var.cluster_endpoint_public_access
+  enable_irsa             = true
+  endpoint_private_access = true
 
   # Security
   enable_cluster_creator_admin_permissions = true
-  cluster_encryption_config = {
+  encryption_config = {
     provider_key_arn = module.kms.key_arn
     resources        = ["secrets"]
   }
 
   # Logging
-  cluster_enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+  enabled_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   # Add-ons
-  cluster_addons = {
+  addons = {
     coredns = {
       most_recent = true
       configuration_values = jsonencode({
@@ -257,7 +257,7 @@ module "eks" {
         role = "system"
       }
 
-      taints = []
+      taints = {}
     }
 
     workload = {
@@ -284,7 +284,7 @@ module "eks" {
 
 module "kms" {
   source  = "terraform-aws-modules/kms/aws"
-  version = "~> 3.1"
+  version = "~> 4.2"
 
   aliases               = ["eks/${local.name}"]
   description           = "KMS key for EKS cluster ${local.name} secrets encryption"
@@ -301,10 +301,10 @@ module "kms" {
 
 # External DNS
 module "external_dns_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.8"
 
-  role_name = "${local.name}-external-dns"
+  name = "${local.name}-external-dns"
 
   attach_external_dns_policy    = true
   external_dns_hosted_zone_arns = var.route53_zone_arns
@@ -321,10 +321,10 @@ module "external_dns_irsa" {
 
 # External Secrets
 module "external_secrets_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.8"
 
-  role_name = "${local.name}-external-secrets"
+  name = "${local.name}-external-secrets"
 
   attach_external_secrets_policy        = true
   external_secrets_ssm_parameter_arns   = var.ssm_parameter_arns
@@ -342,10 +342,10 @@ module "external_secrets_irsa" {
 
 # cert-manager
 module "cert_manager_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.8"
 
-  role_name = "${local.name}-cert-manager"
+  name = "${local.name}-cert-manager"
 
   attach_cert_manager_policy    = true
   cert_manager_hosted_zone_arns = var.route53_zone_arns
@@ -362,10 +362,10 @@ module "cert_manager_irsa" {
 
 # Cluster Autoscaler
 module "cluster_autoscaler_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.8"
 
-  role_name = "${local.name}-cluster-autoscaler"
+  name = "${local.name}-cluster-autoscaler"
 
   attach_cluster_autoscaler_policy = true
   cluster_autoscaler_cluster_names = [module.eks.cluster_name]
@@ -382,10 +382,10 @@ module "cluster_autoscaler_irsa" {
 
 # EBS CSI Driver
 module "ebs_csi_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.8"
 
-  role_name = "${local.name}-ebs-csi"
+  name = "${local.name}-ebs-csi"
 
   attach_ebs_csi_policy = true
 
@@ -401,10 +401,10 @@ module "ebs_csi_irsa" {
 
 # Load Balancer Controller
 module "load_balancer_controller_irsa" {
-  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "~> 5.37"
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts"
+  version = "~> 6.8"
 
-  role_name = "${local.name}-aws-load-balancer-controller"
+  name = "${local.name}-aws-load-balancer-controller"
 
   attach_load_balancer_controller_policy = true
 

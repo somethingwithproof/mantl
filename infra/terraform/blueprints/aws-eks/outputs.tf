@@ -63,32 +63,32 @@ output "public_subnet_ids" {
 
 output "external_dns_role_arn" {
   description = "IAM role ARN for External DNS"
-  value       = module.external_dns_irsa.iam_role_arn
+  value       = module.external_dns_irsa.arn
 }
 
 output "external_secrets_role_arn" {
   description = "IAM role ARN for External Secrets"
-  value       = module.external_secrets_irsa.iam_role_arn
+  value       = module.external_secrets_irsa.arn
 }
 
 output "cert_manager_role_arn" {
   description = "IAM role ARN for cert-manager"
-  value       = module.cert_manager_irsa.iam_role_arn
+  value       = module.cert_manager_irsa.arn
 }
 
 output "cluster_autoscaler_role_arn" {
   description = "IAM role ARN for Cluster Autoscaler"
-  value       = module.cluster_autoscaler_irsa.iam_role_arn
+  value       = module.cluster_autoscaler_irsa.arn
 }
 
 output "ebs_csi_role_arn" {
   description = "IAM role ARN for EBS CSI Driver"
-  value       = module.ebs_csi_irsa.iam_role_arn
+  value       = module.ebs_csi_irsa.arn
 }
 
 output "load_balancer_controller_role_arn" {
   description = "IAM role ARN for AWS Load Balancer Controller"
-  value       = module.load_balancer_controller_irsa.iam_role_arn
+  value       = module.load_balancer_controller_irsa.arn
 }
 
 ################################################################################
@@ -104,16 +104,16 @@ output "platform_irsa_annotations" {
   description = "ServiceAccount annotations for platform components"
   value = {
     external_dns = {
-      "eks.amazonaws.com/role-arn" = module.external_dns_irsa.iam_role_arn
+      "eks.amazonaws.com/role-arn" = module.external_dns_irsa.arn
     }
     external_secrets = {
-      "eks.amazonaws.com/role-arn" = module.external_secrets_irsa.iam_role_arn
+      "eks.amazonaws.com/role-arn" = module.external_secrets_irsa.arn
     }
     cert_manager = {
-      "eks.amazonaws.com/role-arn" = module.cert_manager_irsa.iam_role_arn
+      "eks.amazonaws.com/role-arn" = module.cert_manager_irsa.arn
     }
     cluster_autoscaler = {
-      "eks.amazonaws.com/role-arn" = module.cluster_autoscaler_irsa.iam_role_arn
+      "eks.amazonaws.com/role-arn" = module.cluster_autoscaler_irsa.arn
     }
   }
 }
