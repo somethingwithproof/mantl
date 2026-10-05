@@ -1,6 +1,7 @@
 package evaluation
 
 import (
+	"fmt"
 	api "github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"github.com/thomasvincent/mantl/pkg/auditplan"
 	"github.com/thomasvincent/mantl/pkg/framework"
@@ -56,7 +57,7 @@ func expectationsForMapping(mapping framework.Mapping, namespaces []string, inde
 func policyExpectations(file string, namespaces []string) ([]string, bool, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return nil, false, err
+		return nil, false, fmt.Errorf("read policy %s: %w", file, err)
 	}
 	var policy struct {
 		Metadata struct {

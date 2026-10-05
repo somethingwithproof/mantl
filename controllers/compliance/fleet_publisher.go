@@ -80,7 +80,7 @@ func (p *FleetPublisher) publish(ctx context.Context) error {
 			end = len(events)
 		}
 		if err := p.Remote.Journal(ctx, p.Store, p.ClusterID, events[offset:end], time.Now().UTC()); err != nil {
-			return err
+			return fmt.Errorf("journal fleet events for cluster %s, batch %d-%d: %w", p.ClusterID, offset, end, err)
 		}
 		for _, event := range events[offset:end] {
 			p.Sent[event.ID] = true

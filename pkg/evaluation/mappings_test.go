@@ -1,6 +1,7 @@
 package evaluation
 
 import (
+	"errors"
 	api "github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"github.com/thomasvincent/mantl/pkg/auditplan"
 	"github.com/thomasvincent/mantl/pkg/framework"
@@ -34,7 +35,7 @@ func TestMappingExpectationsRejectUnresolvedAndMalformedPolicies(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err = MappingExpectations(control, []string{"team"}, index, aliases); err == nil {
+	if _, _, _, err = MappingExpectations(control, []string{"team"}, index, aliases); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("read failure became passing mapping")
 	}
 	for _, mappings := range [][]framework.Mapping{nil, {{}}, {policy}} {

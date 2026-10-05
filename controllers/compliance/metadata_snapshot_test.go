@@ -1,8 +1,15 @@
 package compliance
 
 import (
+	"context"
+	"errors"
 	api "github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
+	"github.com/thomasvincent/mantl/pkg/evidence"
+	"github.com/thomasvincent/mantl/pkg/fleet"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"strings"
 	"testing"
 	"time"
 )
@@ -48,5 +55,29 @@ func TestFleetSnapshotRequiresObservationIdentityAndKeepsVersionsDistinct(t *tes
 	next := snapshotFleetEvents([]api.AuditRun{run}, nil, nil)
 	if next[0].ID == events[0].ID {
 		t.Fatal("resource version update cannot be published")
+	}
+}
+
+type failingJournalStore struct {
+	evidence.Store
+	cause error
+}
+
+func (s failingJournalStore) Put(context.Context, string, []byte, time.Time) (evidence.ObjectRef, error) {
+	return evidence.ObjectRef{}, s.cause
+}
+
+func TestFleetPublisherJournalFailureRetainsRetryAndErrorCause(t *testing.T) {
+	scheme := runtime.NewScheme()
+	requireNoError(t, api.AddToScheme(scheme))
+	finding := &api.Finding{ObjectMeta: metav1.ObjectMeta{Name: "finding", Namespace: "team", UID: "uid", ResourceVersion: "1", Annotations: map[string]string{observedAtAnnotation: time.Now().UTC().Format(time.RFC3339Nano)}}, Spec: api.FindingSpec{ControlID: "C", Status: "fail"}}
+	cause := errors.New("storage unavailable")
+	publisher := &FleetPublisher{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(finding).Build(), Remote: &fleet.Client{}, Store: failingJournalStore{cause: cause}, ClusterID: "cluster"}
+	err := publisher.publish(context.Background())
+	if !errors.Is(err, cause) || !strings.Contains(err.Error(), "cluster cluster, batch 0-1") {
+		t.Fatalf("journal context or cause lost: %v", err)
+	}
+	if len(publisher.Sent) != 0 {
+		t.Fatal("failed journal marked events sent")
 	}
 }
