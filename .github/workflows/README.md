@@ -45,8 +45,10 @@ external provenance generator owns its runner selection. See
 Core runtimes and validation tools are pinned in mise.toml; the shared setup action
 installs only the tools a job uses. The example frontend has its own mise
 configuration. WordPress checks use mise-pinned PHP 8.4.26 and Composer 2.10.3,
-validate and audit the lockfile, and check custom code when present. External actions are pinned to full commit IDs, with native
-Dependabot maintaining them. The SLSA generator deliberately uses its supported
+validate and audit the lockfile, and check custom code when present. PHP source-build
+headers are installed only in that job; mise caches the compiled runtime.
+External actions are pinned to full commit IDs, with native Dependabot maintaining
+them. The SLSA generator deliberately uses its supported
 version tag so its verifier can identify the trusted reusable workflow.
 
 Caches hold Go modules/build output, pip/npm/Composer downloads, pre-commit

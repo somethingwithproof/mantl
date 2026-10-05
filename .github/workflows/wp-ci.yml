@@ -28,6 +28,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - name: Install PHP source-build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential autoconf bison re2c pkg-config \
+            libxml2-dev libssl-dev libicu-dev libzip-dev libonig-dev \
+            libcurl4-openssl-dev libsqlite3-dev libgd-dev libpng-dev \
+            libjpeg-dev libfreetype6-dev libwebp-dev libgmp-dev \
+            libsodium-dev libreadline-dev libbz2-dev
       - uses: ./.github/actions/setup
         with:
           tools: vfox:jdx/vfox-php github:composer/composer
@@ -66,4 +75,4 @@ jobs:
       - name: PHPStan
         run: mise exec -- php vendor/bin/phpstan analyse --no-progress
         if: steps.custom.outputs.present == 'true'
-    timeout-minutes: 15
+    timeout-minutes: 25
