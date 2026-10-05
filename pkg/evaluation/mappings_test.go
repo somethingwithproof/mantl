@@ -109,3 +109,19 @@ func writeTestPolicy(t *testing.T, path, body string) {
 		t.Fatal(err)
 	}
 }
+
+func TestEvidenceURITracksOldestCaptureAcrossDifferentRuns(t *testing.T) {
+	newer := metav1.NewTime(time.Now().UTC())
+	older := metav1.NewTime(newer.Add(-time.Hour))
+	run := func(id, uri string, at metav1.Time) api.AuditRun {
+		return api.AuditRun{Spec: api.AuditRunSpec{Profile: "p", Framework: "f", BundleDigest: "d"}, Status: api.AuditRunStatus{EndTime: &newer, EvidenceURI: uri, Results: map[string]api.TaskResult{id: {Phase: "Completed", CapturedAt: &at}}}}
+	}
+	runs := []api.AuditRun{run("new", "s3://bucket/new", newer), run("old", "s3://bucket/old", older)}
+	for _, tasks := range [][]api.CollectorTask{{{ID: "old", Control: "C"}, {ID: "new", Control: "C"}}, {{ID: "new", Control: "C"}, {ID: "old", Control: "C"}}} {
+		input := Input{Control: "C"}
+		AttachCollectionEvidence(&input, auditplan.Plan{Tasks: tasks}, runs, "p", "f", "d")
+		if input.Unsupported || input.EvidenceAt == nil || !input.EvidenceAt.Equal(older.Time) || input.EvidenceURI != "s3://bucket/old" {
+			t.Fatalf("freshness and manifest disagree: %+v", input)
+		}
+	}
+}

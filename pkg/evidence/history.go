@@ -66,7 +66,11 @@ func ReadFindingHistory(ctx context.Context, store Store, finding api.Finding) (
 
 func findingHistoryScope(head *api.HistoryReference, finding api.Finding) error {
 	uri, err := url.Parse(head.URI)
-	if err != nil || !strings.HasPrefix(uri.Path, "/audits/findings/") || !strings.Contains(uri.Path, "/"+string(finding.UID)+"/") {
+	if err != nil || uri.Scheme != "s3" || uri.Host == "" || uri.User != nil || uri.RawQuery != "" || uri.Fragment != "" {
+		return fmt.Errorf("finding history scope mismatch")
+	}
+	parts := strings.Split(strings.TrimPrefix(uri.Path, "/"), "/")
+	if len(parts) != 6 || parts[0] != "audits" || parts[1] != "findings" || parts[2] == "" || parts[3] != finding.Namespace || parts[4] != string(finding.UID) || parts[5] == "" {
 		return fmt.Errorf("finding history scope mismatch")
 	}
 	return nil

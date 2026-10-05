@@ -223,13 +223,12 @@ func (r *AuditRunReconciler) verifyCompletedCollector(ctx context.Context, run *
 func collectorReceipt(pods []core.Pod, job *batch.Job) (*collection.Receipt, error) {
 	var receipt *collection.Receipt
 	for _, pod := range pods {
-		owned := collectorOwnsPod(&pod, job)
-		if !owned {
-			return nil, nil
+		if !collectorOwnsPod(&pod, job) {
+			continue
 		}
 		for _, status := range pod.Status.ContainerStatuses {
 			if status.Name != "collector" || status.State.Terminated == nil || status.State.Terminated.ExitCode != 0 {
-				return nil, nil
+				continue
 			}
 			var value collection.Receipt
 			if err := json.Unmarshal([]byte(status.State.Terminated.Message), &value); err != nil {

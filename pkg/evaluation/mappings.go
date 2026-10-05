@@ -100,8 +100,8 @@ func AttachCollectionEvidence(input *Input, plan auditplan.Plan, runs []api.Audi
 		at := result.CapturedAt.Time
 		if input.EvidenceAt == nil || at.Before(*input.EvidenceAt) {
 			input.EvidenceAt = &at
+			input.EvidenceURI = uri
 		}
-		input.EvidenceURI = uri
 	}
 }
 

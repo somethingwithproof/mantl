@@ -144,3 +144,31 @@ func TestRunCannotSelectAnotherNamespaceOrCollectorIdentity(t *testing.T) {
 		})
 	}
 }
+
+func TestCollectorReceiptSkipsFailedRetriesAndForeignPods(t *testing.T) {
+	job := &batch.Job{ObjectMeta: metav1.ObjectMeta{UID: "job-uid"}}
+	owner := metav1.OwnerReference{Kind: "Job", UID: job.UID}
+	receipt := collection.Receipt{Ref: evidence.ObjectRef{URI: "s3://bucket/receipt", Version: "immutable", Hash: "digest"}}
+	payload, err := json.Marshal(receipt)
+	requireNoError(t, err)
+	failed := core.Pod{ObjectMeta: metav1.ObjectMeta{OwnerReferences: []metav1.OwnerReference{owner}}, Status: core.PodStatus{ContainerStatuses: []core.ContainerStatus{{Name: "collector", State: core.ContainerState{Terminated: &core.ContainerStateTerminated{ExitCode: 1}}}}}}
+	success := core.Pod{ObjectMeta: metav1.ObjectMeta{OwnerReferences: []metav1.OwnerReference{owner}}, Status: core.PodStatus{ContainerStatuses: []core.ContainerStatus{
+		{Name: "unrelated"}, {Name: "collector"}, {Name: "collector", State: core.ContainerState{Terminated: &core.ContainerStateTerminated{Message: string(payload)}}},
+	}}}
+	for _, pods := range [][]core.Pod{{{}, failed, success}, {success, failed, {}}, {failed, success}} {
+		got, err := collectorReceipt(pods, job)
+		requireNoError(t, err)
+		if got == nil || got.Ref.URI != receipt.Ref.URI || got.Ref.Version != receipt.Ref.Version {
+			t.Fatalf("successful retry receipt lost: %+v", got)
+		}
+	}
+	got, err := collectorReceipt([]core.Pod{{}, failed}, job)
+	requireNoError(t, err)
+	if got != nil {
+		t.Fatal("failed or foreign pod produced a receipt")
+	}
+	success.Status.ContainerStatuses[2].State.Terminated.Message = "invalid json"
+	if _, err := collectorReceipt([]core.Pod{success}, job); err == nil {
+		t.Fatal("malformed owned successful receipt was ignored")
+	}
+}

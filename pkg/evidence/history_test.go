@@ -123,3 +123,24 @@ func TestFindingHistoryDetectsCyclicReferences(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestFindingHistoryRejectsNoncanonicalPathsBeforeRead(t *testing.T) {
+	for _, uri := range []string{
+		"s3://bucket/audits/findings/cluster/other/uid/new",
+		"s3://bucket/audits/findings/cluster/tenant/other/uid/new",
+		"s3://bucket/audits/findings//tenant/uid/new",
+		"s3://bucket/audits/findings/cluster/tenant/uid/",
+		"s3://bucket/audits/findings/cluster/tenant/uid/new/extra",
+		"s3://bucket/audits/findings/cluster/tenant/uid/new?versionId=other",
+		"s3://bucket/audits/findings/cluster/tenant/uid/new#fragment",
+	} {
+		finding, store := historyFixture(t)
+		finding.Status.HistoryHead.URI = uri
+		if _, err := ReadFindingHistory(context.Background(), store, finding); err == nil || !strings.Contains(err.Error(), "scope mismatch") {
+			t.Fatalf("noncanonical path %s: %v", uri, err)
+		}
+		if len(store.reads) != 0 {
+			t.Fatalf("invalid path read storage: %s", uri)
+		}
+	}
+}
