@@ -125,6 +125,16 @@ updates:
       prefix: chore
       include: scope
     groups:
+      react:
+        patterns:
+          - react
+          - react-dom
+          - '@types/react'
+          - '@types/react-dom'
+        update-types:
+          - major
+          - minor
+          - patch
       npm-minor-and-patch:
         patterns:
           - '*'
