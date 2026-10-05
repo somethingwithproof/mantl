@@ -1,28 +1,25 @@
 # Multi-stage build for React application
-FROM node:18-alpine as builder
+FROM node:24.15.0-alpine AS builder
 
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --ignore-scripts
 
 # Copy source code
 COPY src/ ./src/
-COPY public/ ./public/
-COPY tsconfig.json ./
+COPY index.html tsconfig.json vite.config.mjs ./
+
+ARG REACT_APP_API_URL=/api
 
 # Build application
 RUN npm run build
 
 # Production stage with Nginx
-FROM nginx:1.25-alpine
-
-# Create non-root user
-RUN addgroup -g 101 -S nginx && \
-    adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx
+FROM nginx:1.30.5-alpine
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
@@ -30,7 +27,7 @@ COPY nginx.conf /etc/nginx/nginx.conf
 # Copy built application from builder
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Change ownership of nginx directories
+# The official image already supplies the nginx user and group.
 RUN chown -R nginx:nginx /var/cache/nginx /var/log/nginx /etc/nginx/conf.d /usr/share/nginx/html && \
     chmod -R 755 /var/cache/nginx /var/log/nginx /etc/nginx/conf.d /usr/share/nginx/html && \
     touch /var/run/nginx.pid && \
