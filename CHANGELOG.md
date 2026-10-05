@@ -19,6 +19,17 @@ Terraform modernization and hardening across cloud modules:
   - Add modern worker and edge VM resources under the same flag; reminder to set legacy counts to 0 when enabling.
 
 See PRs: #31, #32, #33, #34, #35, #36, #37.
+## [0.3.1](https://github.com/somethingwithproof/mantl/compare/v0.3.0...v0.3.1) (2026-10-05)
+
+
+### Bug Fixes
+
+* **config:** bound example resources and lock WordPress dependencies ([#327](https://github.com/somethingwithproof/mantl/issues/327)) ([959847a](https://github.com/somethingwithproof/mantl/commit/959847a85ddecfe17d47a9d4d77826ef23879466))
+* **examples:** preserve errors and make shutdown interruptible ([#328](https://github.com/somethingwithproof/mantl/issues/328)) ([aed3c0d](https://github.com/somethingwithproof/mantl/commit/aed3c0d5f23d2ff2f771b19a051fb076a91897b3))
+* **security:** confine bundles and lock container dependencies ([#324](https://github.com/somethingwithproof/mantl/issues/324)) ([218a828](https://github.com/somethingwithproof/mantl/commit/218a82891c78f5ba44ce28729a8dc64dcec9512b))
+* **security:** require private GCE nodes and conditional exceptions ([#332](https://github.com/somethingwithproof/mantl/issues/332)) ([1b77bbd](https://github.com/somethingwithproof/mantl/commit/1b77bbd823b7e08d560d10438ab6d80b4d85293e))
+* **security:** verify transports and constrain experimental networking ([#330](https://github.com/somethingwithproof/mantl/issues/330)) ([c48ba9d](https://github.com/somethingwithproof/mantl/commit/c48ba9d29b8a1f3ac5e4967abea42d4da77a7efb))
+
 ## [0.3.0](https://github.com/somethingwithproof/mantl/compare/v0.2.0...v0.3.0) (2026-10-05)
 
 
