@@ -17,7 +17,7 @@ only documentation. ADR 009 records the ownership and test-scope rules.
 | nightly.yml | Disposable integration/package validation and recorded benchmarks | Daily, manual |
 | mutation.yml | Pinned mutation tool and mutation baseline | Weekly, manual |
 | dependency-audit.yml | Pinned Python dependency audit with retained report | Weekly, manual |
-| release-please.yml | SemVer release PRs/tags and direct release publication call | Main push, manual |
+| release-please.yml | SemVer release PRs/tags and direct release publication call | Main push, manual on main |
 | release.yml | Exact-tag archives/deb/rpm, multiarchitecture image, content, SBOMs and signatures | Reusable, published release, manual |
 | slsa-provenance.yml | Generated artifact provenance for the release | Reusable |
 | control-bundle.yml | Independently versioned, signed immutable control content | Manual on main |
