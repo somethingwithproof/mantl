@@ -1,35 +1,27 @@
-pipeline {
-  agent any
-  environment {
-    IMAGE = "your-registry/your-app:${env.BUILD_NUMBER}"
-  }
-  stages {
-    stage('Build') {
-      steps { sh 'echo build && mkdir -p build && echo ok > build/result.txt' }
+// Template: configure the application image and reviewed GitOps repository.
+// Registry credentials belong to the Jenkins worker; manifest changes are artifacts.
+node {
+    env.IMAGE = "your-registry/your-app:${env.BUILD_NUMBER}"
+    stage('Checkout') {
+        checkout scm
     }
     stage('Test') {
-      steps { sh 'pytest -q || true' }
+        sh 'mise exec -- make go-test'
     }
     stage('Build Image') {
-      steps { sh 'docker build -t ${IMAGE} .' }
+        sh 'docker build -t "$IMAGE" .'
     }
     stage('Push Image') {
-      steps { sh 'docker push ${IMAGE}' }
+        sh 'docker push "$IMAGE"'
     }
-    stage('Update GitOps Manifests') {
-      steps {
-        script {
-          // Update image tag in Git manifests for ArgoCD to sync
-          sh '''
-            git clone https://github.com/YOUR_ORG/YOUR_GITOPS_REPO.git
-            cd YOUR_GITOPS_REPO
-            sed -i "s|image:.*|image: ${IMAGE}|" overlays/staging/kustomization.yaml
-            git add overlays/staging/kustomization.yaml
-            git commit -m "Update staging image to ${IMAGE}"
-            git push
-          '''
-        }
-      }
+    stage('Prepare GitOps change for review') {
+        sh '''
+            set -eu
+            : "${GITOPS_REPOSITORY:?Set the reviewed GitOps repository URL}"
+            git clone -- "$GITOPS_REPOSITORY" gitops
+            cd gitops/overlays/staging
+            mise exec -- kustomize edit set image "$IMAGE"
+        '''
+        archiveArtifacts artifacts: 'gitops/overlays/staging/kustomization.yaml'
     }
-  }
 }

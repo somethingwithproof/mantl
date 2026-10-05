@@ -71,10 +71,10 @@ curl -X POST http://localhost:8000/api/v1/predict \
 
 ```bash
 cd src
-docker build -t ml-inference:latest .
+docker build -t ml-inference:1.0.0 .
 
 # Run container
-docker run -p 8000:8000 ml-inference:latest
+docker run -p 8000:8000 ml-inference:1.0.0
 ```
 
 ### Deploy to Kubernetes

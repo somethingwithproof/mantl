@@ -3,7 +3,7 @@ kind: Namespace
 metadata:
   name: static-sites
   labels:
-    purpose: "static-website-hosting"
+    purpose: static-website-hosting
     platform: mantl
 ---
 apiVersion: apps/v1
@@ -23,7 +23,7 @@ spec:
       labels:
         app: mantl-website
       annotations:
-        prometheus.io/scrape: "false"
+        prometheus.io/scrape: 'false'
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -33,42 +33,42 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: nginx
-        image: REGISTRY/mantl-website:latest
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: http
-          containerPort: 8080
-          protocol: TCP
-        resources:
-          requests:
-            cpu: 50m
-            memory: 64Mi
-          limits:
-            cpu: 200m
-            memory: 256Mi
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: http
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: http
-          initialDelaySeconds: 2
-          periodSeconds: 5
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
-          runAsNonRoot: true
-          runAsUser: 101
-          capabilities:
-            drop:
-            - ALL
-            add:
-            - NET_BIND_SERVICE
+        - name: nginx
+          image: REGISTRY/mantl-website:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              ephemeral-storage: 64Mi
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              ephemeral-storage: 256Mi
+              cpu: 200m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 101
+            capabilities:
+              drop:
+                - ALL
 ---
 apiVersion: v1
 kind: Service
@@ -80,10 +80,10 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 80
-    targetPort: http
-    protocol: TCP
-    name: http
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
   selector:
     app: mantl-website
 ---
@@ -93,7 +93,7 @@ metadata:
   name: mantl-website
   namespace: static-sites
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
     # CDN integration annotations (CloudFront example)
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
@@ -102,36 +102,36 @@ metadata:
       more_set_headers "Cache-Control: public, max-age=300";
       more_set_headers "X-CDN-Cache: $upstream_cache_status";
     # Enable compression
-    nginx.ingress.kubernetes.io/enable-brotli: "true"
-    nginx.ingress.kubernetes.io/brotli-level: "6"
+    nginx.ingress.kubernetes.io/enable-brotli: 'true'
+    nginx.ingress.kubernetes.io/brotli-level: '6'
 spec:
   ingressClassName: nginx
   tls:
-  - hosts:
-    - mantl.example.com
-    - www.mantl.example.com
-    secretName: mantl-website-tls
+    - hosts:
+        - mantl.example.com
+        - www.mantl.example.com
+      secretName: mantl-website-tls
   rules:
-  - host: mantl.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: mantl-website
-            port:
-              number: 80
-  - host: www.mantl.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: mantl-website
-            port:
-              number: 80
+    - host: mantl.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mantl-website
+                port:
+                  number: 80
+    - host: www.mantl.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mantl-website
+                port:
+                  number: 80
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -146,12 +146,12 @@ spec:
   minReplicas: 3
   maxReplicas: 10
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -174,13 +174,13 @@ spec:
     matchLabels:
       app: mantl-website
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  # Allow from ingress controller
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: ingress-nginx
-    ports:
-    - protocol: TCP
-      port: 8080
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080

@@ -15,9 +15,9 @@ spec:
       labels:
         app: event-publisher
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8000"
-        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8000'
+        prometheus.io/path: /metrics
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -27,50 +27,52 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: publisher
-        image: REGISTRY/event-publisher:latest
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: http
-          containerPort: 8000
-        env:
-        - name: NATS_URL
-          value: "nats://nats:4222"
-        - name: STREAM_NAME
-          value: "EVENTS"
-        resources:
-          requests:
-            cpu: 200m
-            memory: 256Mi
-          limits:
-            cpu: 1000m
-            memory: 1Gi
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: http
-          initialDelaySeconds: 10
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: http
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 1000
-          capabilities:
-            drop:
-            - ALL
-        volumeMounts:
-        - name: tmp
-          mountPath: /tmp
+        - name: publisher
+          image: REGISTRY/event-publisher:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: NATS_URL
+              value: nats://nats:4222
+            - name: STREAM_NAME
+              value: EVENTS
+          resources:
+            requests:
+              ephemeral-storage: 64Mi
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              ephemeral-storage: 256Mi
+              cpu: 1000m
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
       volumes:
-      - name: tmp
-        emptyDir: {}
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -82,10 +84,10 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 8000
-    targetPort: http
-    protocol: TCP
-    name: http
+    - port: 8000
+      targetPort: http
+      protocol: TCP
+      name: http
   selector:
     app: event-publisher
 ---
@@ -95,22 +97,22 @@ metadata:
   name: event-publisher
   namespace: event-driven
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/rate-limit: "100"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: '100'
 spec:
   ingressClassName: nginx
   tls:
-  - hosts:
-    - events.example.com
-    secretName: event-publisher-tls
+    - hosts:
+        - events.example.com
+      secretName: event-publisher-tls
   rules:
-  - host: events.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: event-publisher
-            port:
-              number: 8000
+    - host: events.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: event-publisher
+                port:
+                  number: 8000

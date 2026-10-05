@@ -9,10 +9,14 @@ This app is a Composer-managed WordPress project for the pausatf.org site. It us
 - `.env` – environment variables (copy from `.env.example`)
 
 ## Quick start (local)
-1. Prereqs: PHP 8.2/8.3, Composer, Node 20+.
+1. Install the PHP and Composer versions pinned in this directory:
+   ```sh
+   mise install vfox:jdx/vfox-php github:composer/composer
+   ```
+   The PHP backend builds from source; install its [native build prerequisites](https://github.com/jdx/vfox-php#requirements).
 2. Install deps:
    ```sh
-   composer install
+   mise exec -- php "$(mise where github:composer/composer@2.10.3)/composer.phar" install
    ```
 3. Configure environment:
    - Copy `.env.example` to `.env` and set values.
@@ -27,3 +31,10 @@ This app is a Composer-managed WordPress project for the pausatf.org site. It us
 
 ## Notes
 - Do not commit real secrets. `.env` is ignored. Use `.env.example` as a template.
+- Commit `composer.lock` when updating dependencies. Regenerate it with the
+  pinned Composer runtime using `update --no-install --no-scripts --no-plugins`;
+  validate it with `validate --strict --no-check-publish` before review.
+
+WordPress 6.8 or newer owns bcrypt password hashing. The abandoned
+`roots/wp-password-bcrypt` plugin is intentionally absent; existing passwords
+remain compatible. See [Roots’ migration guidance](https://roots.io/sunsetting-wp-password-bcrypt-with-wordpress-6-8/).

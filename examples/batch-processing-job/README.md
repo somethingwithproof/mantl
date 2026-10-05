@@ -65,14 +65,14 @@ MODE=process python batch_processor.py
 
 ```bash
 cd src
-docker build -t batch-processor:latest .
+docker build -t batch-processor:1.0.0 .
 
 # Run in Docker
 docker run --rm \
   -e DATABASE_URL="postgresql://..." \
   -e S3_BUCKET="mantl-data" \
   -e MODE="process" \
-  batch-processor:latest
+  batch-processor:1.0.0
 ```
 
 ### Deploy to Kubernetes
@@ -240,7 +240,7 @@ spec:
     spec:
       containers:
       - name: processor
-        image: batch-processor:latest
+        image: batch-processor:1.0.0
         env:
         - name: JOB_COMPLETION_INDEX
           valueFrom:

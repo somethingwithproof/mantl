@@ -16,9 +16,19 @@ spec:
     metadata:
       labels: {app: bind9}
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: bind9
           image: internetsystemsconsortium/bind9:9.18
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+              ephemeral-storage: 64Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+              ephemeral-storage: 256Mi
           ports:
             - name: dns-udp
               containerPort: 53

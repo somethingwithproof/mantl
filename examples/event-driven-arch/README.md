@@ -38,7 +38,7 @@ Microservices communication using NATS message broker demonstrating:
 
 ```bash
 # Start NATS locally
-docker run -p 4222:4222 nats:latest -js
+docker run -p 4222:4222 nats:2.10-alpine -js
 
 # Run publisher
 cd publisher
@@ -67,6 +67,9 @@ curl -X POST http://localhost:8000/api/v1/events/publish \
 ### Deploy to Kubernetes
 
 ```bash
+# Build and push these versioned example images to your registry first
+# publisher:1.0.0 and subscriber:1.0.0
+# Use immutable image digests for a production overlay.
 # Update image registries
 sed -i 's|REGISTRY|your-registry.example.com|g' k8s/*.yaml
 
@@ -364,3 +367,16 @@ Create separate streams for different priorities:
 - [NATS Documentation](https://docs.nats.io/)
 - [CloudEvents Specification](https://cloudevents.io/)
 - [Event-Driven Architecture Patterns](https://www.enterpriseintegrationpatterns.com/)
+
+Build and publish the versioned images before applying these templates:
+
+```sh
+docker build -t YOUR_REGISTRY/event-publisher:1.0.0 publisher/
+docker build -t YOUR_REGISTRY/event-subscriber:1.0.0 subscriber/
+docker push YOUR_REGISTRY/event-publisher:1.0.0
+docker push YOUR_REGISTRY/event-subscriber:1.0.0
+```
+
+Replace `YOUR_REGISTRY` consistently in the manifests. Container scratch-space
+requests and limits bound local writable data separately from NATS’s persistent
+volume; tune both from measurements of your own workload.
