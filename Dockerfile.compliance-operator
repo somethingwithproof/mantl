@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.26.7@sha256:e30143be198ab04cf7ba25fba83ab3a692ca584c994aad0bf131fa0eb32dd8c1 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.7@sha256:e30143be198ab04cf7ba25fba83ab3a692ca584c994aad0bf131fa0eb32dd8c1 AS builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -16,9 +16,11 @@ COPY controllers/ controllers/
 COPY pkg/ pkg/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -o manager ./cmd/compliance-operator && \
-    CGO_ENABLED=0 GOOS=linux go build -trimpath -o collector ./cmd/evidence-collector && \
-    CGO_ENABLED=0 GOOS=linux go build -trimpath -o fleet ./cmd/mantl-fleet
+ARG TARGETOS
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -o manager ./cmd/compliance-operator && \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -o collector ./cmd/evidence-collector && \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -o fleet ./cmd/mantl-fleet
 
 COPY compliance/frameworks/ compliance/frameworks/
 COPY compliance/bundle-version.txt compliance/bundle-version.txt
