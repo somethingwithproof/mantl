@@ -1,6 +1,11 @@
+---
+# yamllint disable rule:line-length
 name: Publish control content
-on:
+'on':
   workflow_dispatch: {}
+env:
+  MISE_AUTO_INSTALL: 'false'
+  MISE_EXEC_AUTO_INSTALL: 'false'
 permissions:
   contents: read
 concurrency:
@@ -8,7 +13,6 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -16,12 +20,17 @@ jobs:
       packages: write
       id-token: write
     steps:
+      - name: Require main branch
+        env:
+          REF: ${{ github.ref }}
+        run: test "$REF" = refs/heads/main || { echo "::error::Control publication requires main"; exit 1; }
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
       - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
         with:
-          version: '2026.10.2'
+          version: 2026.10.2
+          install_args: go python oras cosign
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
           registry: ghcr.io
@@ -40,5 +49,6 @@ jobs:
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: control-content
+          retention-days: 7
           path: dist/controls
           if-no-files-found: error

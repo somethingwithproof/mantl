@@ -1,16 +1,17 @@
+---
+# yamllint disable rule:line-length
 name: Compliance runtime
-on:
-  pull_request:
-    paths: ["apis/**", "cmd/**", "controllers/**", "pkg/**", "compliance/**", "deploy/**", "templates/backstage/**", "infra/terraform/**", "go.*", "mise.toml", "Dockerfile.compliance-operator", ".github/workflows/compliance-runtime.yml", ".github/workflows/release*.yml", ".goreleaser.yaml", "scripts/package_release.py", "scripts/publish_control_bundle.py", "integration/**"]
-  push:
-    branches: [main]
-    paths: ["apis/**", "cmd/**", "controllers/**", "pkg/**", "compliance/**", "deploy/**", "templates/backstage/**", "infra/terraform/**", "go.*", "mise.toml", "Dockerfile.compliance-operator", ".github/workflows/compliance-runtime.yml", ".github/workflows/release*.yml", ".goreleaser.yaml", "scripts/package_release.py", "scripts/publish_control_bundle.py", "integration/**"]
-  workflow_dispatch:
+'on':
+  workflow_call: {}
+  workflow_dispatch: {}
 permissions:
   contents: read
 concurrency:
-  group: compliance-runtime-${{ github.ref }}
-  cancel-in-progress: true
+  group: compliance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+defaults:
+  run:
+    shell: bash
 jobs:
   runtime:
     runs-on: ubuntu-latest
@@ -19,22 +20,32 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+      - uses: ./.github/actions/setup
         with:
-          version: '2026.10.2'
-      - name: Test first-party code and static cloud contracts
+          tools: go kubectl
+      - name: Validate static cloud contracts
         run: |
-          mise exec -- make go-test
           mise exec -- go run ./cmd/mantl validate-clouds > cloud-contracts.json
       - name: Validate installation bundles
         run: |
           kubectl kustomize deploy/operator/base > operator-install.yaml
           kubectl kustomize deploy/gitops/policies > policy-install.yaml
           kubectl kustomize deploy/gitops/core > core-install.yaml
-      - name: Build packaged operator and check entrypoint
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Build operator with cached layers
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: Dockerfile.compliance-operator
+          tags: mantl-compliance-operator:ci
+          load: true
+          cache-from: type=gha,scope=operator
+          cache-to: type=gha,scope=operator,mode=max
+      - name: Check packaged entrypoints
         run: |
-          docker build -f Dockerfile.compliance-operator -t mantl-compliance-operator:ci .
           docker run --rm mantl-compliance-operator:ci --help
+          docker run --rm --entrypoint /collector mantl-compliance-operator:ci --help
+          docker run --rm --entrypoint /fleet mantl-compliance-operator:ci --help
   integration:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -44,17 +55,21 @@ jobs:
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: mantl_test
-        ports: [5432:5432]
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s --health-timeout 5s --health-retries 10
+        ports:
+          - 5432:5432
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+      - uses: ./.github/actions/setup
         with:
-          version: '2026.10.2'
+          tools: go
+      - name: Cache disposable Kubernetes tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.local/share/kubebuilder-envtest
+          key: ${{ runner.os }}-${{ runner.arch }}-envtest-1.35.0
       - name: Create a database role that cannot bypass tenant isolation
         env:
           POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
@@ -65,7 +80,7 @@ jobs:
           MANTL_TEST_DATABASE_URL: postgres://mantl_test@127.0.0.1:5432/mantl_test?sslmode=disable
         run: |
           set -euo pipefail
-          KUBEBUILDER_ASSETS=$(mise exec -- go run sigs.k8s.io/controller-runtime/tools/setup-envtest@f9589b9f2b9dddf8532b432bb8315f2820ab9971 use 1.35.0 -p path)
+          KUBEBUILDER_ASSETS=$(mise exec -- go run sigs.k8s.io/controller-runtime/tools/setup-envtest@f9589b9f2b9dddf8532b432bb8315f2820ab9971 use 1.35.0 --bin-dir "$HOME/.local/share/kubebuilder-envtest" -p path)
           export KUBEBUILDER_ASSETS
           mise exec -- go test -tags=integration ./integration/controlapi ./pkg/fleet
   packaging:
@@ -76,9 +91,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+      - uses: ./.github/actions/setup
         with:
-          version: '2026.10.2'
+          tools: go python goreleaser kubectl kubeconform
       - name: Build downloadable packages and verify control content
         run: |
           mise exec -- goreleaser release --snapshot --clean
@@ -87,3 +102,15 @@ jobs:
           mise exec -- go run ./cmd/mantl bundle unpack dist/controls.tar.gz dist/control-content
           kubectl kustomize dist/control-content > dist/control-install.yaml
           mise exec -- kubeconform -strict -ignore-missing-schemas -kubernetes-version 1.35.0 -summary dist/release/operator-install.yaml
+      - name: Retain package validation artifacts
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: package-snapshot
+          path: |-
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/release/*.yaml
+            dist/release/*.json
+          if-no-files-found: error
+          retention-days: 7

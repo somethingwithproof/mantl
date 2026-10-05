@@ -1,27 +1,16 @@
+---
+# yamllint disable rule:line-length
 name: Reap orphaned CI runners
-
-# Safety net for the ephemeral CI runners. If a CI run's stop-runner job is
-# itself cancelled or the runner infrastructure dies, a droplet could be left
-# behind. This sweeps such orphans.
-#
-# It can ONLY ever delete droplets that pass all three gates:
-#   1. carry the dedicated mantl-ci-runner tag (production droplets are never listed),
-#   2. have a name matching the mantl-ci-* CI pattern,
-#   3. are older than the orphan threshold (a normal run lasts minutes).
-# It never lists or touches anything else on the account.
-
-on:
-  schedule:
-    - cron: '*/30 * * * *'
-  workflow_dispatch:
-
+'on':
+  workflow_dispatch: {}
 permissions:
   contents: read
-
+concurrency:
+  group: legacy-runner-cleanup
+  cancel-in-progress: false
 env:
   CI_RUNNER_TAG: mantl-ci-runner
-  ORPHAN_AGE_SECONDS: '7200' # 2 hours
-
+  ORPHAN_AGE_SECONDS: '7200'
 jobs:
   reap:
     name: Reap orphaned CI droplets
@@ -40,13 +29,11 @@ jobs:
             echo "### Cleanup skipped" >> "$GITHUB_STEP_SUMMARY"
             echo 'DIGITALOCEAN_ACCESS_TOKEN is not configured. No droplets were listed or deleted.' >> "$GITHUB_STEP_SUMMARY"
           fi
-
       - name: Install doctl
         if: steps.credentials.outputs.configured == 'true'
-        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
+        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-
       - name: Delete orphaned CI droplets only
         if: steps.credentials.outputs.configured == 'true'
         run: |
@@ -71,3 +58,4 @@ jobs:
               echo "Keep $name (age ${age}s, below threshold)"
             fi
           done
+    timeout-minutes: 10

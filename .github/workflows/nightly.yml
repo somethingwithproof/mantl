@@ -1,59 +1,39 @@
-name: Nightly CI
-
-on:
+---
+# yamllint disable rule:line-length
+name: Nightly local acceptance
+'on':
   schedule:
-    - cron: '0 6 * * *'  # daily at 06:00 UTC
-  workflow_dispatch:
-
+    - cron: 13 6 * * *
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+defaults:
+  run:
+    shell: bash
 jobs:
-  nightly-full:
+  runtime:
+    name: Disposable integration and packages
+    uses: ./.github/workflows/compliance-runtime.yml
+  benchmarks:
+    name: Go benchmarks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build dev image (cached)
-        uses: docker/build-push-action@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          context: .
-          tags: mantl-dev:ci
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Pytest
-        run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci pytest -v tests
-
-      - name: Validate Kustomize (full)
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          tools: go
+      - name: Run benchmarks without cluster dependencies
         run: |
-          chmod +x ci/validate-kustomize.sh
-          docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-kustomize.sh
-
-      - name: Validate Terraform
-        run: docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci ./ci/validate-terraform.sh
-
-      - name: Kubeconform production manifests
-        run: |
-          docker run --rm -v "$PWD":/project -w /project ghcr.io/yannh/kubeconform:latest \
-            -strict -ignore-missing-schemas -summary <(docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci kustomize build clusters/production)
-
-      - name: Kyverno validate production manifests
-        run: |
-          docker run --rm -v "$PWD":/workspace -w /workspace mantl-dev:ci sh -lc "kustomize build clusters/production > rendered.yaml && \
-            docker run --rm -v \"$PWD\":/project -w /project ghcr.io/kyverno/kyverno:v1.12.1 \
-            kyverno apply policies/kyverno --resource rendered.yaml --policy-report --skip-background-request"
-
-      - name: Slack notify (always)
-        if: always()
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: |
-          if [ -n "$SLACK_WEBHOOK_URL" ]; then \
-            STATUS="Nightly status: $GITHUB_WORKFLOW (#$GITHUB_RUN_NUMBER) on $GITHUB_REF => $GITHUB_JOB"; \
-            curl -X POST -H 'Content-type: application/json' --data "{\"text\": \"$STATUS\nRepo: $GITHUB_REPOSITORY\nRun: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}" "$SLACK_WEBHOOK_URL"; \
-          else \
-            echo "SLACK_WEBHOOK_URL not set; skipping"; \
-          fi
+          mise exec -- go test -run='^$' -bench=. -benchmem ./pkg/... | tee benchmarks.txt
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: go-benchmarks
+          path: benchmarks.txt
+          if-no-files-found: error
+          retention-days: 14

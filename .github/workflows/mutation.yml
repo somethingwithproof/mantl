@@ -1,38 +1,27 @@
+---
+# yamllint disable rule:line-length
 name: Mutation Testing
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+'on':
+  schedule:
+    - cron: 41 4 * * 2
+  workflow_dispatch: {}
 permissions:
   contents: read
-
 concurrency:
   group: mutation-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   gremlins:
     runs-on: ubuntu-latest
-    # Informational only for now. Mutation runs do not block PRs until the
-    # score baseline is established.
-    continue-on-error: true
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - uses: ./.github/actions/setup
         with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Install gremlins
-        run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
-
-      # Scoped to pkg/... to keep runtime bounded; vendored platform/ is excluded.
-      - name: Run gremlins
-        run: gremlins unleash --dry-run=false ./pkg/...
+          tools: go
+      - name: Install pinned mutation tool
+        run: mise exec -- go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
+      - name: Measure mutation baseline
+        run: mise exec -- gremlins unleash --dry-run=false ./pkg/...
+    timeout-minutes: 30

@@ -1,348 +1,81 @@
-# GitHub Actions CI/CD Workflows
-
-## Overview
-
-The mantl platform uses GitHub Actions for continuous integration and deployment. All workflows are secure and follow GitHub security best practices.
-
-## Workflows
-
-### 1. Terraform Validation (`terraform-validate.yml`)
-
-**Triggers:**
-- Pull requests affecting `infra/terraform/**`
-- Pushes to main branch
-
-**Jobs:**
-- `validate-providers`: Validates all 8 cloud provider blueprints in parallel
-  - Terraform fmt check
-  - Terraform init (backend=false)
-  - Terraform validate
-  - Kubernetes version verification (1.31.x)
-- `validate-modules`: Validates Terraform modules
-- `tflint`: Runs TFLint for best practices
-- `checkov`: Security scanning with Checkov
-
-**Matrix Strategy:**
-```yaml
-matrix:
-  provider:
-    - aws-eks
-    - gcp-gke
-    - azure-aks
-    - do-doks
-    - linode-lke
-    - oci-oke
-    - ibm-iks
-    - openstack
-```
-
-### 2. E2E Tests (`e2e-tests.yml`)
-
-**Triggers:**
-- Pull requests affecting `tests/**` or `infra/**`
-- Pushes to main
-- Daily at 2 AM UTC
-- Manual dispatch
-
-**Jobs:**
-- `terraform-validation`: Runs pytest terraform validation tests
-- `kind-cluster-tests`: Matrix of security/platform/dr/performance tests on kind
-- `integration-tests`: Full integration suite (scheduled only)
-
-**Test Categories:**
-- Security: RBAC, network policies, PSS, image security
-- Platform: Prometheus, Velero, Trivy, OpenCost, etc.
-- DR: Backup/restore, database failover, HA
-- Performance: API server, pod startup, network, storage
-
-### 3. Security Scanning (`security-scan.yml`)
-
-**Triggers:**
-- Pull requests
-- Pushes to main
-- Daily at 3 AM UTC
-
-**Scans:**
-- **Trivy**: Container image and filesystem vulnerabilities
-- **Checkov**: Infrastructure as code security
-- **Semgrep**: Static analysis for code vulnerabilities
-- **YAML Lint**: YAML file validation
-
-**SARIF Upload:**
-All results uploaded to GitHub Security tab for tracking.
-
-### 4. Pre-commit Checks (`pre-commit.yml`)
-
-**Triggers:**
-- All pull requests
-
-**Checks:**
-- Python formatting (ruff)
-- Terraform formatting
-- YAML linting
-- Trailing whitespace
-- Large files detection
-- Commit message format
-
-### 5. Release Automation (`release.yml`)
-
-**Triggers:**
-- Tags matching `v*.*.*`
-
-**Jobs:**
-- Create GitHub release
-- Generate changelog
-- Build and publish Helm charts
-- Update documentation
-- Notify Slack/Discord
-
-### 6. Documentation (`docs.yml`)
-
-**Triggers:**
-- Changes to `*.md` files
-- Changes to Terraform files
-
-**Jobs:**
-- Generate terraform-docs
-- Update API documentation
-- Deploy to GitHub Pages
-- Check for broken links
-
-## Security Practices
-
-### No Untrusted Input in Commands
-
-❌ **UNSAFE:**
-```yaml
-- run: echo "${{ github.event.issue.title }}"
-```
-
-✅ **SAFE:**
-```yaml
-- env:
-    TITLE: ${{ github.event.issue.title }}
-  run: echo "$TITLE"
-```
-
-### Secrets Management
-
-- Use GitHub Secrets for sensitive data
-- Never commit credentials
-- Rotate secrets regularly
-- Use OIDC for cloud provider auth
-
-### Dependency Pinning
-
-- Pin action versions: `uses: actions/checkout@v4`
-- Pin tool versions: `terraform_version: 1.10.0`
-- Use dependabot for updates
-
-## Local Testing
-
-### Run Terraform Validation Locally
-
-```bash
-# All providers
-for provider in aws-eks gcp-gke azure-aks do-doks linode-lke oci-oke ibm-iks openstack; do
-  cd infra/terraform/blueprints/$provider
-  terraform fmt -check
-  terraform init -backend=false
-  terraform validate
-  cd -
-done
-
-# Or use act
-act -j validate-providers
-```
-
-### Run E2E Tests Locally
-
-```bash
-# Create kind cluster
-kind create cluster --name mantl-test
-
-# Run tests
-pytest tests/e2e/security/ -v
-pytest tests/e2e/platform/ -v
-```
-
-### Run Security Scans Locally
-
-```bash
-# Trivy
-trivy fs --scanners vuln,secret,config .
-
-# Checkov
-checkov -d infra/terraform/
-
-# Semgrep
-semgrep --config=auto .
-```
-
-## Workflow Status Badges
-
-Add to README.md:
-
-```markdown
-![Terraform Validation](https://github.com/username/mantl/actions/workflows/terraform-validate.yml/badge.svg)
-![E2E Tests](https://github.com/username/mantl/actions/workflows/e2e-tests.yml/badge.svg)
-![Security Scan](https://github.com/username/mantl/actions/workflows/security-scan.yml/badge.svg)
-```
-
-## Troubleshooting
-
-### Terraform Init Fails
-
-**Issue:** Provider download fails
-**Solution:** Check provider versions in `required_providers`
-
-### E2E Tests Timeout
-
-**Issue:** Kind cluster not ready
-**Solution:** Increase timeouts or reduce test scope
-
-### Security Scan False Positives
-
-**Issue:** Checkov reports non-issues
-**Solution:** Add skip comments:
-```hcl
-# checkov:skip=CKV_AWS_1: Public S3 bucket required for static hosting
-resource "aws_s3_bucket" "public" {
-  # ...
-}
-```
-
-## CI/CD Best Practices
-
-1. **Fast Feedback**: Fail fast with quick checks first
-2. **Parallel Execution**: Use matrix strategies
-3. **Caching**: Cache dependencies (pip, terraform providers)
-4. **Artifacts**: Upload test reports and logs
-5. **Notifications**: Alert on failures
-6. **Branch Protection**: Require passing checks before merge
-
-## Required GitHub Settings
-
-### Branch Protection Rules (main)
-
-- ✅ Require pull request before merging
-- ✅ Require status checks to pass:
-  - `validate-providers`
-  - `validate-modules`
-  - `tflint`
-  - `kind-cluster-tests`
-- ✅ Require conversation resolution
-- ✅ Require signed commits
-
-### Repository Secrets
-
-Configure these secrets in repository settings:
-
-#### Cloud Provider Credentials (Optional, for integration tests)
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `DIGITALOCEAN_TOKEN`
-- `LINODE_TOKEN`
-- `AZURE_CREDENTIALS`
-- `GCP_SA_KEY`
-
-#### Notifications
-- `SLACK_WEBHOOK_URL`
-- `DISCORD_WEBHOOK_URL`
-
-#### Release Automation
-- `GITHUB_TOKEN` (automatically provided)
-
-## Workflow Customization
-
-### Skip CI
-
-Add to commit message:
-```
-fix: update documentation [skip ci]
-```
-
-### Run Specific Tests
-
-```yaml
-# In PR comment
-/test security
-/test performance
-/test all
-```
-
-### Manual Workflow Dispatch
-
-```bash
-# Using GitHub CLI
-gh workflow run e2e-tests.yml
-
-# With inputs
-gh workflow run release.yml -f version=v1.2.3
-```
-
-## Performance Optimization
-
-### Current CI/CD Timings
-
-- Terraform Validation: ~5 minutes (parallel)
-- E2E Tests: ~15 minutes (parallel)
-- Security Scans: ~3 minutes
-- **Total: ~15-20 minutes**
-
-### Optimization Strategies
-
-1. **Caching**:
-   ```yaml
-   - uses: actions/cache@v4
-     with:
-       path: ~/.terraform.d/plugin-cache
-       key: terraform-${{ hashFiles('**/*.tf') }}
-   ```
-
-2. **Parallel Jobs**: Already implemented with matrix
-
-3. **Conditional Execution**: Skip unnecessary jobs
-   ```yaml
-   if: contains(github.event.head_commit.message, '[terraform]')
-   ```
-
-4. **Self-Hosted Runners**: For faster execution (optional)
-
-## Monitoring
-
-### GitHub Actions Dashboard
-
-View workflow runs:
-```
-https://github.com/username/mantl/actions
-```
-
-### Metrics to Track
-
-- Success rate
-- Average duration
-- Failure reasons
-- Flaky tests
-
-### Alerts
-
-Configure workflow failure notifications:
-```yaml
-- name: Notify on failure
-  if: failure()
-  uses: 8398a7/action-slack@v3
-  with:
-    status: ${{ job.status }}
-    webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-```
-
-## Future Improvements
-
-- [ ] Add performance benchmarking
-- [ ] Implement canary deployments
-- [ ] Add chaos engineering tests
-- [ ] Integrate with Argo CD
-- [ ] Add compliance scanning
-- [ ] Implement automatic dependency updates
-- [ ] Add cost estimation for Terraform changes
+# Mantl GitHub Actions
+
+Core CI owns first-party tests and coverage. Optional component checks are selected
+inside the workflow, so required checks exist even when a pull request changes
+only documentation. ADR 009 records the ownership and test-scope rules.
+
+| Workflow | Responsibility | Trigger |
+| --- | --- | --- |
+| ci.yml | Go/Python unit tests and coverage, component selection, final CI result | PR, main push, manual |
+| sonarcloud.yml | Project/visibility verification and server quality gate; consumes CI coverage | Reusable, manual |
+| pre-commit.yml | Changed-file hooks and actionlint, required by core CI | Reusable, manual |
+| compliance-runtime.yml | Disposable Kubernetes/PostgreSQL integration, operator image and package snapshots | Reusable for runtime changes, manual |
+| terraform-validate.yml | Eight blueprints plus the security module, supported-provider TFLint, security report | Reusable for infrastructure changes, manual |
+| helm-validate.yml | Locked chart dependencies, first-party charts and stable GitOps manifests | Reusable for manifest changes, manual |
+| developer-image.yml | Cached development-image build and tool/user smoke checks | Reusable for Dockerfile/dependency changes, manual |
+| example-frontend.yml | Locked npm install/audit, tests, build and container smoke checks | Reusable for frontend changes, weekly, manual |
+| nightly.yml | Disposable integration/package validation and recorded benchmarks | Daily, manual |
+| mutation.yml | Pinned mutation tool and mutation baseline | Weekly, manual |
+| dependency-audit.yml | Pinned Python dependency audit with retained report | Weekly, manual |
+| release-please.yml | SemVer release PRs/tags and direct release publication call | Main push, manual |
+| release.yml | Exact-tag archives/deb/rpm, multiarchitecture image, content, SBOMs and signatures | Reusable, published release, manual |
+| slsa-provenance.yml | Generated artifact provenance for the release | Reusable |
+| control-bundle.yml | Independently versioned, signed immutable control content | Manual on main |
+| dependabot-auto-merge.yml | Native protected auto-merge for Dependabot PRs | Dependabot metadata events, hourly, manual |
+| auto-request-reviewers.yml | Request reviews from non-author assignees without checking out PR code | PR metadata events, manual |
+| runner-reaper.yml | Legacy tagged orphan-runner cleanup; new CI creates no cloud runners | Manual |
+| wp-ci.yml | Legacy WordPress PHP compatibility/syntax and custom-code checks | Relevant application changes, manual |
+
+Release Please explicitly dispatches CI on its generated PR head branch. This
+allows release PRs created with GITHUB_TOKEN to satisfy required checks without
+a personal access token. CI verifies the PR is open and the dispatched commit
+matches its current head before selecting checks or attaching Sonar analysis.
+
+## Runtime and cache policy
+
+Core runtimes and validation tools are pinned in mise.toml; the shared setup action
+installs only the tools a job uses. The example frontend has its own mise
+configuration. The legacy PHP compatibility matrix uses its pinned native PHP
+setup action. External actions are pinned to full commit IDs, with native
+Dependabot maintaining them. The SLSA generator deliberately uses its supported
+version tag so its verifier can identify the trusted reusable workflow.
+
+Caches hold Go modules/build output, pip/npm/Composer downloads, pre-commit
+environments, Terraform providers, pinned TFLint rulesets, chart dependencies and
+Docker layers. They do not hold credentials or Terraform state. Coverage,
+package snapshots, audit reports and benchmarks have bounded retention.
+
+## Required checks and permissions
+
+Main should require DCO, CI, and the actual reusable SonarCloud quality-gate check
+reported by GitHub Actions. CI requires Go, Python, repository checks and Sonar success, plus success
+for every selected component; an unselected component may be skipped. Do not
+require a path-filtered workflow whose check might never be created.
+
+Sonar authentication lives in the SONAR_TOKEN repository secret. The project is
+somethingwithproof_mantl under somethingwithproof. Automatic analysis must be
+disabled for this CI pipeline. See ../../docs/sonarcloud.md for setup and fork PR
+limitations.
+
+Default permissions are contents: read. Write permissions are restricted to
+release publishing, provenance, optional SARIF publishing and PR metadata
+automation. PR metadata workflows never check out or execute PR code. Dependabot
+uses GitHub's native auto-merge and the required branch protections; it does not
+bypass checks or require every optional third-party integration to be available.
+
+## Validation boundaries
+
+Normal and scheduled workflows use local contracts, rendering, unit tests and
+explicit disposable Kubernetes/PostgreSQL fixtures. They do not deploy cloud
+infrastructure or claim acceptance for live clusters. Existing Checkov findings
+remain informational and are retained as reports; Trivy's configured changed-file
+hook continues to enforce the repository's existing severity policy.
+
+The former Dagger/no-module pipeline, duplicate container/Go pipelines, custom
+Dependabot updater, separate benchmark schedule, nonexistent Cloudflare path,
+and duplicate DigitalOcean validation were removed or consolidated. The Terraform
+helper validates real infra/terraform paths and retains failures across modules.
+
+Release publication retains exact-tag validation, immutable registry/content
+versions, least-privilege signing, checksums, SBOMs, and generated provenance.
+See ../../docs/releases.md for the supported artifacts and release process.

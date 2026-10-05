@@ -1,53 +1,54 @@
-name: Helm Validate
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+---
+# yamllint disable rule:line-length
+name: Charts and manifests
+'on':
+  workflow_call: {}
+  workflow_dispatch: {}
 permissions:
   contents: read
-
 concurrency:
-  group: helm-validate-${{ github.ref }}
-  cancel-in-progress: true
-
+  group: charts-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+defaults:
+  run:
+    shell: bash
 jobs:
-  helm:
+  validate:
+    name: Chart and manifest validation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up Helm
-        uses: azure/setup-helm@v5
-
-      # Only first-party charts under charts/ are linted. Vendored upstream
-      # charts in platform/ are excluded by path.
-      - name: Lint and template charts
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          tools: helm kustomize kubeconform
+      - name: Cache locked chart dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |-
+            charts/*/charts
+            ~/.cache/helm
+          key: ${{ runner.os }}-helm-${{ hashFiles('charts/**/Chart.lock', 'charts/**/Chart.yaml', 'mise.toml') }}
+      - name: Lint and render first-party charts
         run: |
-          set -euo pipefail
-          found=0
           for chart in charts/*/; do
-            if [ -f "${chart}Chart.yaml" ]; then
-              found=1
-              echo "::group::helm lint ${chart}"
-              helm lint "${chart}"
-              echo "::endgroup::"
-              # Templating an umbrella chart needs its subchart dependencies
-              # present. Fetch them; if external repos cannot be resolved, lint
-              # has already validated the chart, so warn rather than fail CI.
-              # stderr is kept (not suppressed) so a real fetch error is visible.
-              if helm dependency build "${chart}" || helm dependency update "${chart}"; then
-                echo "::group::helm template ${chart}"
-                helm template "${chart}" >/dev/null
-                echo "::endgroup::"
-              else
-                echo "::warning::skipping helm template for ${chart}: external dependencies could not be resolved"
-              fi
-            fi
+            test -f "${chart}Chart.yaml" || continue
+            mise exec -- helm dependency list "$chart" |
+            while read -r name _version repository _status; do
+              case "$repository" in
+                https://*) mise exec -- helm repo add "$name" "$repository" ;;
+              esac
+            done
+            mise exec -- helm dependency build "$chart"
+            mise exec -- helm lint "$chart"
+            mise exec -- helm template mantl "$chart" > "$RUNNER_TEMP/chart.yaml"
           done
-          if [ "${found}" -eq 0 ]; then
-            echo "No charts found under charts/" >&2
-            exit 1
-          fi
+      - name: Render stable GitOps manifests
+        run: |
+          mise exec -- bash ci/validate-kustomize-dev.sh
+          for path in deploy/operator/base deploy/fleet/base deploy/gitops/policies deploy/gitops/core; do
+            mise exec -- kustomize build "$path" > "$RUNNER_TEMP/manifest.yaml"
+            mise exec -- kubeconform -strict -ignore-missing-schemas -kubernetes-version 1.35.0 -summary "$RUNNER_TEMP/manifest.yaml"
+          done

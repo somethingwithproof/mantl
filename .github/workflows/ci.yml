@@ -1,256 +1,231 @@
 ---
 # yamllint disable rule:line-length
 name: Mantl CI
-
-"on":
+'on':
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
-
+    inputs:
+      pull-request:
+        description: Optional PR number; dispatch on that PR head branch
+        type: string
+        default: ''
 permissions:
   contents: read
-
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
-# Every CI droplet is tagged with this and ONLY this tag, and named
-# mantl-ci-<run id>-<run attempt>. All teardown is filtered by the tag first and the name
-# pattern second, so the workflow can never touch other droplets on the account.
-env:
-  CI_RUNNER_TAG: mantl-ci-runner
-  # 4 vCPU / 8 GB: Go build pulls k8s, aws-sdk, controller-runtime, and prometheus,
-  # and golangci-lint is memory-hungry; 4 GB risks OOM. Ephemeral, so cost is
-  # pennies per run. Tune here if jobs get heavier or lighter.
-  CI_RUNNER_SIZE: s-4vcpu-8gb
-  CI_RUNNER_IMAGE: ubuntu-24-04-x64
-  CI_RUNNER_REGION: nyc3
-
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+defaults:
+  run:
+    shell: bash
 jobs:
-  runner-config:
-    name: Select CI runner
+  changes:
+    name: Select component checks
+    permissions:
+      contents: read
+      pull-requests: read
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      cloud: ${{ steps.select.outputs.cloud }}
+      infrastructure: ${{ steps.paths.outputs.infrastructure }}
+      charts: ${{ steps.paths.outputs.charts }}
+      runtime: ${{ steps.paths.outputs.runtime }}
+      frontend: ${{ steps.paths.outputs.frontend }}
+      developer_image: ${{ steps.paths.outputs.developer_image }}
+      pull_request: ${{ steps.pr.outputs.pull_request }}
+      head_branch: ${{ steps.pr.outputs.head_branch }}
+      base_branch: ${{ steps.pr.outputs.base_branch }}
+      base_sha: ${{ steps.pr.outputs.base_sha }}
     steps:
-      - name: Select configured runner backend
-        id: select
-        env:
-          IS_PULL_REQUEST: ${{ github.event.pull_request.number != null }}
-          DO_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-          GH_RUNNER_PAT: ${{ secrets.GH_RUNNER_PAT }}
-        run: |
-          set -euo pipefail
-          if [ "$IS_PULL_REQUEST" = "false" ] && \
-             [ -n "$DO_TOKEN" ] && [ -n "$GH_RUNNER_PAT" ]; then
-            echo "cloud=true" >> "$GITHUB_OUTPUT"
-            echo "Using configured DigitalOcean runner." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "cloud=false" >> "$GITHUB_OUTPUT"
-            echo "Using GitHub-hosted runner; cloud credentials are incomplete or this is a PR." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-  start-runner:
-    name: Start DO runner
-    needs: runner-config
-    # Provision only when both credentials are available on a trusted event.
-    if: needs.runner-config.outputs.cloud == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    outputs:
-      label: ${{ steps.create.outputs.label }}
-    steps:
-      - name: Install doctl
-        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-
-      - name: Create ephemeral runner droplet
-        id: create
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          tools: python
+      - name: Resolve current pull request context
+        id: pr
         env:
-          GH_RUNNER_PAT: ${{ secrets.GH_RUNNER_PAT }}
-          REPO: ${{ github.repository }}
-          NAME: mantl-ci-${{ github.run_id }}-${{ github.run_attempt }}
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ inputs.pull-request || github.event.pull_request.number }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          ALLOW_FORK: ${{ github.event_name == 'pull_request' }}
+        run: mise exec -- python ci/pr_context.py >> "$GITHUB_OUTPUT"
+      - name: Select checks from changed paths
+        id: paths
+        env:
+          BASE: ${{ steps.pr.outputs.base_sha || github.event.before }}
+          HEAD: ${{ github.sha }}
         run: |
           set -euo pipefail
-          echo "label=${NAME}" >> "$GITHUB_OUTPUT"
-
-          # Short-lived registration token for an ephemeral self-hosted runner.
-          REG_TOKEN=$(curl -sf -X POST \
-            -H "Authorization: Bearer ${GH_RUNNER_PAT}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${REPO}/actions/runners/registration-token" \
-            | jq -r .token)
-          if [ -z "${REG_TOKEN}" ] || [ "${REG_TOKEN}" = "null" ]; then
-            echo "Failed to obtain a runner registration token"; exit 1
+          if [ -z "$BASE" ] || [[ "$BASE" =~ ^0+$ ]]; then
+            git ls-files -z | mise exec -- python ci/changed_components.py >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only -z "$BASE" "$HEAD" | mise exec -- python ci/changed_components.py >> "$GITHUB_OUTPUT"
           fi
-
-          # cloud-init: install prerequisites, register a one-shot (--ephemeral)
-          # runner that auto-deregisters after a single job, and start it.
-          cat > user-data.sh <<EOF
-          #!/usr/bin/env bash
-          set -euo pipefail
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update -y
-          apt-get install -y git curl tar jq build-essential ca-certificates
-          id -u runner >/dev/null 2>&1 || useradd -m runner
-          cd /home/runner
-          RUNNER_VERSION=2.319.1
-          curl -sfLo runner.tar.gz \
-            "https://github.com/actions/runner/releases/download/v\${RUNNER_VERSION}/actions-runner-linux-x64-\${RUNNER_VERSION}.tar.gz"
-          mkdir -p actions-runner && tar xzf runner.tar.gz -C actions-runner
-          chown -R runner:runner /home/runner
-          cd /home/runner/actions-runner
-          sudo -u runner ./config.sh --unattended --ephemeral \
-            --url "https://github.com/${REPO}" \
-            --token "${REG_TOKEN}" \
-            --labels "${NAME}" \
-            --name "${NAME}"
-          sudo -u runner nohup ./run.sh >/home/runner/runner.log 2>&1 &
-          EOF
-
-          # Tagged with the dedicated CI tag and the deterministic CI name.
-          doctl compute droplet create "${NAME}" \
-            --image "${CI_RUNNER_IMAGE}" \
-            --size "${CI_RUNNER_SIZE}" \
-            --region "${CI_RUNNER_REGION}" \
-            --tag-name "${CI_RUNNER_TAG}" \
-            --user-data-file user-data.sh \
-            --wait --no-header --format ID,Name
-          echo "Created CI droplet ${NAME}"
-
-  build:
-    name: Build and test
-    needs: [runner-config, start-runner]
-    if: >-
-      always() &&
-      needs.runner-config.result == 'success' &&
-      (needs.start-runner.result == 'success' ||
-       needs.runner-config.outputs.cloud == 'false')
-    runs-on: ${{ needs.runner-config.outputs.cloud == 'true' && needs.start-runner.outputs.label || 'ubuntu-latest' }}
-    timeout-minutes: 30
+  go:
+    name: Go tests and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+      - uses: ./.github/actions/setup
         with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Install dependencies
-        run: go mod download
-
-      - name: Verify dependencies
-        run: go mod verify
-
-      - name: Build CLI
-        run: |
-          mkdir -p dist
-          go build -v -o dist/mantl ./cmd/mantl
-
-      - name: Build compliance operator
-        run: go build -v -o dist/compliance-operator ./cmd/compliance-operator
-
-      - name: Check formatting
-        run: |
-          unformatted=$(git ls-files '*.go' | grep -v '^platform/' | xargs gofmt -l)
-          if [ -n "$unformatted" ]; then
-            echo "These files need gofmt:"; echo "$unformatted"; exit 1
-          fi
-
-      - name: Vet
-        run: go list ./... | grep -v 'github.com/thomasvincent/mantl/platform/' | xargs go vet
-
-      - name: Unit tests
-        run: make go-test
-
-      - name: Validate spec planning
-        run: ./dist/mantl plan examples/mantl-spec.yaml
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
-        with:
-          version: v2.12.2
-
-      - name: Generated code is committed
-        run: |
-          make manifests
-          make generate
-          git diff --exit-code || { \
-            echo "Generated files are stale. Run 'make manifests && make generate' and commit."; \
-            exit 1; }
-
-  stop-runner:
-    name: Stop DO runner
-    needs: [runner-config, start-runner, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: always() && needs.runner-config.outputs.cloud == 'true' && needs.start-runner.result != 'skipped'
-    steps:
-      - name: Install doctl
-        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
-        with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-
-      - name: Destroy this run's runner droplet
-        env:
-          NAME: mantl-ci-${{ github.run_id }}-${{ github.run_attempt }}
+          tools: go golangci-lint
+      - name: Verify dependencies and formatting
         run: |
           set -euo pipefail
-          # Gate 2: refuse to act on anything not matching the CI name pattern.
-          case "$NAME" in
-            mantl-ci-*) ;;
-            *) echo "Refusing to act on unexpected name: $NAME"; exit 1 ;;
-          esac
-          # Gate 1: only droplets carrying the dedicated CI tag are ever listed.
-          id=$(doctl compute droplet list --tag-name "$CI_RUNNER_TAG" --no-header --format ID,Name \
-               | awk -v n="$NAME" '$2 == n { print $1 }')
-          if [ -z "$id" ]; then
-            echo "No droplet named $NAME under tag $CI_RUNNER_TAG (already cleaned up)."
-            exit 0
+          mise exec -- go mod verify
+          unformatted=$(git ls-files -z '*.go' ':!:platform/**' ':!:policies/kyverno/charts/**' | xargs -0 gofmt -l)
+          if [ -n "$unformatted" ]; then
+            echo "$unformatted"
+            exit 1
           fi
-          echo "Destroying CI droplet $id ($NAME)"
-          doctl compute droplet delete "$id" --force
-
+      - name: Test all first-party packages with coverage
+        run: mise exec -- make go-coverage
+      - name: Lint first-party Go code
+        run: mise exec -- golangci-lint run
+      - name: Check generated APIs and CLI planning
+        run: |
+          mise exec -- make manifests generate
+          git diff --exit-code
+          mise exec -- go run ./cmd/mantl plan examples/mantl-spec.yaml
+      - name: Retain Go coverage
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: go-coverage
+          path: coverage.out
+          if-no-files-found: error
+          retention-days: 7
+  python:
+    name: Python tests and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          tools: python terraform kubectl kustomize
+      - name: Test infrastructure contracts and release tools
+        run: |
+          mise exec -- python -m venv .venv-ci
+          mise exec -- .venv-ci/bin/python -m pip install -r requirements-test.txt
+          mise exec -- .venv-ci/bin/python -m pytest tests/unit/ --cov=scripts --cov=ci --cov-report=xml:coverage-python.xml
+      - name: Retain Python coverage
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: python-coverage
+          path: coverage-python.xml
+          if-no-files-found: error
+          retention-days: 7
+  repository:
+    name: Repository checks
+    needs: changes
+    uses: ./.github/workflows/pre-commit.yml
+    with:
+      base-ref: ${{ needs.changes.outputs.base_sha || github.event.before }}
+  sonar:
+    name: SonarCloud
+    needs:
+      - changes
+      - go
+      - python
+    uses: ./.github/workflows/sonarcloud.yml
+    with:
+      coverage-artifacts: true
+      pull-request: ${{ needs.changes.outputs.pull_request }}
+      head-branch: ${{ needs.changes.outputs.head_branch }}
+      base-branch: ${{ needs.changes.outputs.base_branch }}
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  infrastructure:
+    name: Infrastructure
+    needs: changes
+    if: needs.changes.outputs.infrastructure == 'true'
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/terraform-validate.yml
+  charts:
+    name: Charts and manifests
+    needs: changes
+    if: needs.changes.outputs.charts == 'true'
+    uses: ./.github/workflows/helm-validate.yml
+  runtime:
+    name: Runtime and packages
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    uses: ./.github/workflows/compliance-runtime.yml
+  frontend:
+    name: Example frontend
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    uses: ./.github/workflows/example-frontend.yml
+  developer_image:
+    name: Developer image
+    needs: changes
+    if: needs.changes.outputs.developer_image == 'true'
+    uses: ./.github/workflows/developer-image.yml
   ci:
     name: CI
-    needs: [runner-config, start-runner, build, stop-runner]
+    needs:
+      - changes
+      - go
+      - python
+      - sonar
+      - infrastructure
+      - charts
+      - runtime
+      - frontend
+      - developer_image
+      - repository
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: always()
     steps:
-      - name: Require build success
+      - name: Require successful selected checks
         env:
-          CONFIG_RESULT: ${{ needs.runner-config.result }}
-          CLOUD_RUNNER: ${{ needs.runner-config.outputs.cloud }}
-          START_RESULT: ${{ needs.start-runner.result }}
-          BUILD_RESULT: ${{ needs.build.result }}
-          STOP_RESULT: ${{ needs.stop-runner.result }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          GO_RESULT: ${{ needs.go.result }}
+          PYTHON_RESULT: ${{ needs.python.result }}
+          SONAR_RESULT: ${{ needs.sonar.result }}
+          INFRASTRUCTURE_SELECTED: ${{ needs.changes.outputs.infrastructure }}
+          INFRASTRUCTURE_RESULT: ${{ needs.infrastructure.result }}
+          CHARTS_SELECTED: ${{ needs.changes.outputs.charts }}
+          CHARTS_RESULT: ${{ needs.charts.result }}
+          RUNTIME_SELECTED: ${{ needs.changes.outputs.runtime }}
+          RUNTIME_RESULT: ${{ needs.runtime.result }}
+          FRONTEND_SELECTED: ${{ needs.changes.outputs.frontend }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          DEVELOPER_IMAGE_SELECTED: ${{ needs.changes.outputs.developer_image }}
+          DEVELOPER_IMAGE_RESULT: ${{ needs.developer_image.result }}
+          REPOSITORY_RESULT: ${{ needs.repository.result }}
         run: |
-          if [ "$CONFIG_RESULT" != "success" ]; then
-            echo "runner-config job result: $CONFIG_RESULT"
-            exit 1
-          fi
-          case "$CLOUD_RUNNER" in
-            true|false) ;;
-            *) echo "Invalid runner selection"; exit 1 ;;
-          esac
-          if [ "$CLOUD_RUNNER" = "true" ] && [ "$START_RESULT" != "success" ]; then
-            echo "start-runner job result: $START_RESULT"
-            exit 1
-          fi
-          if [ "$BUILD_RESULT" != "success" ]; then
-            echo "build job result: $BUILD_RESULT"
-            exit 1
-          fi
-          if [ "$CLOUD_RUNNER" = "true" ] && [ "$STOP_RESULT" != "success" ]; then
-            echo "stop-runner job result: $STOP_RESULT"
-            exit 1
-          fi
-          echo "CI passed."
+          set -euo pipefail
+          for result in "$CHANGES_RESULT" "$GO_RESULT" "$PYTHON_RESULT" "$SONAR_RESULT" "$REPOSITORY_RESULT"; do
+            if [ "$result" != success ]; then
+              echo "::error::A required CI prerequisite failed: $result"
+              exit 1
+            fi
+          done
+          require_selected() {
+            case "$1:$2" in
+              true:success|false:skipped) ;;
+              *) echo "::error::Selected component check did not succeed: $3 ($1:$2)"; exit 1 ;;
+            esac
+          }
+          require_selected "$INFRASTRUCTURE_SELECTED" "$INFRASTRUCTURE_RESULT" infrastructure
+          require_selected "$CHARTS_SELECTED" "$CHARTS_RESULT" charts
+          require_selected "$RUNTIME_SELECTED" "$RUNTIME_RESULT" runtime
+          require_selected "$FRONTEND_SELECTED" "$FRONTEND_RESULT" frontend
+          require_selected "$DEVELOPER_IMAGE_SELECTED" "$DEVELOPER_IMAGE_RESULT" developer_image
+          echo "All required and selected checks passed."

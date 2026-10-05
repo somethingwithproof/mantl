@@ -1,23 +1,29 @@
 ---
 # yamllint disable rule:line-length
 name: Auto-request reviews from assignees
-
-"on":
+'on':
   pull_request_target:
-    types: [assigned, opened, reopened, ready_for_review, edited, synchronize]
-  workflow_dispatch:
-
+    types:
+      - assigned
+      - opened
+      - reopened
+      - ready_for_review
+      - edited
+      - synchronize
+  workflow_dispatch: null
 permissions:
   contents: read
   pull-requests: write
   issues: write
-
+concurrency:
+  group: reviewers-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   add-assignees-as-reviewers:
     runs-on: ubuntu-latest
     steps:
       - name: Request reviews from assignees (include author as assignee)
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -71,3 +77,4 @@ jobs:
             } catch (e) {
               core.warning(`Requesting reviewers failed: ${e.message}`);
             }
+    timeout-minutes: 15

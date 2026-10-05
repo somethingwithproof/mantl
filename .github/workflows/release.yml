@@ -1,5 +1,7 @@
+---
+# yamllint disable rule:line-length
 name: Release
-on:
+'on':
   workflow_call:
     inputs:
       tag:
@@ -12,7 +14,11 @@ on:
         required: true
         type: string
   release:
-    types: [published]
+    types:
+      - published
+env:
+  MISE_AUTO_INSTALL: 'false'
+  MISE_EXEC_AUTO_INSTALL: 'false'
 permissions:
   contents: read
 concurrency:
@@ -44,7 +50,8 @@ jobs:
           echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
         with:
-          version: '2026.10.2'
+          version: 2026.10.2
+          install_args: go goreleaser
       - name: Test and package Go CLI
         run: |
           mise exec -- make go-test
@@ -52,6 +59,7 @@ jobs:
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: cli-release
+          retention-days: 7
           path: |
             dist/*.tar.gz
             dist/*.deb
@@ -85,7 +93,8 @@ jobs:
         run: echo "name=ghcr.io/${REPOSITORY,,}-operator" >> "$GITHUB_OUTPUT"
       - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
         with:
-          version: '2026.10.2'
+          version: 2026.10.2
+          install_args: oras
       - name: Refuse replacing a published operator tag
         env:
           IMAGE: ${{ steps.image.outputs.name }}
@@ -110,8 +119,12 @@ jobs:
           tags: ${{ steps.image.outputs.name }}:${{ needs.build.outputs.tag }}
           provenance: mode=max
           sbom: true
+          cache-from: type=gha,scope=operator
+          cache-to: type=gha,scope=operator,mode=max
   publish:
-    needs: [build, image]
+    needs:
+      - build
+      - image
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -131,10 +144,12 @@ jobs:
           persist-credentials: false
       - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
         with:
-          version: '2026.10.2'
+          version: 2026.10.2
+          install_args: go python oras cosign syft kubectl
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
         with:
           name: cli-release
+          retention-days: 7
           path: dist/release
       - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
@@ -165,7 +180,9 @@ jobs:
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"
           gh release upload "$RELEASE_TAG" ./* --repo "$GITHUB_REPOSITORY"
   provenance:
-    needs: [build, publish]
+    needs:
+      - build
+      - publish
     permissions:
       actions: read
       contents: write

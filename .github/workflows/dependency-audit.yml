@@ -1,0 +1,37 @@
+---
+# yamllint disable rule:line-length
+name: Dependency audit
+'on':
+  schedule:
+    - cron: 29 7 * * 1
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: dependency-audit
+  cancel-in-progress: false
+jobs:
+  python:
+    name: Python dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          tools: python
+      - name: Audit pinned requirements
+        run: |
+          mise exec -- python -m venv .venv-audit
+          mise exec -- .venv-audit/bin/python -m pip install pip-audit==2.10.1
+          mise exec -- .venv-audit/bin/python -m pip_audit -r requirements.txt -r requirements-test.txt --format json --output dependency-audit.json
+      - name: Retain audit results
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: python-dependency-audit
+          path: dependency-audit.json
+          if-no-files-found: error
+          retention-days: 14

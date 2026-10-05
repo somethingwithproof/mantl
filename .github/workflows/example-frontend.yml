@@ -1,27 +1,19 @@
+---
+# yamllint disable rule:line-length
 name: Example frontend
-
-on:
-  push:
-    branches: [main]
-    paths:
-      - examples/ecommerce-microservices/src/frontend/**
-      - .github/workflows/example-frontend.yml
-  pull_request:
-    branches: [main]
-    paths:
-      - examples/ecommerce-microservices/src/frontend/**
-      - .github/workflows/example-frontend.yml
-  workflow_dispatch:
+'on':
+  workflow_call: {}
+  workflow_dispatch: {}
   schedule:
-    - cron: '23 3 * * 2'
-
+    - cron: 23 3 * * 2
+env:
+  MISE_AUTO_INSTALL: 'false'
+  MISE_EXEC_AUTO_INSTALL: 'false'
 permissions:
   contents: read
-
 concurrency:
   group: example-frontend-${{ github.ref }}
   cancel-in-progress: true
-
 jobs:
   frontend:
     runs-on: ubuntu-latest
@@ -33,10 +25,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db # v3
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
         with:
-          version: '2026.10.2'
+          version: 2026.10.2
           working_directory: examples/ecommerce-microservices/src/frontend
+          install_args: node
+      - name: Cache locked npm downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('examples/ecommerce-microservices/src/frontend/package-lock.json')
+            }}
       - name: Install locked dependencies
         run: mise exec -- npm ci --ignore-scripts --no-audit --no-fund
       - name: Audit dependencies
@@ -45,11 +44,19 @@ jobs:
         run: mise exec -- npm test
       - name: Type check and build
         run: mise exec -- npm run build
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Build cached frontend image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: examples/ecommerce-microservices/src/frontend
+          tags: mantl-frontend:ci
+          load: true
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
       - name: Build and smoke-test production image
         shell: bash
         run: |
           set -euo pipefail
-          docker build --tag mantl-frontend:ci .
           container=$(docker run --detach --rm \
             --add-host products-api:127.0.0.1 --add-host orders-api:127.0.0.1 \
             --publish 127.0.0.1::8080 mantl-frontend:ci)
