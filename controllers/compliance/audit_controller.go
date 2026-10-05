@@ -91,10 +91,11 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("persist audit manifest: %w", err)
 	}
-	return r.completeInlineAudit(ctx, &audit, manifest, ref, tasks, failed, gaps, next)
+	return r.completeInlineAudit(ctx, &audit, manifest, ref, tasks, failed, next)
 }
 
-func (r *ComplianceAuditReconciler) completeInlineAudit(ctx context.Context, audit *api.ComplianceAudit, manifest evidence.Manifest, ref evidence.ObjectRef, tasks []auditplan.InlineTask, failed map[string]bool, gaps []string, next time.Duration) (ctrl.Result, error) {
+func (r *ComplianceAuditReconciler) completeInlineAudit(ctx context.Context, audit *api.ComplianceAudit, manifest evidence.Manifest, ref evidence.ObjectRef, tasks []auditplan.InlineTask, failed map[string]bool, next time.Duration) (ctrl.Result, error) {
+	gaps := manifest.Gaps
 	audit.Status.EvidenceURI = ref.URI + "?versionId=" + url.QueryEscape(ref.Version)
 	audit.Status.ManifestHash = ref.Hash
 	audit.Status.FindingCount = int32(len(manifest.Objects))

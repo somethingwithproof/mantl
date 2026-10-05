@@ -63,7 +63,7 @@ func (r *AuditRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, err
 	}
 	active = activeCollectorJobs(existingJobs.Items)
-	pending, err = r.processTasks(ctx, &run, image, bucket, key, account, now, active, limit)
+	pending, err = r.processTasks(ctx, &run, collectorConfig{image: image, bucket: bucket, key: key, account: account}, now, active, limit)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -139,7 +139,11 @@ func activeCollectorJobs(jobs []batch.Job) int {
 	return active
 }
 
-func (r *AuditRunReconciler) reconcileTask(ctx context.Context, run *api.AuditRun, task api.CollectorTask, image, bucket, key, account string, now time.Time, active, limit int) (bool, bool, error) {
+type collectorConfig struct {
+	image, bucket, key, account string
+}
+
+func (r *AuditRunReconciler) reconcileTask(ctx context.Context, run *api.AuditRun, task api.CollectorTask, config collectorConfig, now time.Time, active, limit int) (bool, bool, error) {
 	if existing := run.Status.Results[task.ID]; existing.Phase == "Completed" || existing.Phase == "Failed" {
 		return false, false, nil
 	}
@@ -147,7 +151,7 @@ func (r *AuditRunReconciler) reconcileTask(ctx context.Context, run *api.AuditRu
 		run.Status.Results[task.ID] = api.TaskResult{Phase: "Failed"}
 		return false, false, nil
 	}
-	expected := collection.Job(run, task, image, bucket, key, account)
+	expected := collection.Job(run, task, config.image, config.bucket, config.key, config.account)
 	var job batch.Job
 	err := r.Get(ctx, client.ObjectKeyFromObject(expected), &job)
 	if apierrors.IsNotFound(err) {
@@ -166,7 +170,7 @@ func (r *AuditRunReconciler) reconcileTask(ctx context.Context, run *api.AuditRu
 		}
 		return !failed, false, nil
 	}
-	result, err := r.verifyCompletedCollector(ctx, run, task, &job, bucket, now)
+	result, err := r.verifyCompletedCollector(ctx, run, task, &job, config.bucket, now)
 	if err != nil {
 		return false, false, err
 	}
@@ -254,10 +258,10 @@ func (r *AuditRunReconciler) collectorIdentity(run *api.AuditRun) (string, strin
 	return image, account, bucket, key, nil
 }
 
-func (r *AuditRunReconciler) processTasks(ctx context.Context, run *api.AuditRun, image, bucket, key, account string, now time.Time, active, limit int) (bool, error) {
+func (r *AuditRunReconciler) processTasks(ctx context.Context, run *api.AuditRun, config collectorConfig, now time.Time, active, limit int) (bool, error) {
 	pending := false
 	for _, task := range run.Spec.Tasks {
-		waiting, started, err := r.reconcileTask(ctx, run, task, image, bucket, key, account, now, active, limit)
+		waiting, started, err := r.reconcileTask(ctx, run, task, config, now, active, limit)
 		if err != nil {
 			return false, err
 		}
