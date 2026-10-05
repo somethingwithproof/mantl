@@ -35,3 +35,24 @@ review whenever the SPIRE architecture or supported node configuration changes.
 References: [Cilium mutual authentication limitations](https://docs.cilium.io/en/stable/network/servicemesh/mutual-authentication/mutual-authentication/),
 [SPIRE 1.9 workload attestor configuration](https://github.com/spiffe/spire/blob/v1.9.0/doc/plugin_agent_workloadattestor_k8s.md),
 [Kubernetes kubelet authentication and authorization](https://kubernetes.io/docs/reference/access-authn-authz/kubelet-authn-authz/).
+
+## Production acceptance remains blocked
+
+The host namespace exceptions are conditional design decisions for a trusted
+node identity agent, not production approval. Before deploying this template to
+production, record an environment-specific review and live evidence covering:
+
+- Successful node and workload attestation on the supported kubelet configuration,
+  including rejection of unauthorized workloads.
+- Rejection of an untrusted kubelet CA, invalid server identity and unauthorized
+  kubelet access; no verification or RBAC fallback is permitted.
+- Certificate renewal and CA rotation without accepting an unverified identity.
+- Restricted administrators, namespace modification rights and Workload API socket
+  access, with the host namespace and socket trust boundaries reviewed.
+- Explicit application TLS or independently validated network encryption for
+  sensitive traffic, with failures and recovery recorded.
+
+Record the cluster/version, exact template commit, reviewer and evidence locations.
+Local tests do not satisfy these criteria. Review the exceptions again when SPIRE,
+Kubernetes, node networking or the administrative trust boundary changes. See
+[ADR 010](../../docs/adr/010-security-exception-boundaries.md).

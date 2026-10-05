@@ -2,16 +2,24 @@
 # use_modern_gce_network is declared in main.tf alongside the instance schema.
 
 variable "allowed_cidrs" {
-  description = "Source IP ranges allowed to access external firewall ports. Must be explicitly set."
+  description = "Deprecated compatibility input. External source allowlists are unsupported; must remain empty."
   type        = list(string)
   default     = []
 
   validation {
-    condition = alltrue([
-      for cidr in var.allowed_cidrs : can(cidrhost(cidr, 0)) &&
-      try(tonumber(split("/", cidr)[1]) > 0, false)
-    ])
-    error_message = "allowed_cidrs must contain valid CIDRs with a nonzero prefix; global access is forbidden."
+    condition     = length(var.allowed_cidrs) == 0
+    error_message = "External ingress is unsupported. Remove allowed_cidrs and use private connectivity or reviewed IAP SSH access."
+  }
+}
+
+variable "enable_iap_ssh" {
+  description = "Allow SSH from Google IAP to this module's tagged VMs. Requires separately reviewed IAP IAM and the managed network."
+  type        = bool
+  default     = false
+
+  validation {
+    condition     = !var.enable_iap_ssh || var.use_modern_gce_network
+    error_message = "IAP SSH requires the managed network; externally supplied subnets need independent firewall review."
   }
 }
 
@@ -36,20 +44,23 @@ resource "google_compute_subnetwork" "mi_subnet_modern" {
   }
 }
 
-resource "google_compute_firewall" "external_modern" {
-  count   = var.use_modern_gce_network ? 1 : 0
-  name    = "${var.short_name}-firewall-external-modern"
-  network = google_compute_network.mi_network_modern[0].name
-  # Yes, we love guardrails: allowed_cidrs keeps future-you from opening the barn door.
-  source_ranges = var.allowed_cidrs
-
-  allow {
-    protocol = "icmp"
-  }
+# This source range is Google's IAP TCP forwarding service, not public clients.
+# Tunnel authorization and SSH authentication are separate deployment prerequisites.
+resource "google_compute_firewall" "iap_ssh" {
+  count         = var.enable_iap_ssh ? 1 : 0
+  name          = "${var.short_name}-iap-ssh"
+  network       = google_compute_network.mi_network_modern[0].name
+  direction     = "INGRESS"
+  source_ranges = ["35.235.240.0/20"]
+  target_tags   = [var.short_name]
 
   allow {
     protocol = "tcp"
-    ports    = ["22", "80", "443", "4400", "5050", "8080", "8500"]
+    ports    = ["22"]
+  }
+
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
   }
 }
 
@@ -76,4 +87,10 @@ resource "google_compute_firewall" "internal_modern" {
 
 output "modern_subnetwork_self_link" {
   value = var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : null
+
+  # Preserve a fail-closed compatibility contract for callers with legacy inputs.
+  precondition {
+    condition     = !var.gce_public_ip && length(var.allowed_cidrs) == 0
+    error_message = "This subnet contract supports private VM interfaces only; legacy public-access inputs must be disabled."
+  }
 }

@@ -55,24 +55,36 @@ trusted node agent. The template now requires verified kubelet TLS and a mandato
 CA mount, drops capabilities and removes `nodes/proxy` authorization in favor of
 `nodes/pods`. See [the prerequisites and trust-boundary review](../infrastructure/cilium/spire-security.md).
 Local tests cover the trust mount and restricted RBAC; no live attestation is claimed.
+Production acceptance is blocked until the environment-specific live evidence
+listed in the prerequisite document is reviewed. These exceptions are conditional
+and must be revisited on trust-boundary or supported-version changes.
 
 ## Archived Nomad TCP listener
 
 Finding `AaELVxxQAzA3Gm6ElT8g` (`terraform:S6258`) concerns the archived Nomad
 internal TCP Network Load Balancer. The AWS S3 access-log feature inspected by this
 rule records TLS listeners and requests, not this TCP listener. This is an accepted
-logging gap in an archived, unsupported module, not a claim of complete logs.
+logging gap only while the archived, unsupported module remains undeployed.
+It is not approved for reuse or production, and is not a claim of complete logs.
 [Archive security limits](legacy/nomad/terraform/SECURITY.md) require independently
 verified network and application audit logging before reuse. Re-review if the
 listener protocol, provider logging capabilities or archive support status changes.
 
-## Explicit GCE public-IP opt-in
+## GCE public-IP capabilities removed
 
 Findings `AaELVxu5AzA3Gm6ElT72`, `AaELVxu5AzA3Gm6ElT73` and
-`AaELVxu5AzA3Gm6ElT74` (`terraform:S6329`) concern conditional `access_config`
-blocks. Public IPs are disabled by default. These are accepted opt-in capabilities
-in the experimental VM module, guarded by a required managed network and nonempty source allowlist
-that rejects invalid CIDRs and both IPv4 and IPv6 zero-prefix ranges. Mocked,
-plan-only Terraform tests verify the private default and rejected configurations.
-Managed subnet Flow Logs are enabled; external subnets need independent review.
-See [module limits and migration requirements](../infra/terraform/gce/README.md).
+`AaELVxu5AzA3Gm6ElT74` (`terraform:S6329`) previously concerned conditional
+`access_config` blocks. The accepted opt-in design has been superseded: all three
+blocks and the external service-ingress rule are removed. All VM roles are now
+private-only; deprecated public-access inputs reject unsafe legacy settings.
+
+Optional administrative ingress allows only logged TCP/22 from Google's IAP
+service range to this module's tagged VMs, with separate reviewed tunnel IAM and
+SSH authentication prerequisites. Mocked plan-only tests cover every VM role,
+managed and supplied subnets, rejected legacy inputs and the scoped IAP rule.
+This is a code fix, not a continuing public-IP risk acceptance. Confirm removal
+in analysis of the merged revision; retain the original Sonar history and add
+that evidence to the issue record. The module remains experimental, with no live
+GCE deployment or access validation claimed. See
+[the migration and acceptance limits](../infra/terraform/gce/README.md) and
+[ADR 010](adr/010-security-exception-boundaries.md).
