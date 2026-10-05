@@ -68,3 +68,9 @@ crash.*.log
 
 /.venv-jenkins/
 /.venv-ml/
+/coverage-examples/
+/coverage-publisher.xml
+/coverage-subscriber.xml
+/coverage-products.xml
+/coverage-batch.xml
+/coverage-ml.xml

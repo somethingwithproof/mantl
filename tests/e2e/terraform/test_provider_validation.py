@@ -3,13 +3,16 @@ End-to-end tests for Terraform provider validation.
 
 Tests that all cloud provider blueprints can be planned and validated successfully.
 """
-import os
+
 import subprocess
-import pytest
 from pathlib import Path
 
+import pytest
+
 # Path to terraform blueprints
-BLUEPRINT_DIR = Path(__file__).parent.parent.parent.parent / "infra" / "terraform" / "terraform" / "blueprints"
+BLUEPRINT_DIR = (
+    Path(__file__).parent.parent.parent.parent / "infra" / "terraform" / "terraform" / "blueprints"
+)
 
 PROVIDERS = [
     ("aws-eks", "AWS EKS"),
@@ -38,7 +41,7 @@ class TestProviderValidation:
             ["terraform", "init", "-backend=false"],
             cwd=blueprint_path,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         assert result.returncode == 0, (
@@ -54,17 +57,12 @@ class TestProviderValidation:
 
         # Initialize first
         subprocess.run(
-            ["terraform", "init", "-backend=false"],
-            cwd=blueprint_path,
-            capture_output=True
+            ["terraform", "init", "-backend=false"], cwd=blueprint_path, capture_output=True
         )
 
         # Run terraform validate
         result = subprocess.run(
-            ["terraform", "validate"],
-            cwd=blueprint_path,
-            capture_output=True,
-            text=True
+            ["terraform", "validate"], cwd=blueprint_path, capture_output=True, text=True
         )
 
         assert result.returncode == 0, (
@@ -82,7 +80,7 @@ class TestProviderValidation:
             ["terraform", "fmt", "-check", "-recursive"],
             cwd=blueprint_path,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         assert result.returncode == 0, (
@@ -99,48 +97,44 @@ class TestProviderValidation:
 
         for file in required_files:
             file_path = blueprint_path / file
-            assert file_path.exists(), (
-                f"Required file {file} not found in {provider_name} blueprint"
-            )
+            assert (
+                file_path.exists()
+            ), f"Required file {file} not found in {provider_name} blueprint"
 
     @pytest.mark.parametrize("provider_dir,provider_name", PROVIDERS)
     def test_kubernetes_version_latest(self, provider_dir, provider_name):
         """Test that Kubernetes version is set to latest (1.31.x)."""
         variables_path = BLUEPRINT_DIR / provider_dir / "variables.tf"
 
-        with open(variables_path, 'r') as f:
+        with open(variables_path) as f:
             content = f.read()
 
         # Check that kubernetes_version variable exists and defaults to 1.31.x
-        assert 'variable "kubernetes_version"' in content, (
-            f"kubernetes_version variable not found in {provider_name}"
-        )
+        assert (
+            'variable "kubernetes_version"' in content
+        ), f"kubernetes_version variable not found in {provider_name}"
 
         # Check for 1.31 version
-        assert "1.31" in content, (
-            f"Kubernetes version not set to 1.31.x in {provider_name}"
-        )
+        assert "1.31" in content, f"Kubernetes version not set to 1.31.x in {provider_name}"
 
     @pytest.mark.parametrize("provider_dir,provider_name", PROVIDERS)
     def test_security_features_configured(self, provider_dir, provider_name):
         """Test that security features are configured in each provider."""
         main_tf_path = BLUEPRINT_DIR / provider_dir / "main.tf"
 
-        with open(main_tf_path, 'r') as f:
+        with open(main_tf_path) as f:
             content = f.read()
 
         # Check for network security features (varies by provider)
         security_indicators = [
             "security",  # Security groups/lists
             "firewall",  # Firewall rules
-            "private",   # Private networking
+            "private",  # Private networking
         ]
 
         has_security = any(indicator in content.lower() for indicator in security_indicators)
 
-        assert has_security, (
-            f"No security features found in {provider_name} blueprint"
-        )
+        assert has_security, f"No security features found in {provider_name} blueprint"
 
 
 class TestProviderSpecificFeatures:
@@ -150,68 +144,59 @@ class TestProviderSpecificFeatures:
         """Test that AWS EKS has VPC Flow Logs configured."""
         main_tf_path = BLUEPRINT_DIR / "aws-eks" / "main.tf"
 
-        with open(main_tf_path, 'r') as f:
+        with open(main_tf_path) as f:
             content = f.read()
 
-        assert "aws_flow_log" in content, (
-            "VPC Flow Logs not configured for AWS EKS"
-        )
+        assert "aws_flow_log" in content, "VPC Flow Logs not configured for AWS EKS"
 
     def test_gcp_vpc_flow_logs(self):
         """Test that GCP GKE has VPC Flow Logs configured."""
         main_tf_path = BLUEPRINT_DIR / "gcp-gke" / "main.tf"
 
-        with open(main_tf_path, 'r') as f:
+        with open(main_tf_path) as f:
             content = f.read()
 
-        assert "enable_flow_logs" in content, (
-            "VPC Flow Logs not configured for GCP GKE"
-        )
+        assert "enable_flow_logs" in content, "VPC Flow Logs not configured for GCP GKE"
 
     def test_azure_network_watcher(self):
         """Test that Azure AKS has Network Watcher Flow Logs."""
         main_tf_path = BLUEPRINT_DIR / "azure-aks" / "main.tf"
 
-        with open(main_tf_path, 'r') as f:
+        with open(main_tf_path) as f:
             content = f.read()
 
-        assert "azurerm_network_watcher_flow_log" in content, (
-            "Network Watcher Flow Logs not configured for Azure AKS"
-        )
+        assert (
+            "azurerm_network_watcher_flow_log" in content
+        ), "Network Watcher Flow Logs not configured for Azure AKS"
 
     def test_oracle_vault_configured(self):
         """Test that Oracle OKE has OCI Vault configured."""
         main_tf_path = BLUEPRINT_DIR / "oci-oke" / "main.tf"
 
-        with open(main_tf_path, 'r') as f:
+        with open(main_tf_path) as f:
             content = f.read()
 
-        assert "oci_kms_vault" in content, (
-            "OCI Vault not configured for Oracle OKE"
-        )
+        assert "oci_kms_vault" in content, "OCI Vault not configured for Oracle OKE"
 
     def test_ibm_key_protect(self):
         """Test that IBM IKS has Key Protect configured."""
         main_tf_path = BLUEPRINT_DIR / "ibm-iks" / "main.tf"
 
-        with open(main_tf_path, 'r') as f:
+        with open(main_tf_path) as f:
             content = f.read()
 
-        assert "ibm_resource_instance" in content and "kms" in content, (
-            "IBM Key Protect not configured for IBM IKS"
-        )
+        assert "ibm_resource_instance" in content, "IBM service instance missing"
+        assert "kms" in content, "IBM Key Protect not configured for IBM IKS"
 
     def test_all_providers_have_backup_storage(self):
         """Test that all providers have backup storage configured."""
         for provider_dir, provider_name in PROVIDERS:
             main_tf_path = BLUEPRINT_DIR / provider_dir / "main.tf"
 
-            with open(main_tf_path, 'r') as f:
+            with open(main_tf_path) as f:
                 content = f.read()
 
             backup_indicators = ["backup", "bucket", "storage"]
             has_backup = any(indicator in content.lower() for indicator in backup_indicators)
 
-            assert has_backup, (
-                f"Backup storage not configured for {provider_name}"
-            )
+            assert has_backup, f"Backup storage not configured for {provider_name}"

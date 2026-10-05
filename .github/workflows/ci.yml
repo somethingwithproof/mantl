@@ -139,6 +139,47 @@ jobs:
           path: coverage-python.xml
           if-no-files-found: error
           retention-days: 7
+  python_examples:
+    name: Python example (${{ matrix.example.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - name: publisher
+            source: examples/event-driven-arch/publisher
+          - name: subscriber
+            source: examples/event-driven-arch/subscriber
+          - name: products
+            source: examples/ecommerce-microservices/src/products-api
+          - name: batch
+            source: examples/batch-processing-job/src
+          - name: ml
+            source: examples/ml-inference-service/src
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          tools: python
+      - name: Test example error and shutdown contracts
+        env:
+          MANTL_TEST_EXAMPLE: ${{ matrix.example.name }}
+          EXAMPLE_SOURCE: ${{ matrix.example.source }}
+        run: |
+          set -euo pipefail
+          mise exec -- python -m venv .venv-ci
+          mise exec -- .venv-ci/bin/python -m pip install --only-binary :all: --require-hashes -r requirements-test.txt -r "$EXAMPLE_SOURCE/requirements.txt"
+          mise exec -- .venv-ci/bin/python -m pytest tests/examples/ --cov="$EXAMPLE_SOURCE" --cov-report="xml:coverage-${MANTL_TEST_EXAMPLE}.xml"
+      - name: Retain example coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: python-example-${{ matrix.example.name }}-coverage
+          path: coverage-${{ matrix.example.name }}.xml
+          if-no-files-found: error
+          retention-days: 7
   repository:
     name: Repository checks
     needs: changes
@@ -151,6 +192,7 @@ jobs:
       - changes
       - go
       - python
+      - python_examples
     uses: ./.github/workflows/sonarcloud.yml
     with:
       coverage-artifacts: true
@@ -193,6 +235,7 @@ jobs:
       - changes
       - go
       - python
+      - python_examples
       - sonar
       - infrastructure
       - charts
@@ -209,6 +252,7 @@ jobs:
           CHANGES_RESULT: ${{ needs.changes.result }}
           GO_RESULT: ${{ needs.go.result }}
           PYTHON_RESULT: ${{ needs.python.result }}
+          PYTHON_EXAMPLES_RESULT: ${{ needs.python_examples.result }}
           SONAR_RESULT: ${{ needs.sonar.result }}
           INFRASTRUCTURE_SELECTED: ${{ needs.changes.outputs.infrastructure }}
           INFRASTRUCTURE_RESULT: ${{ needs.infrastructure.result }}
@@ -223,7 +267,7 @@ jobs:
           REPOSITORY_RESULT: ${{ needs.repository.result }}
         run: |
           set -euo pipefail
-          for result in "$CHANGES_RESULT" "$GO_RESULT" "$PYTHON_RESULT" "$SONAR_RESULT" "$REPOSITORY_RESULT"; do
+          for result in "$CHANGES_RESULT" "$GO_RESULT" "$PYTHON_RESULT" "$PYTHON_EXAMPLES_RESULT" "$SONAR_RESULT" "$REPOSITORY_RESULT"; do
             if [ "$result" != success ]; then
               echo "::error::A required CI prerequisite failed: $result"
               exit 1

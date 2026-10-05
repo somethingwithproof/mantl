@@ -2,6 +2,7 @@
 Products API - E-Commerce Microservices Example
 Fast API service for product catalog management
 """
+
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import Counter, Histogram, make_asgi_app
@@ -13,30 +14,26 @@ from typing import List, Optional
 import asyncpg
 import os
 import logging
+import json
 from datetime import datetime
 
 # Configure logging
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+PRODUCT_NOT_FOUND = "Product not found"
 
 # Prometheus metrics
 REQUEST_COUNT = Counter(
-    'http_requests_total',
-    'Total HTTP requests',
-    ['method', 'endpoint', 'status']
+    "http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"]
 )
 REQUEST_DURATION = Histogram(
-    'http_request_duration_seconds',
-    'HTTP request duration',
-    ['method', 'endpoint']
+    "http_request_duration_seconds", "HTTP request duration", ["method", "endpoint"]
 )
 PRODUCT_OPERATIONS = Counter(
-    'product_operations_total',
-    'Total product operations',
-    ['operation', 'status']
+    "product_operations_total", "Total product operations", ["operation", "status"]
 )
 
 # OpenTelemetry tracer
@@ -44,6 +41,7 @@ tracer = trace.get_tracer(__name__)
 
 # Database pool
 db_pool = None
+
 
 # Pydantic models
 class Product(BaseModel):
@@ -67,9 +65,10 @@ class Product(BaseModel):
                 "category": "Electronics",
                 "stock": 150,
                 "sku": "MOUSE-001",
-                "image_url": "https://example.com/images/mouse.jpg"
+                "image_url": "https://example.com/images/mouse.jpg",
             }
         }
+
 
 class ProductCreate(BaseModel):
     name: str
@@ -80,6 +79,7 @@ class ProductCreate(BaseModel):
     sku: str
     image_url: Optional[str] = None
 
+
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
@@ -89,6 +89,7 @@ class ProductUpdate(BaseModel):
     sku: Optional[str] = None
     image_url: Optional[str] = None
 
+
 # FastAPI app
 app = FastAPI(
     title="Products API",
@@ -96,8 +97,9 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/api/v1/docs",
     redoc_url="/api/v1/redoc",
-    openapi_url="/api/v1/openapi.json"
+    openapi_url="/api/v1/openapi.json",
 )
+
 
 # CORS middleware
 def _parse_cors_origins() -> list[str]:
@@ -113,9 +115,7 @@ def _parse_cors_origins() -> list[str]:
             raise RuntimeError(f"Invalid CORS origin: {origin}")
     creds_raw = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower()
     if creds_raw not in ("true", "false"):
-        raise RuntimeError(
-            f"CORS_ALLOW_CREDENTIALS must be 'true' or 'false', got: {creds_raw!r}"
-        )
+        raise RuntimeError(f"CORS_ALLOW_CREDENTIALS must be 'true' or 'false', got: {creds_raw!r}")
     allow_credentials = creds_raw == "true"
     if "*" in origins and allow_credentials:
         raise RuntimeError(
@@ -127,6 +127,7 @@ def _parse_cors_origins() -> list[str]:
             "CORS_ALLOWED_ORIGINS=* is not allowed; specify explicit origin allowlist"
         )
     return origins
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -143,6 +144,7 @@ app.mount("/metrics", metrics_app)
 # OpenTelemetry instrumentation
 FastAPIInstrumentor.instrument_app(app)
 
+
 # Database dependency
 async def get_db():
     """Get database connection from pool"""
@@ -151,6 +153,7 @@ async def get_db():
         raise HTTPException(status_code=503, detail="Database not initialized")
     async with db_pool.acquire() as connection:
         yield connection
+
 
 # Startup/Shutdown events
 @app.on_event("startup")
@@ -186,6 +189,7 @@ async def startup():
 
     logger.info("Database initialized successfully")
 
+
 @app.on_event("shutdown")
 async def shutdown():
     """Close database connection pool"""
@@ -194,13 +198,15 @@ async def shutdown():
         logger.info("Closing database connection pool")
         await db_pool.close()
 
+
 # Health check endpoints
 @app.get("/health")
 async def health():
     """Liveness probe"""
     return {"status": "healthy"}
 
-@app.get("/ready")
+
+@app.get("/ready", responses={503: {"description": "Service unavailable"}})
 async def ready():
     """Readiness probe"""
     global db_pool
@@ -211,19 +217,24 @@ async def ready():
         async with db_pool.acquire() as conn:
             await conn.fetchval("SELECT 1")
         return {"status": "ready"}
-    except Exception as e:
-        logger.error(f"Readiness check failed: {e}")
-        raise HTTPException(status_code=503, detail="Database connection failed")
+    except Exception:
+        logger.exception("Readiness check failed")
+        raise HTTPException(status_code=503, detail="Database connection failed") from None
+
 
 # API endpoints
-@app.get("/api/v1/products", response_model=List[Product])
+@app.get(
+    "/api/v1/products",
+    response_model=List[Product],
+    responses={500: {"description": "Internal operation failed"}},
+)
 async def list_products(
     category: Optional[str] = Query(None, description="Filter by category"),
     min_price: Optional[float] = Query(None, ge=0, description="Minimum price"),
     max_price: Optional[float] = Query(None, ge=0, description="Maximum price"),
     limit: int = Query(100, ge=1, le=1000, description="Number of products to return"),
     offset: int = Query(0, ge=0, description="Number of products to skip"),
-    db=Depends(get_db)
+    db=Depends(get_db),
 ):
     """List all products with optional filtering"""
     with tracer.start_as_current_span("list_products"):
@@ -251,59 +262,90 @@ async def list_products(
 
         try:
             rows = await db.fetch(query, *params)
-            PRODUCT_OPERATIONS.labels(operation='list', status='success').inc()
+            PRODUCT_OPERATIONS.labels(operation="list", status="success").inc()
             return [dict(row) for row in rows]
-        except Exception as e:
-            logger.error(f"Failed to list products: {e}")
-            PRODUCT_OPERATIONS.labels(operation='list', status='error').inc()
-            raise HTTPException(status_code=500, detail="Failed to list products")
+        except Exception:
+            logger.exception("Failed to list products")
+            PRODUCT_OPERATIONS.labels(operation="list", status="error").inc()
+            raise HTTPException(status_code=500, detail="Failed to list products") from None
 
-@app.get("/api/v1/products/{product_id}", response_model=Product)
+
+@app.get(
+    "/api/v1/products/{product_id}",
+    response_model=Product,
+    responses={
+        404: {"description": "Resource not found"},
+        500: {"description": "Internal operation failed"},
+    },
+)
 async def get_product(product_id: int, db=Depends(get_db)):
     """Get a specific product by ID"""
     with tracer.start_as_current_span("get_product"):
         try:
-            row = await db.fetchrow(
-                "SELECT * FROM products WHERE id = $1",
-                product_id
-            )
+            row = await db.fetchrow("SELECT * FROM products WHERE id = $1", product_id)
             if row is None:
-                PRODUCT_OPERATIONS.labels(operation='get', status='not_found').inc()
-                raise HTTPException(status_code=404, detail="Product not found")
+                PRODUCT_OPERATIONS.labels(operation="get", status="not_found").inc()
+                raise HTTPException(status_code=404, detail=PRODUCT_NOT_FOUND)
 
-            PRODUCT_OPERATIONS.labels(operation='get', status='success').inc()
+            PRODUCT_OPERATIONS.labels(operation="get", status="success").inc()
             return dict(row)
         except HTTPException:
             raise
-        except Exception as e:
-            logger.error(f"Failed to get product {product_id}: {e}")
-            PRODUCT_OPERATIONS.labels(operation='get', status='error').inc()
-            raise HTTPException(status_code=500, detail="Failed to get product")
+        except Exception:
+            logger.exception("Failed to get product")
+            PRODUCT_OPERATIONS.labels(operation="get", status="error").inc()
+            raise HTTPException(status_code=500, detail="Failed to get product") from None
 
-@app.post("/api/v1/products", response_model=Product, status_code=201)
+
+@app.post(
+    "/api/v1/products",
+    response_model=Product,
+    status_code=201,
+    responses={
+        409: {"description": "Resource already exists"},
+        500: {"description": "Internal operation failed"},
+    },
+)
 async def create_product(product: ProductCreate, db=Depends(get_db)):
     """Create a new product"""
     with tracer.start_as_current_span("create_product"):
         try:
-            row = await db.fetchrow("""
+            row = await db.fetchrow(
+                """
                 INSERT INTO products (name, description, price, category, stock, sku, image_url)
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING *
-            """, product.name, product.description, product.price, product.category,
-                product.stock, product.sku, product.image_url)
+            """,
+                product.name,
+                product.description,
+                product.price,
+                product.category,
+                product.stock,
+                product.sku,
+                product.image_url,
+            )
 
-            PRODUCT_OPERATIONS.labels(operation='create', status='success').inc()
-            logger.info(f"Created product: {product.sku}")
+            PRODUCT_OPERATIONS.labels(operation="create", status="success").inc()
+            logger.info("Created product: %s", json.dumps(product.sku, ensure_ascii=True))
             return dict(row)
         except asyncpg.UniqueViolationError:
-            PRODUCT_OPERATIONS.labels(operation='create', status='duplicate').inc()
-            raise HTTPException(status_code=409, detail="Product with this SKU already exists")
-        except Exception as e:
-            logger.error(f"Failed to create product: {e}")
-            PRODUCT_OPERATIONS.labels(operation='create', status='error').inc()
-            raise HTTPException(status_code=500, detail="Failed to create product")
+            PRODUCT_OPERATIONS.labels(operation="create", status="duplicate").inc()
+            raise HTTPException(status_code=409, detail="Product with this SKU already exists") from None
+        except Exception:
+            logger.exception("Failed to create product")
+            PRODUCT_OPERATIONS.labels(operation="create", status="error").inc()
+            raise HTTPException(status_code=500, detail="Failed to create product") from None
 
-@app.put("/api/v1/products/{product_id}", response_model=Product)
+
+@app.put(
+    "/api/v1/products/{product_id}",
+    response_model=Product,
+    responses={
+        400: {"description": "Invalid request"},
+        404: {"description": "Resource not found"},
+        500: {"description": "Internal operation failed"},
+    },
+)
 async def update_product(product_id: int, product: ProductUpdate, db=Depends(get_db)):
     """Update an existing product"""
     with tracer.start_as_current_span("update_product"):
@@ -332,59 +374,69 @@ async def update_product(product_id: int, product: ProductUpdate, db=Depends(get
         try:
             row = await db.fetchrow(query, *params)
             if row is None:
-                PRODUCT_OPERATIONS.labels(operation='update', status='not_found').inc()
-                raise HTTPException(status_code=404, detail="Product not found")
+                PRODUCT_OPERATIONS.labels(operation="update", status="not_found").inc()
+                raise HTTPException(status_code=404, detail=PRODUCT_NOT_FOUND)
 
-            PRODUCT_OPERATIONS.labels(operation='update', status='success').inc()
+            PRODUCT_OPERATIONS.labels(operation="update", status="success").inc()
             logger.info(f"Updated product: {product_id}")
             return dict(row)
         except HTTPException:
             raise
-        except Exception as e:
-            logger.error(f"Failed to update product {product_id}: {e}")
-            PRODUCT_OPERATIONS.labels(operation='update', status='error').inc()
-            raise HTTPException(status_code=500, detail="Failed to update product")
+        except Exception:
+            logger.exception("Failed to update product")
+            PRODUCT_OPERATIONS.labels(operation="update", status="error").inc()
+            raise HTTPException(status_code=500, detail="Failed to update product") from None
 
-@app.delete("/api/v1/products/{product_id}", status_code=204)
+
+@app.delete(
+    "/api/v1/products/{product_id}",
+    status_code=204,
+    responses={
+        404: {"description": "Resource not found"},
+        500: {"description": "Internal operation failed"},
+    },
+)
 async def delete_product(product_id: int, db=Depends(get_db)):
     """Delete a product"""
     with tracer.start_as_current_span("delete_product"):
         try:
-            result = await db.execute(
-                "DELETE FROM products WHERE id = $1",
-                product_id
-            )
+            result = await db.execute("DELETE FROM products WHERE id = $1", product_id)
             if result == "DELETE 0":
-                PRODUCT_OPERATIONS.labels(operation='delete', status='not_found').inc()
-                raise HTTPException(status_code=404, detail="Product not found")
+                PRODUCT_OPERATIONS.labels(operation="delete", status="not_found").inc()
+                raise HTTPException(status_code=404, detail=PRODUCT_NOT_FOUND)
 
-            PRODUCT_OPERATIONS.labels(operation='delete', status='success').inc()
+            PRODUCT_OPERATIONS.labels(operation="delete", status="success").inc()
             logger.info(f"Deleted product: {product_id}")
         except HTTPException:
             raise
-        except Exception as e:
-            logger.error(f"Failed to delete product {product_id}: {e}")
-            PRODUCT_OPERATIONS.labels(operation='delete', status='error').inc()
-            raise HTTPException(status_code=500, detail="Failed to delete product")
+        except Exception:
+            logger.exception("Failed to delete product")
+            PRODUCT_OPERATIONS.labels(operation="delete", status="error").inc()
+            raise HTTPException(status_code=500, detail="Failed to delete product") from None
 
-@app.get("/api/v1/categories", response_model=List[str])
+
+@app.get(
+    "/api/v1/categories",
+    response_model=List[str],
+    responses={500: {"description": "Internal operation failed"}},
+)
 async def list_categories(db=Depends(get_db)):
     """List all product categories"""
     with tracer.start_as_current_span("list_categories"):
         try:
-            rows = await db.fetch(
-                "SELECT DISTINCT category FROM products ORDER BY category"
-            )
-            return [row['category'] for row in rows]
-        except Exception as e:
-            logger.error(f"Failed to list categories: {e}")
-            raise HTTPException(status_code=500, detail="Failed to list categories")
+            rows = await db.fetch("SELECT DISTINCT category FROM products ORDER BY category")
+            return [row["category"] for row in rows]
+        except Exception:
+            logger.exception("Failed to list categories")
+            raise HTTPException(status_code=500, detail="Failed to list categories") from None
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
+        host=os.getenv("HOST", "127.0.0.1"),
         port=8000,
-        log_level=os.getenv("LOG_LEVEL", "info").lower()
+        log_level=os.getenv("LOG_LEVEL", "info").lower(),
     )

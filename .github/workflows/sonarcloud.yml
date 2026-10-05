@@ -61,6 +61,13 @@ jobs:
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: python-coverage
+      - name: Download isolated Python example coverage
+        if: inputs.coverage-artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: python-example-*-coverage
+          path: coverage-examples
+          merge-multiple: true
       - name: Generate first-party Go coverage
         if: '!inputs.coverage-artifacts'
         run: mise exec -- make go-coverage
@@ -68,8 +75,20 @@ jobs:
         if: '!inputs.coverage-artifacts'
         run: |
           mise exec -- python -m venv .venv-sonar
-          mise exec -- .venv-sonar/bin/python -m pip install -r requirements-test.txt
+          mise exec -- .venv-sonar/bin/python -m pip install --only-binary :all: --require-hashes -r requirements-test.txt
           mise exec -- .venv-sonar/bin/python -m pytest tests/unit/ --cov=scripts --cov=ci --cov-report=xml:coverage-python.xml
+      - name: Generate isolated Python example coverage
+        if: '!inputs.coverage-artifacts'
+        run: |
+          set -euo pipefail
+          mkdir -p coverage-examples
+          for entry in publisher:event-driven-arch/publisher subscriber:event-driven-arch/subscriber products:ecommerce-microservices/src/products-api batch:batch-processing-job/src ml:ml-inference-service/src; do
+            name="${entry%%:*}"
+            source="examples/${entry#*:}"
+            mise exec -- python -m venv ".venv-sonar/$name"
+            mise exec -- ".venv-sonar/$name/bin/python" -m pip install --only-binary :all: --require-hashes -r requirements-test.txt -r "$source/requirements.txt"
+            MANTL_TEST_EXAMPLE="$name" mise exec -- ".venv-sonar/$name/bin/python" -m pytest tests/examples/ --cov="$source" --cov-report="xml:coverage-examples/coverage-$name.xml"
+          done
       - name: Use validated PR metadata for bot-dispatched analysis
         if: inputs.pull-request != ''
         env:
