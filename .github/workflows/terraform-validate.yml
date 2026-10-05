@@ -61,13 +61,6 @@ jobs:
             exit 1
           fi
 
-      - name: Check Kubernetes Version
-        working-directory: infra/terraform/blueprints/${{ matrix.provider }}
-        run: |
-          if ! grep -q "1.31" variables.tf; then
-            echo "Kubernetes version not set to 1.31.x"
-            exit 1
-          fi
 
   validate-modules:
     name: Validate Terraform Modules

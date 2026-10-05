@@ -9,16 +9,88 @@ kind: ClusterRole
 metadata:
   name: compliance-operator-manager-role
 rules:
-- apiGroups: ["compliance.mantl.io"]
-  resources: ["complianceprofiles", "complianceprofiles/status"]
-  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-# GitOps owns ClusterPolicy application (ADR 006); the operator only reads them.
-- apiGroups: ["kyverno.io"]
-  resources: ["clusterpolicies"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["events"]
-  verbs: ["create", "patch"]
+  - apiGroups:
+      - compliance.mantl.io
+    resources:
+      - complianceprofiles
+      - complianceprofiles/status
+      - complianceaudits
+      - complianceaudits/status
+      - findings
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - wgpolicyk8s.io
+    resources:
+      - policyreports
+      - clusterpolicyreports
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - networkpolicies
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - roles
+      - rolebindings
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - ''
+    resources:
+      - pods
+      - services
+      - serviceaccounts
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - kyverno.io
+    resources:
+      - clusterpolicies
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -29,6 +101,6 @@ roleRef:
   kind: ClusterRole
   name: compliance-operator-manager-role
 subjects:
-- kind: ServiceAccount
-  name: compliance-operator-controller-manager
-  namespace: mantl-compliance-system
+  - kind: ServiceAccount
+    name: compliance-operator-controller-manager
+    namespace: mantl-compliance-system

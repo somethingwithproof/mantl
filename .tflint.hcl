@@ -1,27 +1,16 @@
-# Global TFLint configuration for all Terraform modules in this repo
-# Keep it minimal and portable — CI will run `tflint --init` to fetch plugins.
-
+# Maintained provider rulesets for the supported cloud parity targets.
 plugin "aws" {
   enabled = true
+  version = "0.49.0"
   source  = "github.com/terraform-linters/tflint-ruleset-aws"
 }
-
 plugin "google" {
   enabled = true
+  version = "0.40.0"
   source  = "github.com/terraform-linters/tflint-ruleset-google"
 }
-
 plugin "azurerm" {
   enabled = true
+  version = "0.32.0"
   source  = "github.com/terraform-linters/tflint-ruleset-azurerm"
-}
-
-plugin "oci" {
-  enabled = true
-  source  = "github.com/terraform-linters/tflint-ruleset-oci"
-}
-
-plugin "digitalocean" {
-  enabled = true
-  source  = "github.com/terraform-linters/tflint-ruleset-digitalocean"
 }

@@ -30,18 +30,16 @@ func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
 		return fmt.Errorf("unsupported profile size %q: expected one of small, medium, full", cluster.Spec.Profile.Size)
 	}
 
-	vars := TFVars{
-		"cluster_name":       cluster.Name,
-		"region":             cluster.Spec.Provider.Region,
-		"kubernetes_version": cluster.Spec.Kubernetes.Version,
-		"vpc_id":             cluster.Spec.Networking.VpcID,
-		"domain":             cluster.Spec.Networking.Domain,
-		"environment":        environment,
-	}
-
-	// 2. Map provider-specific variables
-	if cluster.Spec.Provider.Kind == "aws" {
-		vars["account_id"] = cluster.Spec.Provider.AccountID
+	vars := TFVars{"cluster_name": cluster.Name, "kubernetes_version": cluster.Spec.Kubernetes.Version, "environment": environment}
+	switch cluster.Spec.Provider.Kind {
+	case "gcp":
+		vars["region"] = cluster.Spec.Provider.Region
+		vars["project"] = cluster.Spec.Provider.AccountID
+	case "azure":
+		vars["location"] = cluster.Spec.Provider.Region
+		vars["resource_group_name"] = cluster.Spec.Provider.AccountID
+	default:
+		vars["region"] = cluster.Spec.Provider.Region
 	}
 
 	// 3. Serialize to JSON

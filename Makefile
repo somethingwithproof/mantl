@@ -67,8 +67,7 @@ policies-%: ## Delegate to policies Makefile (e.g., policies-validate)
 
 cli-install: ## Install mantl CLI tool
 	@echo "${GREEN}Installing mantl CLI...${RESET}"
-	@chmod +x bin/mantl
-	@sudo cp bin/mantl /usr/local/bin/mantl 2>/dev/null || cp bin/mantl ~/bin/mantl || echo "${YELLOW}Please add bin to your PATH${RESET}"
+	@go install ./cmd/mantl
 	@echo "${GREEN}✓ mantl CLI installed${RESET}"
 
 ##@ Testing & Validation

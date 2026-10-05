@@ -179,6 +179,7 @@ resource "azurerm_key_vault" "main" {
   enabled_for_deployment          = false
   enabled_for_template_deployment = false
   purge_protection_enabled        = true
+  public_network_access_enabled   = false
   soft_delete_retention_days      = 90
 
   # Network access restrictions
@@ -340,10 +341,16 @@ resource "azurerm_kubernetes_cluster" "main" {
     identity_ids = [azurerm_user_assigned_identity.aks.id]
   }
 
-  # Key Vault secrets encryption
+  # API-server etcd encryption is separate from CSI-mounted secrets.
+  key_management_service {
+    key_vault_key_id         = azurerm_key_vault_key.aks.id
+    key_vault_network_access = "Private"
+  }
+
+  # Key Vault secrets provider
   key_vault_secrets_provider {
     secret_rotation_enabled  = true
-    secret_rotation_interval = "2m"
+    secret_rotation_interval = "2m" # pragma: allowlist secret (rotation interval, not a credential)
   }
 
   # Workload identity (OIDC issuer)
@@ -383,6 +390,7 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   depends_on = [
     azurerm_key_vault_access_policy.aks,
+    azurerm_private_endpoint.key_vault,
   ]
 }
 
@@ -471,4 +479,75 @@ output "external_secrets_identity_client_id" {
 output "log_analytics_workspace_id" {
   description = "Log Analytics workspace ID"
   value       = azurerm_log_analytics_workspace.main.id
+}
+
+# Record control-plane audit events independently of application monitoring.
+resource "azurerm_monitor_diagnostic_setting" "aks_audit" {
+  name                       = "${local.name}-audit"
+  target_resource_id         = azurerm_kubernetes_cluster.main.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+
+  enabled_log {
+    category = "kube-audit"
+  }
+  enabled_log {
+    category = "kube-audit-admin"
+  }
+}
+
+# Private Key Vault access for the API-server KMS integration.
+resource "azurerm_private_dns_zone" "key_vault" {
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.common_tags
+}
+resource "azurerm_private_dns_zone_virtual_network_link" "key_vault" {
+  name                  = "${local.name}-key-vault"
+  resource_group_name   = azurerm_resource_group.main.name
+  private_dns_zone_name = azurerm_private_dns_zone.key_vault.name
+  virtual_network_id    = azurerm_virtual_network.main.id
+  tags                  = local.common_tags
+}
+resource "azurerm_private_endpoint" "key_vault" {
+  name                = "${local.name}-key-vault"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  subnet_id           = azurerm_subnet.aks_nodes.id
+  private_service_connection {
+    name                           = "${local.name}-key-vault"
+    private_connection_resource_id = azurerm_key_vault.main.id
+    subresource_names              = ["vault"]
+    is_manual_connection           = false
+  }
+  private_dns_zone_group {
+    name                 = "key-vault"
+    private_dns_zone_ids = [azurerm_private_dns_zone.key_vault.id]
+  }
+  tags = local.common_tags
+}
+
+# Bind platform Kubernetes service accounts to their dedicated identities.
+resource "azurerm_federated_identity_credential" "external_secrets" {
+  name                = "${local.name}-external-secrets"
+  resource_group_name = azurerm_resource_group.main.name
+  parent_id           = azurerm_user_assigned_identity.external_secrets.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject             = "system:serviceaccount:external-secrets:external-secrets"
+}
+resource "azurerm_federated_identity_credential" "external_dns" {
+  name                = "${local.name}-external-dns"
+  resource_group_name = azurerm_resource_group.main.name
+  parent_id           = azurerm_user_assigned_identity.external_dns.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject             = "system:serviceaccount:external-dns:external-dns"
+}
+resource "azurerm_federated_identity_credential" "cert_manager" {
+  name                = "${local.name}-cert-manager"
+  resource_group_name = azurerm_resource_group.main.name
+  parent_id           = azurerm_user_assigned_identity.cert_manager.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject             = "system:serviceaccount:cert-manager:cert-manager"
 }

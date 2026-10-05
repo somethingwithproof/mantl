@@ -2,182 +2,231 @@ package compliance
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"regexp"
-	"time"
-
-	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
+	api "github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"github.com/thomasvincent/mantl/pkg/evidence"
+	"github.com/thomasvincent/mantl/pkg/framework"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"net/url"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sort"
+	"time"
 )
 
-// ComplianceAuditReconciler reconciles a ComplianceAudit object
 type ComplianceAuditReconciler struct {
 	client.Client
 	Scheme         *runtime.Scheme
-	EvidenceBucket string
+	EvidenceBucket string // Legacy construction compatibility; Store owns configuration.
 	FrameworkDir   string
+	Reader         evidence.Reader
+	Store          evidence.Store
+	Now            func() time.Time
 }
 
-var validS3BucketRe = regexp.MustCompile(`^[a-z0-9][a-z0-9.\-]{1,61}[a-z0-9]$`)
-
-const maxUploadRetries = 3
-
-// +kubebuilder:rbac:groups=compliance.mantl.io,resources=complianceaudits,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=compliance.mantl.io,resources=complianceaudits,verbs=get;list;watch;update;patch
 // +kubebuilder:rbac:groups=compliance.mantl.io,resources=complianceaudits/status,verbs=get;update;patch
-
 func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	l := log.FromContext(ctx)
-
-	// 1. Fetch the Audit
-	var audit v1alpha1.ComplianceAudit
+	var audit api.ComplianceAudit
 	if err := r.Get(ctx, req.NamespacedName, &audit); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-
-	var endTime *time.Time
+	now := time.Now().UTC()
+	if r.Now != nil {
+		now = r.Now().UTC()
+	}
+	var end *time.Time
 	if audit.Status.EndTime != nil {
-		endTime = &audit.Status.EndTime.Time
+		end = &audit.Status.EndTime.Time
 	}
-	switch action, after := planAudit(audit.Status.Phase, endTime, audit.Spec.Frequency, time.Now()); action {
-	case actionDone:
-		return ctrl.Result{}, nil
-	case actionWaitRequeue:
-		return ctrl.Result{RequeueAfter: after}, nil
-	case actionRun:
-		// Clear the prior terminal state so a recurring run proceeds cleanly.
-		audit.Status.Phase = "Pending"
-		audit.Status.EndTime = nil
+	if audit.Spec.Frequency != "framework" {
+		action, after := planAudit(audit.Status.Phase, end, audit.Spec.Frequency, now)
+		if action == actionDone {
+			return ctrl.Result{}, nil
+		}
+		if action == actionWaitRequeue {
+			return ctrl.Result{RequeueAfter: after}, nil
+		}
 	}
-
-	// 2. Fetch the associated Profile to find the Framework
-	var profile v1alpha1.ComplianceProfile
+	var profile api.ComplianceProfile
 	if err := r.Get(ctx, client.ObjectKey{Name: audit.Spec.Profile, Namespace: audit.Namespace}, &profile); err != nil {
-		l.Error(err, "Failed to find ComplianceProfile", "profile", audit.Spec.Profile)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("load audit profile: %w", err)
 	}
-
-	l.Info("Starting Compliance Audit", "Profile", audit.Spec.Profile, "Framework", profile.Spec.Framework)
-
-	if !validS3BucketRe.MatchString(r.EvidenceBucket) {
-		audit.Status.Phase = "Failed"
-		if statusErr := r.Status().Update(ctx, &audit); statusErr != nil {
-			l.Error(statusErr, "Failed to persist audit failure status")
-		}
-		return ctrl.Result{}, fmt.Errorf("invalid evidence bucket name %q", r.EvidenceBucket)
-	}
-
-	// 3. Update status to Running
-	audit.Status.Phase = "Running"
-	now := metav1.Now()
-	audit.Status.StartTime = &now
-	if err := r.Status().Update(ctx, &audit); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// 4. Load the Framework mapping file
-	frameworkFile := filepath.Join(r.FrameworkDir, fmt.Sprintf("%s.yaml", profile.Spec.Framework))
-	data, err := os.ReadFile(frameworkFile)
+	fw, err := framework.Load(r.FrameworkDir, profile.Spec.Framework, profile.Spec.Version)
 	if err != nil {
-		l.Error(err, "Failed to read framework file", "file", frameworkFile)
-		audit.Status.Phase = "Failed"
-		if statusErr := r.Status().Update(ctx, &audit); statusErr != nil {
-			l.Error(statusErr, "Failed to persist audit failure status")
-		}
 		return ctrl.Result{}, err
 	}
-
-	var framework Framework
-	if err := yaml.Unmarshal(data, &framework); err != nil {
-		l.Error(err, "Failed to unmarshal framework yaml")
-		audit.Status.Phase = "Failed"
-		if statusErr := r.Status().Update(ctx, &audit); statusErr != nil {
-			l.Error(statusErr, "Failed to persist audit failure status")
-		}
-		return ctrl.Result{}, err
+	if r.Reader == nil || r.Store == nil {
+		return ctrl.Result{}, fmt.Errorf("evidence reader and immutable store must be configured")
 	}
-
-	// 5. Iterate through all controls and capture evidence
-	findingCount := 0
-	failedCount := 0
-	for _, control := range framework.Controls {
-		for _, res := range control.EvidenceResources {
-			l.Info("Capturing evidence", "Control", control.ID, "Kind", res.Kind)
-
-			snap, err := evidence.CaptureResourceWithContext(ctx, res.Kind, res.Name, res.Namespace)
-			if err != nil {
-				l.Error(err, "Failed to capture evidence", "kind", res.Kind)
-				failedCount++
+	if audit.Spec.Frequency != "" && audit.Spec.Frequency != "manual" && audit.Spec.Frequency != "daily" && audit.Spec.Frequency != "weekly" && audit.Spec.Frequency != "framework" {
+		return ctrl.Result{}, fmt.Errorf("unsupported audit frequency %q", audit.Spec.Frequency)
+	}
+	next := time.Duration(0)
+	type task struct{ key, control, resource, namespace string }
+	var tasks []task
+	var gaps []string
+	due := map[string]bool{}
+	incomplete := map[string]bool{}
+	namespaces := profile.Spec.Namespaces
+	if len(namespaces) == 0 {
+		namespaces = []string{profile.Namespace}
+	}
+	for _, control := range fw.Controls {
+		if !framework.Selected(control.ID, profile.Spec.IncludeControls) {
+			continue
+		}
+		for i, mapping := range control.Mappings {
+			collector := mapping.EvidenceCollector
+			if collector == nil {
 				continue
 			}
-
-			// 6. Upload to S3 with retry and timeout
-			var uploadErr error
-			for attempt := 0; attempt < maxUploadRetries; attempt++ {
-				if attempt > 0 {
-					backoff := time.Duration(1<<uint(attempt)) * time.Second
-					l.Info("Retrying S3 upload", "attempt", attempt+1, "kind", res.Kind, "error", uploadErr)
-					time.Sleep(backoff)
+			key := fmt.Sprintf("%s/%d", control.ID, i)
+			if audit.Spec.Frequency == "framework" {
+				last, exists := audit.Status.CollectorTimes[key]
+				base := now
+				if exists {
+					base = last.Time
 				}
-				uploadCtx, uploadCancel := context.WithTimeout(ctx, 30*time.Second)
-				_, uploadErr = evidence.UploadToS3(uploadCtx, snap, r.EvidenceBucket)
-				uploadCancel()
-				if uploadErr == nil {
-					break
+				when, scheduleErr := framework.Next(collector.Schedule, base)
+				if scheduleErr != nil {
+					gaps = append(gaps, control.ID+": invalid schedule")
+					continue
+				}
+				if exists && when.After(now) {
+					wait := when.Sub(now)
+					if next == 0 || wait < next {
+						next = wait
+					}
+					continue
+				}
+				// First observation runs immediately; missed intervals coalesce into one run.
+				nextWhen, _ := framework.Next(collector.Schedule, now)
+				wait := nextWhen.Sub(now)
+				if next == 0 || wait < next {
+					next = wait
 				}
 			}
-			if uploadErr != nil {
-				l.Error(uploadErr, "Failed to upload evidence to S3 after retries", "kind", res.Kind, "maxRetries", maxUploadRetries)
-				failedCount++
+			due[key] = true
+			if collector.Type != "config-snapshot" || len(collector.Resources) == 0 {
+				gaps = append(gaps, control.ID+": unsupported collector "+collector.Type)
 				continue
 			}
-			findingCount++
+			for _, resource := range collector.Resources {
+				typ, typeErr := evidence.Resource(resource)
+				if typeErr != nil {
+					incomplete[key] = true
+					gaps = append(gaps, control.ID+": unsupported resource "+resource)
+					continue
+				}
+				if typ.Cluster {
+					tasks = append(tasks, task{key, control.ID, resource, ""})
+				} else {
+					for _, ns := range namespaces {
+						tasks = append(tasks, task{key, control.ID, resource, ns})
+					}
+				}
+			}
 		}
 	}
-
-	// 7. Finalize Audit — phase reflects whether all captures succeeded.
+	if len(due) == 0 && len(gaps) == 0 && audit.Spec.Frequency == "framework" {
+		return ctrl.Result{RequeueAfter: next}, nil
+	}
+	if audit.Status.Phase != "Running" || audit.Status.StartTime == nil {
+		start := metav1.NewTime(now)
+		audit.Status.StartTime = &start
+	}
+	audit.Status.Phase = "Running"
+	audit.Status.EndTime = nil
+	audit.Status.EvidenceURI = ""
+	audit.Status.ManifestHash = ""
+	if err := r.Status().Update(ctx, &audit); err != nil {
+		return ctrl.Result{}, fmt.Errorf("persist audit start: %w", err)
+	}
+	run := audit.Status.StartTime.Time.UTC().Format(time.RFC3339Nano)
+	prefix := fmt.Sprintf("audits/%s/%s/%s/%s", audit.Namespace, audit.Name, audit.UID, run)
+	manifest := evidence.Manifest{SchemaVersion: 1, Audit: audit.Namespace + "/" + audit.Name, Run: run, Framework: profile.Spec.Framework, FrameworkVersion: fw.Version, CapturedAt: audit.Status.StartTime.Time, Objects: []evidence.ObjectRef{}}
+	failed := incomplete
+	for _, t := range tasks {
+		captureCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		snap, captureErr := r.Reader.Capture(captureCtx, t.resource, t.namespace, audit.Status.StartTime.Time)
+		cancel()
+		if captureErr != nil {
+			gaps = append(gaps, t.control+": capture failed for "+t.namespace+"/"+t.resource)
+			failed[t.key] = true
+			continue
+		}
+		uploadCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		ref, uploadErr := r.Store.Put(uploadCtx, prefix+"/"+t.control+"/"+t.namespace+"/"+t.resource, []byte(snap.Data), now)
+		cancel()
+		if uploadErr != nil {
+			gaps = append(gaps, t.control+": upload failed for "+t.resource)
+			failed[t.key] = true
+			continue
+		}
+		ref.Control = t.control
+		ref.Resource = t.namespace + "/" + t.resource
+		manifest.Objects = append(manifest.Objects, ref)
+	}
+	sort.Strings(gaps)
+	manifest.Gaps = gaps
+	payload, err := json.Marshal(manifest)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("encode audit manifest: %w", err)
+	}
+	uploadCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ref, err := r.Store.Put(uploadCtx, prefix+"/manifest", payload, now)
+	cancel()
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("persist audit manifest: %w", err)
+	}
+	audit.Status.EvidenceURI = ref.URI + "?versionId=" + url.QueryEscape(ref.Version)
+	audit.Status.ManifestHash = ref.Hash
+	audit.Status.FindingCount = int32(len(manifest.Objects))
+	audit.Status.FailedCount = int32(len(gaps))
+	audit.Status.CoverageGaps = gaps
 	switch {
-	case findingCount == 0 && failedCount == 0:
-		l.Info("No evidence resources found in framework controls")
+	case len(manifest.Objects) == 0 && len(gaps) == 0:
 		audit.Status.Phase = "NoEvidence"
-	case failedCount > 0 && findingCount > 0:
-		audit.Status.Phase = "PartiallyCompleted"
-	case failedCount > 0 && findingCount == 0:
+	case len(manifest.Objects) == 0:
 		audit.Status.Phase = "Failed"
+	case len(gaps) > 0:
+		audit.Status.Phase = "PartiallyCompleted"
 	default:
 		audit.Status.Phase = "Completed"
 	}
-	end := metav1.Now()
-	audit.Status.EndTime = &end
-	audit.Status.FindingCount = int32(findingCount)
-	audit.Status.FailedCount = int32(failedCount)
-
-	if err := r.Status().Update(ctx, &audit); err != nil {
-		return ctrl.Result{}, err
+	finishedAt := time.Now().UTC()
+	if r.Now != nil {
+		finishedAt = r.Now().UTC()
 	}
-
-	l.Info("Compliance Audit finalized",
-		"phase", audit.Status.Phase,
-		"findingCount", findingCount,
-		"failedCount", failedCount,
-		"duration", end.Time.Sub(audit.Status.StartTime.Time).String(),
-	)
-
+	finished := metav1.NewTime(finishedAt)
+	audit.Status.EndTime = &finished
+	if audit.Status.CollectorTimes == nil {
+		audit.Status.CollectorTimes = map[string]metav1.Time{}
+	}
+	// Unsupported collectors have no successful tasks and are deliberately not advanced.
+	for _, t := range tasks {
+		if !failed[t.key] {
+			audit.Status.CollectorTimes[t.key] = finished
+		}
+	}
+	if err := r.Status().Update(ctx, &audit); err != nil {
+		return ctrl.Result{}, fmt.Errorf("persist audit result: %w", err)
+	}
+	if audit.Spec.Frequency == "framework" {
+		if next == 0 || len(gaps) > 0 && next > time.Hour {
+			next = time.Hour
+		}
+		return ctrl.Result{RequeueAfter: next}, nil
+	}
 	if interval, recurring := requeueInterval(audit.Spec.Frequency); recurring {
 		return ctrl.Result{RequeueAfter: interval}, nil
 	}
 	return ctrl.Result{}, nil
 }
-
 func (r *ComplianceAuditReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.ComplianceAudit{}).
-		Complete(r)
+	return ctrl.NewControllerManagedBy(mgr).For(&api.ComplianceAudit{}).WithEventFilter(predicate.GenerationChangedPredicate{}).Complete(r)
 }

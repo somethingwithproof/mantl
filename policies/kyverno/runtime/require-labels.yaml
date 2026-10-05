@@ -1,0 +1,124 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-labels
+  annotations:
+    policies.kyverno.io/title: Require Standard Labels
+    policies.kyverno.io/category: Metadata
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod, Deployment, Service
+    policies.kyverno.io/description: 'Require standard Kubernetes recommended labels on all resources.
+
+      These labels enable better organization, monitoring, and cost allocation.
+
+
+      Required labels:
+
+      - app.kubernetes.io/name: Name of the application
+
+      - app.kubernetes.io/part-of: Name of higher-level application
+
+      - app.kubernetes.io/version: Current version
+
+      - app.kubernetes.io/managed-by: Tool managing the resource
+
+
+      Optional but recommended:
+
+      - app.kubernetes.io/component: Component within the architecture
+
+      - app.kubernetes.io/instance: Unique name for the instance
+
+
+      Reference: https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/
+
+      '
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-for-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+                - Service
+                - ConfigMap
+                - Secret
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+          - resources:
+              selector:
+                matchLabels:
+                  pod-template-hash: '*'
+      validate:
+        message: "Resources must have the following required labels:\n- app.kubernetes.io/name\n- app.kubernetes.io/part-of\n- app.kubernetes.io/version\n- app.kubernetes.io/managed-by\n\nCurrent labels: {{ request.object.metadata.labels || {} | keys(@) | join(', ') || 'none' }}\n\nExample:\n  metadata:\n    labels:\n      app.kubernetes.io/name: \"products-api\"\n      app.kubernetes.io/part-of: \"ecommerce\"\n      app.kubernetes.io/version: \"v1.0.0\"\n      app.kubernetes.io/managed-by: \"helm\"\n      app.kubernetes.io/component: \"api\"\n"
+        pattern:
+          metadata:
+            labels:
+              app.kubernetes.io/name: ?*
+              app.kubernetes.io/part-of: ?*
+              app.kubernetes.io/version: ?*
+              app.kubernetes.io/managed-by: ?*
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-namespace-labels
+  annotations:
+    policies.kyverno.io/title: Require Namespace Labels
+    policies.kyverno.io/category: Metadata
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Namespace
+    policies.kyverno.io/description: 'Require specific labels on all namespaces for cost allocation and
+
+      organizational purposes.
+
+
+      Required labels:
+
+      - opencost.io/team: Team owning the namespace
+
+      - opencost.io/project: Project using the namespace
+
+      - environment: Environment type (dev/staging/production)
+
+      '
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-namespace-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              names:
+                - default
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - mantl-system
+      validate:
+        message: "Namespaces must have the following required labels:\n- opencost.io/team\n- opencost.io/project\n- environment (one of: dev, staging, production)\n\nExample:\n  metadata:\n    labels:\n      opencost.io/team: \"platform-engineering\"\n      opencost.io/project: \"ecommerce\"\n      environment: \"production\"\n"
+        pattern:
+          metadata:
+            labels:
+              opencost.io/team: ?*
+              opencost.io/project: ?*
+              environment: dev | staging | production

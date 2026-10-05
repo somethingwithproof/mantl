@@ -1,0 +1,41 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-replicas
+  annotations:
+    policies.kyverno.io/title: Require Minimum Deployment Replicas
+    policies.kyverno.io/category: SOC2
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Deployment
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/description: 'Deployments must define at least 2 replicas so a single node or pod failure
+
+      does not take the workload offline.
+
+
+      Compliance: SOC2 A1.2 (availability).
+
+      '
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: deployment-min-replicas
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+      validate:
+        message: Deployments must define at least 2 replicas for availability.
+        pattern:
+          spec:
+            replicas: '>=2'

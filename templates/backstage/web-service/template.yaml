@@ -3,30 +3,53 @@ kind: Template
 metadata:
   name: mantl-web-service
   title: Mantl Web Service
-  description: Create a new Kubernetes web service using Mantl's production-ready template
+  description: Create a service pull request with probes, resource limits, and restricted container settings
 spec:
   owner: platform
   type: service
   parameters:
-    - title: Service metadata
-      required: [name, owner]
+    - title: Service configuration
+      required: [name, owner, namespace, image, repoUrl]
       properties:
         name:
-          title: Name
           type: string
+          pattern: '^[a-z][a-z0-9-]{0,40}$'
         owner:
-          title: Owner
           type: string
-          default: team-example
+          pattern: '^(group:default/)?[a-z][a-z0-9-]{0,40}$'
+        namespace:
+          type: string
+          pattern: '^[a-z][a-z0-9-]{0,40}$'
+        image:
+          type: string
+          description: An approved immutable container image digest
+          pattern: '^ghcr\.io/[a-z0-9._/-]+@sha256:[a-f0-9]{64}$'
+        repoUrl:
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
   steps:
     - id: fetch
-      name: Fetch Base
+      name: Render service
       action: fetch:template
       input:
-        url: ../../applications/templates/web-service/base
+        url: ./skeleton
         values:
-          name: "{{ parameters.name }}"
+          name: ${{ parameters.name }}
+          owner: ${{ parameters.owner }}
+          namespace: ${{ parameters.namespace }}
+          image: ${{ parameters.image }}
+    - id: publish
+      name: Open GitOps pull request
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        branchName: mantl-${{ parameters.name }}
+        title: Add ${{ parameters.name }} service
+        description: Review namespace access, image provenance, and network policies before deployment.
+        targetPath: apps/services/${{ parameters.name }}
   output:
     links:
-      - title: Repository
-        url: "{{ steps.publish.output.remoteUrl }}"
+      - title: Review pull request
+        url: ${{ steps.publish.output.remoteUrl }}

@@ -41,6 +41,16 @@ spec:
             properties:
               framework:
                 type: string
+              includeControls:
+                items:
+                  type: string
+                type: array
+              namespaces:
+                description: Namespaces restrict evidence collection. Defaults to
+                  the profile namespace.
+                items:
+                  type: string
+                type: array
               version:
                 type: string
             required:

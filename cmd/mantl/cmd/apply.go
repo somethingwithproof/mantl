@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/thomasvincent/mantl/pkg/bootstrap"
@@ -35,9 +37,24 @@ var applyCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		if cluster.Spec.Provider.Kind != "local" && kubeContext == "" {
+			fmt.Println("Error: --context is required for cloud bootstrap")
+			os.Exit(1)
+		}
+		if cluster.Spec.Provider.Kind == "local" {
+			kubeContext = "kind-" + cluster.Name
+		}
+		ctx, cancel := context.WithTimeout(cmd.Context(), 30*time.Minute)
+		defer cancel()
+		if len(cluster.Spec.Tenants) > 0 {
+			fmt.Println("Commit generated tenant manifests at gitops.tenantPath before bootstrap.")
+		}
 		// 2. Execution DAG
 		dag := &bootstrap.ExecutionDAG{
 			SpecFile:     specFile,
+			Context:      ctx,
+			KubeContext:  kubeContext,
+			SourceDir:    sourceDir,
 			BuildDir:     buildDir,
 			Distribution: cluster.Spec.Kubernetes.Distribution,
 		}

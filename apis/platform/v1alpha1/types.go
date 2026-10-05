@@ -22,8 +22,20 @@ type MantlClusterSpec struct {
 	// Features to enable on the platform
 	Features FeatureSpec `json:"features"`
 
+	GitOps GitOpsSpec `json:"gitops,omitempty"`
+
 	// Tenants to onboard to the cluster
 	Tenants []TenantSpec `json:"tenants,omitempty"`
+}
+
+// GitOpsSpec binds rendered applications to a versioned repository.
+type GitOpsSpec struct {
+	Repository string `json:"repository,omitempty"`
+	Revision   string `json:"revision,omitempty"`
+	// TenantPath is the committed path of generated tenant files in Repository.
+	TenantPath string `json:"tenantPath,omitempty"`
+	// OperatorPath selects an overlay containing evidence settings and image digest.
+	OperatorPath string `json:"operatorPath,omitempty"`
 }
 
 // TenantSpec defines a platform tenant (team/app)

@@ -1,0 +1,37 @@
+name: Compliance runtime
+on:
+  pull_request:
+    paths: ["apis/**", "cmd/**", "controllers/**", "pkg/**", "compliance/**", "deploy/**", "templates/backstage/**", "infra/terraform/**", "go.*", "mise.toml", "Dockerfile.compliance-operator", ".github/workflows/compliance-runtime.yml"]
+  push:
+    branches: [main]
+    paths: ["apis/**", "cmd/**", "controllers/**", "pkg/**", "compliance/**", "deploy/**", "templates/backstage/**", "infra/terraform/**", "go.*", "mise.toml", "Dockerfile.compliance-operator", ".github/workflows/compliance-runtime.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: compliance-runtime-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+        with:
+          version: '2026.10.2'
+      - name: Test first-party code and static cloud contracts
+        run: |
+          mise exec -- make go-test
+          mise exec -- go run ./cmd/mantl validate-clouds > cloud-contracts.json
+      - name: Validate installation bundles
+        run: |
+          kubectl kustomize deploy/operator/base > operator-install.yaml
+          kubectl kustomize deploy/gitops/policies > policy-install.yaml
+          kubectl kustomize deploy/gitops/core > core-install.yaml
+      - name: Build packaged operator and check entrypoint
+        run: |
+          docker build -f Dockerfile.compliance-operator -t mantl-compliance-operator:ci .
+          docker run --rm mantl-compliance-operator:ci --help

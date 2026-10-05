@@ -130,10 +130,7 @@ func TestRenderTerraform_AllTFVarsFields(t *testing.T) {
 		"cluster_name":       "test-cluster",
 		"region":             "us-east-1",
 		"kubernetes_version": "1.29",
-		"vpc_id":             "vpc-abc123",
-		"domain":             "example.com",
 		"environment":        "dev",
-		"account_id":         "123456789012",
 	}
 
 	for key, want := range expected {

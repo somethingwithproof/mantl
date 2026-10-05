@@ -18,6 +18,9 @@ type ExecutionDAG struct {
 	SpecFile     string
 	BuildDir     string
 	Distribution string
+	Context      context.Context
+	KubeContext  string
+	SourceDir    string
 }
 
 var validKindClusterNameRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
@@ -38,7 +41,7 @@ func (d *ExecutionDAG) ProvisionInfra(provider string, clusterName string) error
 		return fmt.Errorf("distribution is required to select a terraform blueprint")
 	}
 	blueprintName := fmt.Sprintf("%s-%s", provider, distribution)
-	blueprintPath := filepath.Join("infra/terraform/blueprints", blueprintName)
+	blueprintPath := filepath.Join(d.SourceDir, "infra/terraform/blueprints", blueprintName)
 	if _, statErr := os.Stat(blueprintPath); os.IsNotExist(statErr) {
 		return fmt.Errorf("terraform blueprint %q not found at %s", blueprintName, blueprintPath)
 	}
@@ -62,7 +65,7 @@ func (d *ExecutionDAG) ProvisionInfra(provider string, clusterName string) error
 
 	// 3. Initialize
 	fmt.Println("  Initializing Terraform...")
-	if err := tf.Init(context.Background(), tfexec.Upgrade(true)); err != nil {
+	if err := tf.Init(d.context(), tfexec.Upgrade(false)); err != nil {
 		return fmt.Errorf("terraform init failed: %w", err)
 	}
 
@@ -71,7 +74,7 @@ func (d *ExecutionDAG) ProvisionInfra(provider string, clusterName string) error
 	tfVarsPath := filepath.Join(absBuildDir, "terraform.tfvars.json")
 
 	fmt.Printf("  Applying configuration with vars: %s\n", tfVarsPath)
-	if err := tf.Apply(context.Background(), tfexec.VarFile(tfVarsPath)); err != nil {
+	if err := tf.Apply(d.context(), tfexec.VarFile(tfVarsPath)); err != nil {
 		return fmt.Errorf("terraform apply failed: %w", err)
 	}
 
@@ -87,7 +90,7 @@ func (d *ExecutionDAG) CreateLocalCluster(name string) error {
 	fmt.Printf("Executing: kind create cluster --name %s\n", name)
 
 	// Check if cluster already exists
-	checkCmd := exec.Command("kind", "get", "clusters")
+	checkCmd := d.command("kind", "get", "clusters")
 	output, checkErr := checkCmd.Output()
 	if checkErr != nil {
 		// Non-fatal: kind may not have any clusters yet; log and proceed to create.
@@ -100,7 +103,7 @@ func (d *ExecutionDAG) CreateLocalCluster(name string) error {
 		}
 	}
 
-	cmd := exec.Command("kind", "create", "cluster", "--name", name)
+	cmd := d.command("kind", "create", "cluster", "--name", name)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -114,14 +117,16 @@ func (d *ExecutionDAG) CreateLocalCluster(name string) error {
 func (d *ExecutionDAG) InstallArgoCD() error {
 	fmt.Println("Executing: Installing ArgoCD...")
 
-	// 1. Create namespace
-	if err := exec.Command("kubectl", "create", "namespace", "argocd").Run(); err != nil {
-		return fmt.Errorf("failed to create argocd namespace: %w", err)
+	// Apply a declarative namespace so installation is repeatable.
+	namespace := d.command("kubectl", "apply", "-f", "-")
+	namespace.Stdin = strings.NewReader("apiVersion: v1\nkind: Namespace\nmetadata:\n  name: argocd\n")
+	if err := namespace.Run(); err != nil {
+		return fmt.Errorf("ensure argocd namespace: %w", err)
 	}
 
 	// 2. Apply install manifest
-	installUrl := "https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
-	cmd := exec.Command("kubectl", "apply", "-n", "argocd", "-f", installUrl)
+	installUrl := "https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.3/manifests/install.yaml"
+	cmd := d.command("kubectl", "apply", "-n", "argocd", "-f", installUrl)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -130,7 +135,7 @@ func (d *ExecutionDAG) InstallArgoCD() error {
 
 	// 3. Wait for ArgoCD to be ready
 	fmt.Println("  Waiting for ArgoCD deployments to be ready...")
-	waitCmd := exec.Command("kubectl", "wait", "--for=condition=available", "--timeout=300s", "deployment", "-n", "argocd", "--all")
+	waitCmd := d.command("kubectl", "wait", "--for=condition=available", "--timeout=300s", "deployment", "-n", "argocd", "--all")
 	if err := waitCmd.Run(); err != nil {
 		return fmt.Errorf("argocd deployments did not become ready: %w", err)
 	}
@@ -150,7 +155,7 @@ func (d *ExecutionDAG) BootstrapGitOps() error {
 
 	for _, file := range files {
 		fmt.Printf("  Applying %s...\n", filepath.Base(file))
-		cmd := exec.Command("kubectl", "apply", "-f", file)
+		cmd := d.command("kubectl", "apply", "-f", file)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
@@ -171,52 +176,53 @@ func (d *ExecutionDAG) VerifyConvergence() error {
 
 	for {
 		select {
+		case <-d.context().Done():
+			return d.context().Err()
 		case <-timeout:
 			return fmt.Errorf("timeout waiting for platform convergence")
 		case <-ticker.C:
-			cmd := exec.Command("kubectl", "get", "applications", "-n", "argocd",
-				"-o", "jsonpath={.items[*].status.sync.status}={.items[*].status.health.status}")
+			cmd := d.command("kubectl", "get", "applications", "-n", "argocd",
+				"-o", `jsonpath={range .items[*]}{.status.sync.status},{.status.health.status}{"\n"}{end}`)
 			output, err := cmd.CombinedOutput()
 			if err != nil {
 				fmt.Printf("  Waiting for ArgoCD API... (%s)\n", err.Error())
 				continue
 			}
 
-			strOutput := string(output)
-			if strOutput == "=" || strOutput == "" {
-				fmt.Println("  Waiting for applications to be created...")
-				continue
-			}
-
-			parts := strings.Split(strOutput, "=")
-			if len(parts) != 2 {
-				fmt.Printf("  Unexpected output format, retrying... (%q)\n", strOutput)
-				continue
-			}
-
-			syncStatuses := strings.Fields(parts[0])
-			healthStatuses := strings.Fields(parts[1])
-
-			allSynced := true
-			allHealthy := true
-
-			for _, s := range syncStatuses {
-				if s != "Synced" {
-					allSynced = false
-				}
-			}
-			for _, h := range healthStatuses {
-				if h != "Healthy" {
-					allHealthy = false
-				}
-			}
-
-			if allSynced && allHealthy {
-				fmt.Println("  All platform applications are Synced and Healthy!")
+			if ApplicationsHealthy(string(output)) {
 				return nil
 			}
 
 			fmt.Println("  Waiting for applications to sync and become healthy...")
 		}
 	}
+}
+
+func (d *ExecutionDAG) context() context.Context {
+	if d.Context != nil {
+		return d.Context
+	}
+	return context.Background()
+}
+func (d *ExecutionDAG) command(name string, args ...string) *exec.Cmd {
+	if name == "kubectl" && d.KubeContext != "" {
+		args = append([]string{"--context", d.KubeContext}, args...)
+	}
+	return exec.CommandContext(d.context(), name, args...)
+}
+
+// ApplicationsHealthy requires a complete pair for every reported application.
+func ApplicationsHealthy(raw string) bool {
+	rows := 0
+	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		sync, health, ok := strings.Cut(line, ",")
+		if !ok || sync != "Synced" || health != "Healthy" {
+			return false
+		}
+		rows++
+	}
+	return rows > 0
 }

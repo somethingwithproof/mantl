@@ -51,6 +51,15 @@ spec:
             description: ComplianceAuditStatus defines the observed state of a Compliance
               Audit
             properties:
+              collectorTimes:
+                additionalProperties:
+                  format: date-time
+                  type: string
+                type: object
+              coverageGaps:
+                items:
+                  type: string
+                type: array
               endTime:
                 format: date-time
                 type: string
@@ -62,6 +71,8 @@ spec:
               findingCount:
                 format: int32
                 type: integer
+              manifestHash:
+                type: string
               phase:
                 type: string
               startTime:

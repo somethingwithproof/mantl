@@ -21,6 +21,11 @@ spec:
     security: true
     secrets: true
     compliance: true
+  gitops:
+    repository: https://github.com/somethingwithproof/mantl.git
+    revision: main
+    tenantPath: tenants/prod-us-east
+    operatorPath: deploy/operator/overlays/local
   tenants:
     - name: data-science
       admins:

@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - disallow-default-namespace.yaml
+  - disallow-default-serviceaccount.yaml
+  - disallow-latest-tag.yaml
+  - pss-restricted.yaml
+  - require-change-annotations.yaml
+  - require-labels.yaml
+  - require-network-policy.yaml
+  - require-replicas.yaml
+  - require-resource-limits.yaml
+  - restrict-external-ips.yaml
+  - restrict-image-registries.yaml
+  - restrict-service-account-tokens.yaml
