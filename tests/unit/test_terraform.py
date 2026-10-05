@@ -214,7 +214,7 @@ def test_aws_eks_encryption_enabled(aws_eks_blueprint: Path):
     with open(main_file) as f:
         content = f.read()
 
-    assert "cluster_encryption_config" in content, "EKS cluster encryption should be enabled"
+    assert "encryption_config" in content, "EKS cluster encryption should be enabled"
     assert 'resources        = ["secrets"]' in content, "Secrets should be encrypted"
 
 

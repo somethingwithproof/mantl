@@ -103,9 +103,9 @@ func Validate(root string) ([]Result, error) {
 		switch name {
 		case "aws-eks":
 			b := d.block("module", "eks")
-			checks["private_api_default"] = d.boolean(b, "cluster_endpoint_private_access", true) && d.boolean(b, "cluster_endpoint_public_access", false)
-			checks["audit_logging"] = d.contains(b, "cluster_enabled_log_types", "audit")
-			checks["secrets_encryption"] = d.contains(b, "cluster_encryption_config", "provider_key_arn") // pragma: allowlist secret (attribute name, not a credential)
+			checks["private_api_default"] = d.boolean(b, "endpoint_private_access", true) && d.boolean(b, "endpoint_public_access", false)
+			checks["audit_logging"] = d.contains(b, "enabled_log_types", "audit")
+			checks["secrets_encryption"] = d.contains(b, "encryption_config", "provider_key_arn") // pragma: allowlist secret (attribute name, not a credential)
 			checks["workload_identity"] = d.boolean(b, "enable_irsa", true)
 		case "gcp-gke":
 			b := d.block("module", "gke")
