@@ -6,7 +6,7 @@ import sys
 def select(paths):
     shared = any(p.startswith(".github/actions/") or p == "mise.toml" for p in paths)
     prefixes = {
-        "infrastructure": ("infra/terraform/", ".tflint.hcl"),
+        "infrastructure": ("infra/terraform/", ".tflint.hcl", "ci/validate-terraform.sh"),
         "charts": (
             "charts/",
             "deploy/",

@@ -86,6 +86,7 @@ def selector(project_root):
         ("examples/ecommerce-microservices/src/frontend/package-lock.json", {"frontend"}),
         (".github/workflows/release.yml", {"runtime"}),
         (".github/workflows/terraform-validate.yml", {"infrastructure"}),
+        ("ci/validate-terraform.sh", {"infrastructure"}),
         (".github/actions/setup/action.yml", set(COMPONENTS)),
         ("mise.toml", set(COMPONENTS)),
     ],

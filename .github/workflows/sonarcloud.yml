@@ -19,12 +19,7 @@ name: SonarCloud
     secrets:
       SONAR_TOKEN:
         required: true
-  workflow_dispatch:
-    inputs:
-      coverage-artifacts:
-        description: Reuse coverage from this run (core CI only)
-        type: boolean
-        default: false
+  workflow_dispatch: {}
 permissions:
   contents: read
 concurrency:
