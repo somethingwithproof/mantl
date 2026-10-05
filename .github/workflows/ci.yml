@@ -118,7 +118,7 @@ jobs:
         with:
           tools: python terraform kubectl kustomize uv
       - name: Verify Python dependency locks
-        run: mise exec -- python ci/lock_python_dependencies.py --check
+        run: mise exec -- python -m ci.lock_python_dependencies --check
       - name: Test infrastructure contracts and release tools
         run: |
           mise exec -- python -m venv .venv-ci

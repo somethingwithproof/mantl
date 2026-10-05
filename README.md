@@ -48,7 +48,7 @@ vendored components; maintain Mantl behavior under `pkg`, `controllers`, and `de
 
 Python dependency inputs are `requirements.in` and `requirements-test.in`; each
 Python example has its own `requirements.in`. After updating a direct pin, run
-`mise exec -- python ci/lock_python_dependencies.py` to regenerate the complete
+`mise exec -- python -m ci.lock_python_dependencies` to regenerate the complete
 hash-locked requirements. CI checks the locks for drift. Install with
 `python -m pip install --only-binary :all: --require-hashes -r requirements.txt -r requirements-test.txt`.
 

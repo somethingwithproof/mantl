@@ -5,6 +5,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from scripts import release_paths
+
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = (
     "requirements",
@@ -19,6 +21,12 @@ TARGETS = (
 
 def compile_lock(root, target, output, constraint=None):
     """Retain existing transitive pins until a dependency is explicitly updated."""
+    root = release_paths.source_path(root)
+    if target not in TARGETS:
+        raise ValueError("dependency input must be a known requirements manifest")
+    output = release_paths.artifact_path(output)
+    if constraint is not None:
+        constraint = release_paths.artifact_path(constraint)
     existing = root / f"{target}.txt"
     output.write_text(existing.read_text(encoding="utf-8"), encoding="utf-8")
     command = [
@@ -61,7 +69,9 @@ def compile_lock(root, target, output, constraint=None):
 
 def regenerate(root, check):
     """Check without changing the checkout; generate all locks before replacing any."""
-    with tempfile.TemporaryDirectory(prefix="mantl-python-locks-") as temporary:
+    root = release_paths.source_path(root)
+    (root / "dist").mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="python-locks-", dir=root / "dist") as temporary:
         directory = Path(temporary)
         compiled = {}
         for number, target in enumerate(TARGETS):

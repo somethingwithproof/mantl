@@ -15,6 +15,7 @@ def locks(tmp_path, monkeypatch):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     monkeypatch.setattr(module, "TARGETS", ("requirements", "requirements-test"))
+    monkeypatch.setattr(module.release_paths, "WORKSPACE_ROOT", tmp_path)
     for target in module.TARGETS:
         (tmp_path / f"{target}.txt").write_text("old\n")
         (tmp_path / f"{target}.in").write_text("example==1.0\n")
@@ -50,8 +51,10 @@ def test_resolution_failure_preserves_all_existing_locks(locks, tmp_path, monkey
 
 
 def test_compilation_retains_pins_and_constrains_test_dependencies(locks, tmp_path, monkeypatch):
-    output = tmp_path / "generated.txt"
-    constraint = tmp_path / "root-lock.txt"
+    directory = tmp_path / "dist"
+    directory.mkdir()
+    output = directory / "generated.txt"
+    constraint = directory / "root-lock.txt"
     constraint.write_text("example==1.0\n")
 
     def run(command, **options):
@@ -66,3 +69,15 @@ def test_compilation_retains_pins_and_constrains_test_dependencies(locks, tmp_pa
     locks.compile_lock(tmp_path, "requirements-test", output, constraint)
     assert output.read_text().startswith("# Generated from requirements-test.in")
     assert "--hash=sha256:" in output.read_text()
+
+
+def test_compilation_rejects_external_outputs_before_running(locks, tmp_path, monkeypatch):
+    def unexpected(*_args, **_kwargs):
+        pytest.fail("invalid paths must not start dependency resolution")
+
+    monkeypatch.setattr(locks.subprocess, "run", unexpected)
+    with pytest.raises(ValueError, match="inside this checkout"):
+        locks.compile_lock(tmp_path, "requirements", tmp_path / "outside.txt")
+    with pytest.raises(ValueError, match="known requirements"):
+        locks.compile_lock(tmp_path, "../outside", tmp_path / "dist/output.txt")
+    assert not (tmp_path / "outside.txt").exists()

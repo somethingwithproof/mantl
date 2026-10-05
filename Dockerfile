@@ -1,7 +1,7 @@
 # Official mise 2026.10.2 Debian image; tool versions come from mise.toml.
 FROM ghcr.io/jdx/mise@sha256:f349d8fe8c0da612d9d0132f83c1d779a72a49ee110248091cbbbd5caea2f0dd
 
-RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+RUN sed -i 's|^URIs:.*deb.debian.org/|URIs: https://deb.debian.org/|' /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
     && apt-get install -y --no-install-recommends make=4.4.1-2 \
     && rm -rf /var/lib/apt/lists/* \
