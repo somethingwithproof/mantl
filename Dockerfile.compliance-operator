@@ -31,7 +31,7 @@ RUN go run ./cmd/mantl bundle build --version "$(cat compliance/bundle-version.t
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
+FROM gcr.io/distroless/static@sha256:58133991db06659feaabe0f4e97a35cebf15ef4ea08f8a4c6d2ee5f75e4aa6a0
 WORKDIR /
 COPY --from=builder /workspace/manager .
 COPY --from=builder /workspace/collector .
