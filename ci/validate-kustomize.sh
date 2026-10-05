@@ -26,7 +26,7 @@ if kustomize build "$dir" --enable-helm --load-restrictor=LoadRestrictionsNone >
 done < <(find . -name kustomization.yaml -not -path "*/node_modules/*" -exec dirname {} \; | sort)
 
 echo ""
-if [ "$failed" -eq 0 ]; then
+if [[ "$failed" -eq 0 ]]; then
     echo -e "${GREEN}All Kustomize builds valid${NC}"
     exit 0
 else

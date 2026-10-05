@@ -105,6 +105,10 @@ resource "azurerm_network_watcher" "main" {
 
 # Storage account for flow logs
 resource "azurerm_storage_account" "flow_logs" {
+  identity {
+    type = "SystemAssigned"
+  }
+
   lifecycle {
     prevent_destroy = true
   }

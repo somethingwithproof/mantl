@@ -190,9 +190,10 @@ resource "google_kms_key_ring" "gke" {
 }
 
 resource "google_kms_crypto_key" "gke" {
-  name     = "${local.name}-key"
-  key_ring = google_kms_key_ring.gke.id
-  purpose  = "ENCRYPT_DECRYPT"
+  name            = "${local.name}-key"
+  key_ring        = google_kms_key_ring.gke.id
+  purpose         = "ENCRYPT_DECRYPT"
+  rotation_period = "7776000s"
 
   lifecycle {
     prevent_destroy = true

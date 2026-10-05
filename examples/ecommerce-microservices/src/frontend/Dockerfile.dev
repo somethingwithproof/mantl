@@ -1,14 +1,18 @@
 # Development Dockerfile for React frontend with hot-reload
-FROM node:24.15.0-alpine
+FROM node:26.10.0-alpine
 
+RUN mkdir /app && chown node:node /app
 WORKDIR /app
+USER node
 
 # Install dependencies
-COPY package.json package-lock.json ./
+COPY --chown=node:node package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 
 # Copy application files
-COPY . .
+COPY --chown=node:node src/ ./src/
+COPY --chown=node:node test/ ./test/
+COPY --chown=node:node index.html tsconfig.json vite.config.mjs ./
 
 # Expose development server port
 EXPOSE 3000

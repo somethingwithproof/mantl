@@ -18,7 +18,7 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 });
 
 // Fetch and update platform status (optional backend integration)
-async function updatePlatformStatus() {
+function updatePlatformStatus() {
     const statusGrid = document.getElementById('status-grid');
     if (!statusGrid) return;
 
@@ -32,7 +32,7 @@ async function updatePlatformStatus() {
 
     // Clear existing status items
     while (statusGrid.firstChild) {
-        statusGrid.removeChild(statusGrid.firstChild);
+        statusGrid.firstChild.remove();
     }
 
     // Create status items using safe DOM methods
@@ -69,7 +69,6 @@ window.addEventListener('scroll', () => {
     let current = '';
     sections.forEach(section => {
         const sectionTop = section.offsetTop;
-        const sectionHeight = section.clientHeight;
         if (window.scrollY >= sectionTop - 100) {
             current = section.getAttribute('id');
         }

@@ -46,6 +46,18 @@ Use `make go-test` to exclude vendored chart tests. Regenerate API artifacts wit
 `mise exec -- make manifests generate` after changing CRDs. `platform/` contains
 vendored components; maintain Mantl behavior under `pkg`, `controllers`, and `deploy`.
 
+Python dependency inputs are `requirements.in` and `requirements-test.in`; each
+Python example has its own `requirements.in`. After updating a direct pin, run
+`mise exec -- python -m ci.lock_python_dependencies` to regenerate the complete
+hash-locked requirements. CI checks the locks for drift. Install with
+`python -m pip install --only-binary :all: --require-hashes -r requirements.txt -r requirements-test.txt`.
+
+The devcontainer builds the pinned mise toolchain and runs as `mantl`. It mounts
+the checkout into `/workspace`, creates a project `.venv`, and installs local
+commit hooks. Cloud credentials remain host-mounted; setup does not create a
+cluster. Optional kind setup requires a pinned kind installation through mise
+and an explicit `CREATE_KIND_CLUSTER=true`.
+
 The supported entrypoint is the Go CLI. `bin/mantl` and wizard/Make installers are
 legacy paths and do not define the current operator contract.
 

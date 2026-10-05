@@ -20,7 +20,7 @@ body {
 }
 
 .App-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4658b5 0%, #764ba2 100%);
   color: white;
   padding: 2rem;
   text-align: center;
@@ -57,9 +57,9 @@ body {
 
 .category-buttons button {
   padding: 0.5rem 1.5rem;
-  border: 2px solid #667eea;
+  border: 2px solid #4658b5;
   background: white;
-  color: #667eea;
+  color: #4658b5;
   border-radius: 25px;
   font-size: 1rem;
   cursor: pointer;
@@ -71,7 +71,7 @@ body {
 }
 
 .category-buttons button.active {
-  background: #667eea;
+  background: #4658b5;
   color: white;
 }
 
@@ -103,7 +103,7 @@ body {
   width: 100%;
   height: 200px;
   object-fit: cover;
-  background: linear-gradient(135deg, #667eea20 0%, #764ba220 100%);
+  background: linear-gradient(135deg, #4658b520 0%, #764ba220 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -121,7 +121,7 @@ body {
 }
 
 .category {
-  color: #667eea;
+  color: #4658b5;
   font-size: 0.9rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -171,7 +171,7 @@ body {
 .add-to-cart {
   width: 100%;
   padding: 0.75rem;
-  background: #667eea;
+  background: #4658b5;
   color: white;
   border: none;
   border-radius: 8px;
@@ -186,7 +186,7 @@ body {
 }
 
 .add-to-cart:disabled {
-  background: #ccc;
+  background: #707070;
   cursor: not-allowed;
 }
 
@@ -200,7 +200,7 @@ body {
 
 .spinner {
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #667eea;
+  border-top: 4px solid #4658b5;
   border-radius: 50%;
   width: 50px;
   height: 50px;

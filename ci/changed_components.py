@@ -31,10 +31,18 @@ def select(paths):
             ".goreleaser.yaml",
             "scripts/package_release.py",
             "scripts/publish_control_bundle.py",
+            "scripts/release_paths.py",
         ),
         "frontend": ("examples/ecommerce-microservices/src/frontend/",),
         "ml_example": ("examples/ml-inference-service/src/", "ci/smoke_ml_example.py"),
-        "developer_image": ("Dockerfile", "requirements.txt", "requirements-test.txt"),
+        "developer_image": (
+            "Dockerfile",
+            "requirements.txt",
+            "requirements-test.txt",
+            "requirements.in",
+            "requirements-test.in",
+            ".devcontainer/",
+        ),
     }
     result = {}
     for component, roots in prefixes.items():

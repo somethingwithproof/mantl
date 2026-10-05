@@ -1,2 +1,7 @@
-nats-py==2.16.0
-prometheus-client==0.26.0
+# Generated from requirements.in with mise and uv; edit the input and regenerate.
+nats-py==2.16.0 \
+    --hash=sha256:1d137ed7afc9b59033b3199324c6237df2016a5091935871344a787eba6b72fc \
+    --hash=sha256:aeb1ff123966c05833d26c7df7e1d54c1c6d32b612428b21677a2e921f1fecae
+prometheus-client==0.26.0 \
+    --hash=sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b \
+    --hash=sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6

@@ -3,8 +3,6 @@
 Tests validate that infrastructure files exist and are properly formatted.
 """
 
-import json
-import os
 import re
 from pathlib import Path
 
@@ -73,9 +71,8 @@ class TestTerraformStructure:
             tf_files = list(module.glob("*.tf"))
             has_entry = any(f.name in entry_names for f in tf_files)
             declares = any(decl_re.search(f.read_text()) for f in tf_files)
-            assert has_entry or not declares, (
-                f"Terraform module declares resources but has no main.tf/modern.tf entry file: {module}"
-            )
+            message = f"Terraform module declares resources but has no entry file: {module}"
+            assert has_entry or not declares, message
 
     def test_terraform_files_valid_hcl(self, terraform_dir: Path) -> None:
         """Verify Terraform files contain valid HCL syntax (basic check)."""
@@ -117,12 +114,9 @@ class TestKustomizeStructure:
         kustomization_files = list(project_root.rglob("kustomization.yaml"))
 
         for kust_file in kustomization_files:
-            try:
-                content = yaml.safe_load(kust_file.read_text())
-                assert content is not None, f"Empty kustomization: {kust_file}"
-                assert isinstance(content, dict), f"Invalid kustomization: {kust_file}"
-            except yaml.YAMLError as e:
-                pytest.fail(f"Invalid YAML in {kust_file}: {e}")
+            content = yaml.safe_load(kust_file.read_text())
+            assert content is not None, f"Empty kustomization: {kust_file}"
+            assert isinstance(content, dict), f"Invalid kustomization: {kust_file}"
 
 
 class TestPoliciesStructure:
@@ -154,14 +148,11 @@ class TestPoliciesStructure:
             # Skip the vendored kyverno Helm chart under policies/kyverno/charts.
             if not _is_first_party_yaml(yaml_file):
                 continue
-            try:
-                content = yaml.safe_load(yaml_file.read_text())
-                # Can be None for empty files, dict for single doc
-                assert content is None or isinstance(
-                    content, (dict, list)
-                ), f"Invalid content in {yaml_file}"
-            except yaml.YAMLError as e:
-                pytest.fail(f"Invalid YAML in {yaml_file}: {e}")
+            content = yaml.safe_load(yaml_file.read_text())
+            # Can be None for empty files, dict for single doc
+            assert content is None or isinstance(
+                content, (dict, list)
+            ), f"Invalid content in {yaml_file}"
 
 
 class TestAppsStructure:
@@ -231,8 +222,6 @@ class TestYAMLValidation:
         # Directories to skip
         skip_dirs = {".git", "node_modules", ".venv", "venv", "__pycache__", "legacy", "dist"}
 
-        invalid_files = []
-
         for yaml_file in project_root.rglob("*.yaml"):
             # Skip excluded directories
             if any(skip_dir in yaml_file.parts for skip_dir in skip_dirs):
@@ -246,17 +235,8 @@ class TestYAMLValidation:
             if not _is_first_party_yaml(yaml_file):
                 continue
 
-            try:
-                # Try to load as single document first
-                yaml.safe_load(yaml_file.read_text())
-            except yaml.YAMLError:
-                try:
-                    # Try multi-document YAML
-                    list(yaml.safe_load_all(yaml_file.read_text()))
-                except yaml.YAMLError as e:
-                    invalid_files.append(f"{yaml_file}: {e}")
-
-        assert len(invalid_files) == 0, "Invalid YAML files found:\n" + "\n".join(invalid_files)
+            # safe_load_all validates both single-document and manifest streams.
+            list(yaml.safe_load_all(yaml_file.read_text()))
 
     def test_no_yaml_syntax_errors(self, project_root: Path) -> None:
         """Check for common YAML syntax issues."""

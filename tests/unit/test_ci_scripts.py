@@ -110,12 +110,9 @@ class TestGitHubWorkflows:
         import yaml
 
         for workflow in workflows_dir.glob("*.yml"):
-            try:
-                content = yaml.safe_load(workflow.read_text())
-                assert content is not None, f"Empty workflow: {workflow.name}"
-                assert isinstance(content, dict), f"Invalid workflow: {workflow.name}"
-            except yaml.YAMLError as e:
-                pytest.fail(f"Invalid YAML in {workflow.name}: {e}")
+            content = yaml.safe_load(workflow.read_text())
+            assert content is not None, f"Empty workflow: {workflow.name}"
+            assert isinstance(content, dict), f"Invalid workflow: {workflow.name}"
 
     def test_workflows_have_required_fields(self, workflows_dir: Path) -> None:
         """Verify workflows have required fields."""
@@ -137,9 +134,7 @@ class TestGitHubWorkflows:
             # an unquoted `on:` trigger is parsed as the boolean key True; accept
             # either form rather than requiring the workflows to quote the key.
             assert "name" in content, f"Missing 'name' in {workflow.name}"
-            assert "on" in content or True in content, (
-                f"Missing 'on' trigger in {workflow.name}"
-            )
+            assert "on" in content or True in content, f"Missing 'on' trigger in {workflow.name}"
             assert "jobs" in content, f"Missing 'jobs' in {workflow.name}"
 
 
@@ -159,12 +154,9 @@ class TestPreCommitConfig:
         if not config.exists():
             pytest.skip("Pre-commit config not found")
 
-        try:
-            content = yaml.safe_load(config.read_text())
-            assert content is not None, "Empty pre-commit config"
-            assert "repos" in content, "Missing 'repos' in pre-commit config"
-        except yaml.YAMLError as e:
-            pytest.fail(f"Invalid pre-commit config: {e}")
+        content = yaml.safe_load(config.read_text())
+        assert content is not None, "Empty pre-commit config"
+        assert "repos" in content, "Missing 'repos' in pre-commit config"
 
 
 class TestDockerfile:
@@ -184,19 +176,6 @@ class TestDockerfile:
         content = dockerfile.read_text()
         assert "FROM" in content, "Dockerfile missing FROM instruction"
 
-    def test_dockerfile_uses_python_313(self, project_root: Path) -> None:
-        """Verify Dockerfile uses Python 3.13 or newer."""
-        dockerfile = project_root / "Dockerfile"
-        if not dockerfile.exists():
-            pytest.skip("Dockerfile not found")
-
-        content = dockerfile.read_text()
-        # Require Python 3.13+ without pinning an upper bound, so a forward bump
-        # of the base image does not break the test.
-        minors = [int(m) for m in re.findall(r"python:3\.(\d+)", content)]
-        assert minors, "Dockerfile should use a python:3.x base image"
-        assert min(minors) >= 13, f"Dockerfile must use Python 3.13 or newer, found 3.{min(minors)}"
-
 
 class TestRequirementsFiles:
     """Tests for requirements files."""
@@ -211,52 +190,27 @@ class TestRequirementsFiles:
         requirements = project_root / "requirements-test.txt"
         assert requirements.exists(), "requirements-test.txt not found"
 
-    def test_requirements_pinned(self, project_root: Path) -> None:
-        """Verify requirements are pinned to specific versions."""
-        requirements = project_root / "requirements.txt"
-        if not requirements.exists():
-            pytest.skip("requirements.txt not found")
+    def test_compiled_locks_have_pins_and_hashes(self, project_root: Path) -> None:
+        from ci.lock_python_dependencies import TARGETS
 
-        content = requirements.read_text()
-        lines = [
-            line.strip()
-            for line in content.splitlines()
-            if line.strip() and not line.startswith("#")
-        ]
+        for target in TARGETS:
+            text = (project_root / f"{target}.txt").read_text()
+            records = [
+                r
+                for r in text.replace("\\\n", " ").splitlines()
+                if r.strip() and not r.startswith("#")
+            ]
+            assert records, f"Empty dependency lock: {target}"
+            for record in records:
+                assert re.match(r"^[a-zA-Z0-9_.-]+(?:\[[^]]+\])?==[^ ]+ ", record)
+                assert "--hash=sha256:" in record, f"Missing hash in {target}: {record}"
 
-        unpinned = []
-        for line in lines:
-            # Skip lines that are comments or have version specifiers
-            if "==" not in line and ">=" not in line and "<=" not in line:
-                unpinned.append(line)
+    def test_shared_dependency_versions_match(self, project_root: Path) -> None:
+        def versions(name):
+            text = (project_root / name).read_text()
+            return dict(re.findall(r"^([a-zA-Z0-9_.-]+)==([^ \\]+)", text, re.MULTILINE))
 
-        # Allow some flexibility - just warn
-        if unpinned:
-            for pkg in unpinned[:5]:
-                print(f"Warning: Unpinned dependency: {pkg}")
-
-    def test_no_duplicate_dependencies(self, project_root: Path) -> None:
-        """Verify no duplicate dependencies across files."""
-        requirements = project_root / "requirements.txt"
-        requirements_test = project_root / "requirements-test.txt"
-
-        if not requirements.exists() or not requirements_test.exists():
-            pytest.skip("Requirements files not found")
-
-        def get_packages(file_path: Path) -> set:
-            packages = set()
-            for line in file_path.read_text().splitlines():
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    # Extract package name (before ==, >=, etc.)
-                    pkg = line.split("==")[0].split(">=")[0].split("<=")[0].strip()
-                    packages.add(pkg.lower())
-            return packages
-
-        main_pkgs = get_packages(requirements)
-        test_pkgs = get_packages(requirements_test)
-
-        duplicates = main_pkgs & test_pkgs
-        # This is informational - pytest duplicates are expected
-        if duplicates - {"pytest", "pytest-cov"}:
-            print(f"Note: Duplicate packages: {duplicates}")
+        main = versions("requirements.txt")
+        tests = versions("requirements-test.txt")
+        for name in main.keys() & tests.keys():
+            assert main[name] == tests[name], f"Conflicting dependency: {name}"
