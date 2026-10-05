@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+      - uses: jdx/mise-action@7a4e45a543138629540c9a1616d08632b893e492
         with:
           version: 2026.10.2
           install_args: go python oras cosign
@@ -46,7 +46,7 @@ jobs:
           mise exec -- go test ./pkg/controlbundle ./pkg/framework
           mise exec -- go run ./cmd/mantl bundle build --version "$CONTENT_VERSION" --output dist/controls/controls.tar.gz > dist/controls/control-identity.json
           mise exec -- python scripts/publish_control_bundle.py --repository "ghcr.io/${REPOSITORY,,}-operator-controls" --version "$CONTENT_VERSION" --archive dist/controls/controls.tar.gz --identity dist/controls/oci-identity.json
-      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: control-content
           retention-days: 7

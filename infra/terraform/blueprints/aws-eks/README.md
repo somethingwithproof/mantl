@@ -212,8 +212,8 @@ aws eks describe-cluster --name mantl --query cluster.identity.oidc.issuer
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
 | <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6.67.0 |
-| <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.17.0 |
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~> 2.38.0 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 3.3.0 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~> 3.3.0 |
 | <a name="requirement_tls"></a> [tls](#requirement\_tls) | ~> 4.4.0 |
 
 ## Providers

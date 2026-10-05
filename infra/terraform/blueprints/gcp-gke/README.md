@@ -18,10 +18,10 @@
 
 | Name | Source | Version |
 | ---- | ------ | ------- |
-| <a name="module_cert_manager_workload_identity"></a> [cert\_manager\_workload\_identity](#module\_cert\_manager\_workload\_identity) | terraform-google-modules/kubernetes-engine/google//modules/workload-identity | ~> 42.0 |
-| <a name="module_external_dns_workload_identity"></a> [external\_dns\_workload\_identity](#module\_external\_dns\_workload\_identity) | terraform-google-modules/kubernetes-engine/google//modules/workload-identity | ~> 42.0 |
-| <a name="module_external_secrets_workload_identity"></a> [external\_secrets\_workload\_identity](#module\_external\_secrets\_workload\_identity) | terraform-google-modules/kubernetes-engine/google//modules/workload-identity | ~> 42.0 |
-| <a name="module_gke"></a> [gke](#module\_gke) | terraform-google-modules/kubernetes-engine/google//modules/beta-private-cluster | ~> 42.0 |
+| <a name="module_cert_manager_workload_identity"></a> [cert\_manager\_workload\_identity](#module\_cert\_manager\_workload\_identity) | terraform-google-modules/kubernetes-engine/google//modules/workload-identity | ~> 45.0 |
+| <a name="module_external_dns_workload_identity"></a> [external\_dns\_workload\_identity](#module\_external\_dns\_workload\_identity) | terraform-google-modules/kubernetes-engine/google//modules/workload-identity | ~> 45.0 |
+| <a name="module_external_secrets_workload_identity"></a> [external\_secrets\_workload\_identity](#module\_external\_secrets\_workload\_identity) | terraform-google-modules/kubernetes-engine/google//modules/workload-identity | ~> 45.0 |
+| <a name="module_gke"></a> [gke](#module\_gke) | terraform-google-modules/kubernetes-engine/google//modules/beta-private-cluster | ~> 45.0 |
 
 ## Resources
 
