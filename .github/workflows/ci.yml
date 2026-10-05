@@ -37,6 +37,7 @@ jobs:
       pull_request: ${{ steps.pr.outputs.pull_request }}
       head_branch: ${{ steps.pr.outputs.head_branch }}
       base_branch: ${{ steps.pr.outputs.base_branch }}
+      base_sha: ${{ steps.pr.outputs.base_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -124,6 +125,12 @@ jobs:
           path: coverage-python.xml
           if-no-files-found: error
           retention-days: 7
+  repository:
+    name: Repository checks
+    needs: changes
+    uses: ./.github/workflows/pre-commit.yml
+    with:
+      base-ref: ${{ needs.changes.outputs.base_sha || github.event.before }}
   sonar:
     name: SonarCloud
     needs:
@@ -178,6 +185,7 @@ jobs:
       - runtime
       - frontend
       - developer_image
+      - repository
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -198,9 +206,10 @@ jobs:
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           DEVELOPER_IMAGE_SELECTED: ${{ needs.changes.outputs.developer_image }}
           DEVELOPER_IMAGE_RESULT: ${{ needs.developer_image.result }}
+          REPOSITORY_RESULT: ${{ needs.repository.result }}
         run: |
           set -euo pipefail
-          for result in "$CHANGES_RESULT" "$GO_RESULT" "$PYTHON_RESULT" "$SONAR_RESULT"; do
+          for result in "$CHANGES_RESULT" "$GO_RESULT" "$PYTHON_RESULT" "$SONAR_RESULT" "$REPOSITORY_RESULT"; do
             if [ "$result" != success ]; then
               echo "::error::A required CI prerequisite failed: $result"
               exit 1

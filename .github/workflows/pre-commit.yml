@@ -2,12 +2,11 @@
 # yamllint disable rule:line-length
 name: pre-commit
 'on':
-  pull_request:
-    branches:
-      - main
-  push:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      base-ref:
+        type: string
+        default: ''
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -34,7 +33,7 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-hooks-${{ hashFiles('.pre-commit-config.yaml', 'mise.toml') }}
       - name: Check changed files
         env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          BASE: ${{ inputs.base-ref || github.event.pull_request.base.sha || github.event.before }}
           HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail

@@ -8,7 +8,7 @@ only documentation. ADR 009 records the ownership and test-scope rules.
 | --- | --- | --- |
 | ci.yml | Go/Python unit tests and coverage, component selection, final CI result | PR, main push, manual |
 | sonarcloud.yml | Project/visibility verification and server quality gate; consumes CI coverage | Reusable, manual |
-| pre-commit.yml | Changed-file hooks and actionlint | PR, main push, manual |
+| pre-commit.yml | Changed-file hooks and actionlint, required by core CI | Reusable, manual |
 | compliance-runtime.yml | Disposable Kubernetes/PostgreSQL integration, operator image and package snapshots | Reusable for runtime changes, manual |
 | terraform-validate.yml | Eight blueprints plus the security module, supported-provider TFLint, security report | Reusable for infrastructure changes, manual |
 | helm-validate.yml | Locked chart dependencies, first-party charts and stable GitOps manifests | Reusable for manifest changes, manual |
@@ -48,7 +48,7 @@ package snapshots, audit reports and benchmarks have bounded retention.
 ## Required checks and permissions
 
 Main should require DCO, CI, and the actual reusable SonarCloud quality-gate check
-reported by GitHub Actions. CI requires Go, Python and Sonar success, plus success
+reported by GitHub Actions. CI requires Go, Python, repository checks and Sonar success, plus success
 for every selected component; an unselected component may be skipped. Do not
 require a path-filtered workflow whose check might never be created.
 
