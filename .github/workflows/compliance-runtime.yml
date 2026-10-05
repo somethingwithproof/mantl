@@ -103,7 +103,7 @@ jobs:
           kubectl kustomize dist/control-content > dist/control-install.yaml
           mise exec -- kubeconform -strict -ignore-missing-schemas -kubernetes-version 1.35.0 -summary dist/release/operator-install.yaml
       - name: Retain package validation artifacts
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: package-snapshot
           path: |-

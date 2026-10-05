@@ -4,6 +4,19 @@
 
 
 provider "azurerm" {
+  # Register only the namespaces used by this blueprint (AzureRM 5 defaults to none).
+  resource_provider_registrations = "none"
+  resource_providers_to_register = [
+    "Microsoft.Compute",
+    "Microsoft.ContainerService",
+    "Microsoft.Insights",
+    "Microsoft.KeyVault",
+    "Microsoft.ManagedIdentity",
+    "Microsoft.Network",
+    "Microsoft.OperationalInsights",
+    "Microsoft.Storage",
+  ]
+
   features {
     key_vault {
       purge_soft_delete_on_destroy    = false
@@ -56,11 +69,15 @@ resource "azurerm_subnet" "aks_nodes" {
   private_endpoint_network_policies = "Enabled"
 
   # Service endpoints for Azure services
-  service_endpoints = [
-    "Microsoft.Storage",
-    "Microsoft.KeyVault",
-    "Microsoft.ContainerRegistry",
-  ]
+  service_endpoint {
+    service = "Microsoft.Storage"
+  }
+  service_endpoint {
+    service = "Microsoft.KeyVault"
+  }
+  service_endpoint {
+    service = "Microsoft.ContainerRegistry"
+  }
 }
 
 # Network Security Group for AKS nodes
@@ -97,7 +114,7 @@ resource "azurerm_storage_account" "flow_logs" {
   account_tier                    = "Standard"
   account_replication_type        = "LRS"
   min_tls_version                 = "TLS1_2"
-  public_network_access_enabled   = true
+  public_network_access           = "Enabled"
   allow_nested_items_to_be_public = false
 
   network_rules {
@@ -111,17 +128,20 @@ resource "azurerm_storage_account" "flow_logs" {
   # default. A custom encryption scope is a separate
   # azurerm_storage_encryption_scope resource, not an inline block.
 
-  queue_properties {
-    logging {
-      delete                = true
-      read                  = true
-      write                 = true
-      version               = "1.0"
-      retention_policy_days = var.flow_logs_retention_days
-    }
-  }
 
   tags = local.common_tags
+}
+
+# AzureRM 5 manages queue diagnostics as a separate resource.
+resource "azurerm_storage_account_queue_properties" "flow_logs" {
+  storage_account_id = azurerm_storage_account.flow_logs.id
+  logging {
+    delete                = true
+    read                  = true
+    write                 = true
+    version               = "1.0"
+    retention_policy_days = var.flow_logs_retention_days
+  }
 }
 
 # VNet Flow Logs for security monitoring
@@ -130,9 +150,9 @@ resource "azurerm_network_watcher_flow_log" "aks_nodes" {
   network_watcher_name = azurerm_network_watcher.main.name
   resource_group_name  = azurerm_resource_group.main.name
 
-  network_security_group_id = azurerm_network_security_group.aks_nodes.id
-  storage_account_id        = azurerm_storage_account.flow_logs.id
-  enabled                   = true
+  target_resource_id = azurerm_network_security_group.aks_nodes.id
+  storage_account_id = azurerm_storage_account.flow_logs.id
+  enabled            = true
 
   retention_policy {
     enabled = true
@@ -184,6 +204,7 @@ resource "azurerm_key_vault" "main" {
   sku_name            = "premium"
 
   # Security features
+  rbac_authorization_enabled      = true
   enabled_for_disk_encryption     = true
   enabled_for_deployment          = false
   enabled_for_template_deployment = false
@@ -243,16 +264,10 @@ resource "azurerm_user_assigned_identity" "aks" {
   tags = local.common_tags
 }
 
-resource "azurerm_key_vault_access_policy" "aks" {
-  key_vault_id = azurerm_key_vault.main.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = azurerm_user_assigned_identity.aks.principal_id
-
-  key_permissions = [
-    "Get",
-    "UnwrapKey",
-    "WrapKey",
-  ]
+resource "azurerm_role_assignment" "aks_key" {
+  scope                = azurerm_key_vault_key.aks.resource_versionless_id
+  role_definition_name = "Key Vault Crypto Service Encryption User"
+  principal_id         = azurerm_user_assigned_identity.aks.principal_id
 }
 
 ################################################################################
@@ -287,15 +302,10 @@ resource "azurerm_user_assigned_identity" "external_secrets" {
 }
 
 # Grant External Secrets access to Key Vault
-resource "azurerm_key_vault_access_policy" "external_secrets" {
-  key_vault_id = azurerm_key_vault.main.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = azurerm_user_assigned_identity.external_secrets.principal_id
-
-  secret_permissions = [
-    "Get",
-    "List",
-  ]
+resource "azurerm_role_assignment" "external_secrets" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.external_secrets.principal_id
 }
 
 ################################################################################
@@ -303,6 +313,10 @@ resource "azurerm_key_vault_access_policy" "external_secrets" {
 ################################################################################
 
 resource "azurerm_kubernetes_cluster" "main" {
+  node_provisioning_profile {
+    mode = "Manual"
+  }
+
   name                = local.name
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
@@ -401,7 +415,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   tags = local.common_tags
 
   depends_on = [
-    azurerm_key_vault_access_policy.aks,
+    azurerm_role_assignment.aks_key,
     azurerm_private_endpoint.key_vault,
   ]
 }
@@ -514,11 +528,10 @@ resource "azurerm_private_dns_zone" "key_vault" {
   tags                = local.common_tags
 }
 resource "azurerm_private_dns_zone_virtual_network_link" "key_vault" {
-  name                  = "${local.name}-key-vault"
-  resource_group_name   = azurerm_resource_group.main.name
-  private_dns_zone_name = azurerm_private_dns_zone.key_vault.name
-  virtual_network_id    = azurerm_virtual_network.main.id
-  tags                  = local.common_tags
+  name                = "${local.name}-key-vault"
+  private_dns_zone_id = azurerm_private_dns_zone.key_vault.id
+  virtual_network_id  = azurerm_virtual_network.main.id
+  tags                = local.common_tags
 }
 resource "azurerm_private_endpoint" "key_vault" {
   name                = "${local.name}-key-vault"
@@ -540,26 +553,23 @@ resource "azurerm_private_endpoint" "key_vault" {
 
 # Bind platform Kubernetes service accounts to their dedicated identities.
 resource "azurerm_federated_identity_credential" "external_secrets" {
-  name                = "${local.name}-external-secrets"
-  resource_group_name = azurerm_resource_group.main.name
-  parent_id           = azurerm_user_assigned_identity.external_secrets.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
-  subject             = "system:serviceaccount:external-secrets:external-secrets"
+  name                      = "${local.name}-external-secrets"
+  user_assigned_identity_id = azurerm_user_assigned_identity.external_secrets.id
+  audience                  = ["api://AzureADTokenExchange"]
+  issuer                    = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject                   = "system:serviceaccount:external-secrets:external-secrets"
 }
 resource "azurerm_federated_identity_credential" "external_dns" {
-  name                = "${local.name}-external-dns"
-  resource_group_name = azurerm_resource_group.main.name
-  parent_id           = azurerm_user_assigned_identity.external_dns.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
-  subject             = "system:serviceaccount:external-dns:external-dns"
+  name                      = "${local.name}-external-dns"
+  user_assigned_identity_id = azurerm_user_assigned_identity.external_dns.id
+  audience                  = ["api://AzureADTokenExchange"]
+  issuer                    = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject                   = "system:serviceaccount:external-dns:external-dns"
 }
 resource "azurerm_federated_identity_credential" "cert_manager" {
-  name                = "${local.name}-cert-manager"
-  resource_group_name = azurerm_resource_group.main.name
-  parent_id           = azurerm_user_assigned_identity.cert_manager.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = azurerm_kubernetes_cluster.main.oidc_issuer_url
-  subject             = "system:serviceaccount:cert-manager:cert-manager"
+  name                      = "${local.name}-cert-manager"
+  user_assigned_identity_id = azurerm_user_assigned_identity.cert_manager.id
+  audience                  = ["api://AzureADTokenExchange"]
+  issuer                    = azurerm_kubernetes_cluster.main.oidc_issuer_url
+  subject                   = "system:serviceaccount:cert-manager:cert-manager"
 }

@@ -99,7 +99,7 @@ jobs:
           git diff --exit-code
           mise exec -- go run ./cmd/mantl plan examples/mantl-spec.yaml
       - name: Retain Go coverage
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: go-coverage
           path: coverage.out
@@ -130,7 +130,7 @@ jobs:
           mise exec -- .venv-ci/bin/python -m coverage combine --append
           mise exec -- .venv-ci/bin/python -m coverage xml -o coverage-python.xml
       - name: Retain Python coverage
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: python-coverage
           path: coverage-python.xml

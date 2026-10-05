@@ -1,18 +1,60 @@
 # azure-aks
 
+This blueprint is beta. Static validation does not establish cloud readiness.
+
+## AzureRM 4 to 5 migration
+
+Provider 5.8.0 requires service-endpoint blocks, ID-based private DNS links and
+federated credentials, explicit manual node provisioning, and a separate queue
+properties resource. The blueprint registers only the Azure resource-provider
+namespaces it uses; the deployment principal must have registration permission,
+or these namespaces must be registered before deployment.
+
+Key Vault now uses RBAC. The AKS identity receives **Key Vault Crypto Service
+Encryption User** on the versionless ARM ID of the AKS key; External Secrets
+receives **Key Vault Secrets User** on this vault. Existing access-policy resource
+addresses cannot be moved into role assignments because their resource types and
+identities differ. Before changing an existing vault's authorization mode, create
+and verify these two assignments externally, allow for RBAC propagation, and
+import them into `azurerm_role_assignment.aks_key` and
+`azurerm_role_assignment.external_secrets` using their ARM role-assignment IDs.
+Review a saved plan in a maintenance window: the old
+`azurerm_key_vault_access_policy.aks` and
+`azurerm_key_vault_access_policy.external_secrets` resources are removed, and
+vault authorization changes to RBAC. Do not apply unless both workloads will
+retain their required permissions through that transition.
+
+The Terraform deployment identity also needs pre-existing **Key Vault Crypto
+Officer** permission on the vault to manage the key and its rotation policy, plus
+permission to manage role assignments. It must reach the private vault endpoint;
+public access remains disabled. New environments need staged vault/network and
+identity provisioning before key creation. Do not grant subscription-wide roles
+to bypass these prerequisites.
+
+Import existing queue-service diagnostics into
+`azurerm_storage_account_queue_properties.flow_logs` with the storage account ARM
+ID followed by `/queueServices/default`. Review the resulting logging settings
+before apply. Existing NSG flow-log deployments retain their current target;
+new deployments must review Azure's NSG-flow-log retirement and migrate to VNet
+flow logs separately. No cloud plan, state mutation or apply has been performed.
+
+References: [AzureRM 5 upgrade guide](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/guides/5.0-upgrade-guide),
+[Key Vault RBAC migration](https://learn.microsoft.com/azure/key-vault/general/rbac-guide),
+[queue diagnostics resource](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/storage_account_queue_properties).
+
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 | Name | Version |
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
-| <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | 4.57.0 |
+| <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | 5.8.0 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 4.57.0 |
+| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 5.8.0 |
 
 ## Modules
 
@@ -22,33 +64,34 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
-| [azurerm_federated_identity_credential.cert_manager](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/federated_identity_credential) | resource |
-| [azurerm_federated_identity_credential.external_dns](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/federated_identity_credential) | resource |
-| [azurerm_federated_identity_credential.external_secrets](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/federated_identity_credential) | resource |
-| [azurerm_key_vault.main](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/key_vault) | resource |
-| [azurerm_key_vault_access_policy.aks](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/key_vault_access_policy) | resource |
-| [azurerm_key_vault_access_policy.external_secrets](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/key_vault_access_policy) | resource |
-| [azurerm_key_vault_key.aks](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/key_vault_key) | resource |
-| [azurerm_kubernetes_cluster.main](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/kubernetes_cluster) | resource |
-| [azurerm_kubernetes_cluster_node_pool.workload](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/kubernetes_cluster_node_pool) | resource |
-| [azurerm_log_analytics_workspace.main](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/log_analytics_workspace) | resource |
-| [azurerm_monitor_diagnostic_setting.aks_audit](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/monitor_diagnostic_setting) | resource |
-| [azurerm_network_security_group.aks_nodes](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/network_security_group) | resource |
-| [azurerm_network_watcher.main](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/network_watcher) | resource |
-| [azurerm_network_watcher_flow_log.aks_nodes](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/network_watcher_flow_log) | resource |
-| [azurerm_private_dns_zone.key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/private_dns_zone) | resource |
-| [azurerm_private_dns_zone_virtual_network_link.key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/private_dns_zone_virtual_network_link) | resource |
-| [azurerm_private_endpoint.key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/private_endpoint) | resource |
-| [azurerm_resource_group.main](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/resource_group) | resource |
-| [azurerm_storage_account.flow_logs](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/storage_account) | resource |
-| [azurerm_subnet.aks_nodes](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/subnet) | resource |
-| [azurerm_subnet_network_security_group_association.aks_nodes](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/subnet_network_security_group_association) | resource |
-| [azurerm_user_assigned_identity.aks](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/user_assigned_identity) | resource |
-| [azurerm_user_assigned_identity.cert_manager](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/user_assigned_identity) | resource |
-| [azurerm_user_assigned_identity.external_dns](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/user_assigned_identity) | resource |
-| [azurerm_user_assigned_identity.external_secrets](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/user_assigned_identity) | resource |
-| [azurerm_virtual_network.main](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/resources/virtual_network) | resource |
-| [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/4.57.0/docs/data-sources/client_config) | data source |
+| [azurerm_federated_identity_credential.cert_manager](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/federated_identity_credential) | resource |
+| [azurerm_federated_identity_credential.external_dns](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/federated_identity_credential) | resource |
+| [azurerm_federated_identity_credential.external_secrets](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/federated_identity_credential) | resource |
+| [azurerm_key_vault.main](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/key_vault) | resource |
+| [azurerm_key_vault_key.aks](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/key_vault_key) | resource |
+| [azurerm_kubernetes_cluster.main](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/kubernetes_cluster) | resource |
+| [azurerm_kubernetes_cluster_node_pool.workload](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/kubernetes_cluster_node_pool) | resource |
+| [azurerm_log_analytics_workspace.main](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/log_analytics_workspace) | resource |
+| [azurerm_monitor_diagnostic_setting.aks_audit](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/monitor_diagnostic_setting) | resource |
+| [azurerm_network_security_group.aks_nodes](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/network_security_group) | resource |
+| [azurerm_network_watcher.main](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/network_watcher) | resource |
+| [azurerm_network_watcher_flow_log.aks_nodes](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/network_watcher_flow_log) | resource |
+| [azurerm_private_dns_zone.key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/private_dns_zone) | resource |
+| [azurerm_private_dns_zone_virtual_network_link.key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/private_dns_zone_virtual_network_link) | resource |
+| [azurerm_private_endpoint.key_vault](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/private_endpoint) | resource |
+| [azurerm_resource_group.main](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/resource_group) | resource |
+| [azurerm_role_assignment.aks_key](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/role_assignment) | resource |
+| [azurerm_role_assignment.external_secrets](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/role_assignment) | resource |
+| [azurerm_storage_account.flow_logs](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/storage_account) | resource |
+| [azurerm_storage_account_queue_properties.flow_logs](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/storage_account_queue_properties) | resource |
+| [azurerm_subnet.aks_nodes](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/subnet) | resource |
+| [azurerm_subnet_network_security_group_association.aks_nodes](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/subnet_network_security_group_association) | resource |
+| [azurerm_user_assigned_identity.aks](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/user_assigned_identity) | resource |
+| [azurerm_user_assigned_identity.cert_manager](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/user_assigned_identity) | resource |
+| [azurerm_user_assigned_identity.external_dns](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/user_assigned_identity) | resource |
+| [azurerm_user_assigned_identity.external_secrets](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/user_assigned_identity) | resource |
+| [azurerm_virtual_network.main](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/resources/virtual_network) | resource |
+| [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/5.8.0/docs/data-sources/client_config) | data source |
 
 ## Inputs
 

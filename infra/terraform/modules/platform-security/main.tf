@@ -325,15 +325,15 @@ resource "helm_release" "tailscale_operator" {
   version    = "1.58.2"
   namespace  = kubernetes_namespace.tailscale[0].metadata[0].name
 
-  set {
+  set = [{
     name  = "oauth.clientId"
     value = var.tailscale_client_id
-  }
+  }]
 
-  set_sensitive {
+  set_sensitive = [{
     name  = "oauth.clientSecret"
     value = var.tailscale_client_secret
-  }
+  }]
 
   values = [yamlencode({
     apiServerProxyConfig = {
@@ -368,10 +368,10 @@ resource "helm_release" "cert_manager" {
   version    = "v1.14.2"
   namespace  = kubernetes_namespace.cert_manager[0].metadata[0].name
 
-  set {
+  set = [{
     name  = "installCRDs"
     value = "true"
-  }
+  }]
 
   values = [yamlencode({
     prometheus = {
