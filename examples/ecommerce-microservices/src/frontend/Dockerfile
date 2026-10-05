@@ -19,7 +19,7 @@ ARG REACT_APP_API_URL=/api
 RUN npm run build
 
 # Production stage with Nginx
-FROM nginx:1.30.5-alpine
+FROM nginx:1.31.0-alpine
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
