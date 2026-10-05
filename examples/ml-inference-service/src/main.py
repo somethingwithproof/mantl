@@ -28,47 +28,39 @@ from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+MODEL_VERSION_ATTRIBUTE = "model.version"
 
 # OpenTelemetry setup
 trace.set_tracer_provider(TracerProvider())
 tracer = trace.get_tracer(__name__)
 otlp_exporter = OTLPSpanExporter(
-    endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://tempo:4317"),
-    insecure=True
+    endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://tempo:4317"), insecure=True
 )
 trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_exporter))
 
 # Prometheus metrics
 PREDICTION_COUNT = Counter(
-    'ml_predictions_total',
-    'Total number of predictions made',
-    ['model_name', 'model_version', 'status']
+    "ml_predictions_total",
+    "Total number of predictions made",
+    ["model_name", "model_version", "status"],
 )
 PREDICTION_LATENCY = Histogram(
-    'ml_prediction_duration_seconds',
-    'Prediction latency in seconds',
-    ['model_name', 'model_version']
+    "ml_prediction_duration_seconds",
+    "Prediction latency in seconds",
+    ["model_name", "model_version"],
 )
-BATCH_SIZE = Histogram(
-    'ml_batch_size',
-    'Size of prediction batches',
-    ['model_name']
-)
+BATCH_SIZE = Histogram("ml_batch_size", "Size of prediction batches", ["model_name"])
 MODEL_LOAD_TIME = Gauge(
-    'ml_model_load_time_seconds',
-    'Time taken to load model',
-    ['model_name', 'model_version']
+    "ml_model_load_time_seconds", "Time taken to load model", ["model_name", "model_version"]
 )
 
 app = FastAPI(
-    title="ML Inference Service",
-    description="Machine Learning Model Serving API",
-    version="1.0.0"
+    title="ML Inference Service", description="Machine Learning Model Serving API", version="1.0.0"
 )
+
 
 # CORS middleware
 def _parse_cors_origins() -> list[str]:
@@ -84,9 +76,7 @@ def _parse_cors_origins() -> list[str]:
             raise RuntimeError(f"Invalid CORS origin: {origin}")
     creds_raw = os.getenv("CORS_ALLOW_CREDENTIALS", "false").lower()
     if creds_raw not in ("true", "false"):
-        raise RuntimeError(
-            f"CORS_ALLOW_CREDENTIALS must be 'true' or 'false', got: {creds_raw!r}"
-        )
+        raise RuntimeError(f"CORS_ALLOW_CREDENTIALS must be 'true' or 'false', got: {creds_raw!r}")
     allow_credentials = creds_raw == "true"
     if "*" in origins and allow_credentials:
         raise RuntimeError(
@@ -98,6 +88,7 @@ def _parse_cors_origins() -> list[str]:
             "CORS_ALLOWED_ORIGINS=* is not allowed; specify explicit origin allowlist"
         )
     return origins
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -114,23 +105,27 @@ app.mount("/metrics", metrics_app)
 # Model registry
 models = {}
 
+
 class PredictionRequest(BaseModel):
     """Single prediction request"""
+
     features: Dict[str, float] = Field(..., description="Feature values for prediction")
     model_version: Optional[str] = Field("v1", description="Model version to use")
 
-    @validator('features')
+    @validator("features")
     def validate_features(cls, v):
         if not v:
             raise ValueError("Features cannot be empty")
         return v
 
+
 class BatchPredictionRequest(BaseModel):
     """Batch prediction request"""
+
     instances: List[Dict[str, float]] = Field(..., description="List of feature dictionaries")
     model_version: Optional[str] = Field("v1", description="Model version to use")
 
-    @validator('instances')
+    @validator("instances")
     def validate_instances(cls, v):
         if not v:
             raise ValueError("Instances cannot be empty")
@@ -138,28 +133,35 @@ class BatchPredictionRequest(BaseModel):
             raise ValueError("Batch size cannot exceed 1000 instances")
         return v
 
+
 class PredictionResponse(BaseModel):
     """Prediction result"""
+
     prediction: float
     confidence: Optional[float] = None
     model_version: str
     processing_time_ms: float
 
+
 class BatchPredictionResponse(BaseModel):
     """Batch prediction results"""
+
     predictions: List[Dict[str, Any]]
     model_version: str
     total_processing_time_ms: float
     batch_size: int
 
+
 class ModelInfo(BaseModel):
     """Model metadata"""
+
     name: str
     version: str
     framework: str
     input_features: List[str]
     loaded_at: str
     predictions_served: int
+
 
 class DemoModel:
     """Demo ML model (simple linear regression for demonstration)"""
@@ -184,7 +186,7 @@ class DemoModel:
         """Make a single prediction"""
         with tracer.start_as_current_span("model_predict") as span:
             span.set_attribute("model.name", self.name)
-            span.set_attribute("model.version", self.version)
+            span.set_attribute(MODEL_VERSION_ATTRIBUTE, self.version)
 
             # Convert features to array
             feature_values = [features.get(f, 0.0) for f in self.input_features]
@@ -204,14 +206,13 @@ class DemoModel:
         """Make batch predictions"""
         with tracer.start_as_current_span("model_predict_batch") as span:
             span.set_attribute("model.name", self.name)
-            span.set_attribute("model.version", self.version)
+            span.set_attribute(MODEL_VERSION_ATTRIBUTE, self.version)
             span.set_attribute("batch.size", len(instances))
 
             # Convert to numpy array for batch processing
-            feature_matrix = np.array([
-                [inst.get(f, 0.0) for f in self.input_features]
-                for inst in instances
-            ])
+            feature_matrix = np.array(
+                [[inst.get(f, 0.0) for f in self.input_features] for inst in instances]
+            )
 
             # Batch prediction
             predictions = feature_matrix @ self.coefficients + self.intercept
@@ -220,6 +221,7 @@ class DemoModel:
             self.predictions_served += len(instances)
 
             return [(float(pred), float(conf)) for pred, conf in zip(predictions, confidences)]
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -240,21 +242,24 @@ async def startup_event():
 
         logger.info(f"Loaded {len(models)} model versions")
 
+
 @app.get("/health")
 async def health():
     """Health check endpoint"""
     return {
         "status": "healthy",
         "models_loaded": len(models),
-        "model_versions": list(models.keys())
+        "model_versions": list(models.keys()),
     }
 
-@app.get("/ready")
+
+@app.get("/ready", responses={503: {"description": "Service unavailable"}})
 async def ready():
     """Readiness check - ensures models are loaded"""
     if not models:
         raise HTTPException(status_code=503, detail="Models not loaded")
     return {"status": "ready", "models": len(models)}
+
 
 @app.get("/api/v1/models", response_model=List[ModelInfo])
 async def list_models():
@@ -266,30 +271,35 @@ async def list_models():
             framework=model.framework,
             input_features=model.input_features,
             loaded_at=model.loaded_at,
-            predictions_served=model.predictions_served
+            predictions_served=model.predictions_served,
         )
         for model in models.values()
     ]
 
-@app.post("/api/v1/predict", response_model=PredictionResponse)
+
+@app.post(
+    "/api/v1/predict",
+    response_model=PredictionResponse,
+    responses={
+        404: {"description": "Resource not found"},
+        500: {"description": "Internal operation failed"},
+    },
+)
 async def predict(request: PredictionRequest):
     """Make a single prediction"""
     start_time = time.time()
 
     with tracer.start_as_current_span("predict_request") as span:
-        span.set_attribute("model.version", request.model_version)
+        span.set_attribute(MODEL_VERSION_ATTRIBUTE, request.model_version)
 
         # Get model
         model = models.get(request.model_version)
         if not model:
             PREDICTION_COUNT.labels(
-                model_name="price-predictor",
-                model_version=request.model_version,
-                status="error"
+                model_name="price-predictor", model_version=request.model_version, status="error"
             ).inc()
             raise HTTPException(
-                status_code=404,
-                detail=f"Model version {request.model_version} not found"
+                status_code=404, detail=f"Model version {request.model_version} not found"
             )
 
         try:
@@ -300,14 +310,11 @@ async def predict(request: PredictionRequest):
 
             # Record metrics
             PREDICTION_COUNT.labels(
-                model_name=model.name,
-                model_version=model.version,
-                status="success"
+                model_name=model.name, model_version=model.version, status="success"
             ).inc()
-            PREDICTION_LATENCY.labels(
-                model_name=model.name,
-                model_version=model.version
-            ).observe(time.time() - start_time)
+            PREDICTION_LATENCY.labels(model_name=model.name, model_version=model.version).observe(
+                time.time() - start_time
+            )
 
             logger.info(
                 f"Prediction made: model={model.version}, "
@@ -318,33 +325,38 @@ async def predict(request: PredictionRequest):
                 prediction=prediction,
                 confidence=confidence,
                 model_version=model.version,
-                processing_time_ms=processing_time
+                processing_time_ms=processing_time,
             )
 
-        except Exception as e:
+        except Exception:
             PREDICTION_COUNT.labels(
-                model_name=model.name,
-                model_version=model.version,
-                status="error"
+                model_name=model.name, model_version=model.version, status="error"
             ).inc()
-            logger.error(f"Prediction failed: {str(e)}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logger.exception("Prediction failed")
+            raise HTTPException(status_code=500, detail="Internal server error") from None
 
-@app.post("/api/v1/predict/batch", response_model=BatchPredictionResponse)
+
+@app.post(
+    "/api/v1/predict/batch",
+    response_model=BatchPredictionResponse,
+    responses={
+        404: {"description": "Resource not found"},
+        500: {"description": "Internal operation failed"},
+    },
+)
 async def predict_batch(request: BatchPredictionRequest):
     """Make batch predictions (more efficient than individual requests)"""
     start_time = time.time()
 
     with tracer.start_as_current_span("predict_batch_request") as span:
-        span.set_attribute("model.version", request.model_version)
+        span.set_attribute(MODEL_VERSION_ATTRIBUTE, request.model_version)
         span.set_attribute("batch.size", len(request.instances))
 
         # Get model
         model = models.get(request.model_version)
         if not model:
             raise HTTPException(
-                status_code=404,
-                detail=f"Model version {request.model_version} not found"
+                status_code=404, detail=f"Model version {request.model_version} not found"
             )
 
         try:
@@ -355,25 +367,18 @@ async def predict_batch(request: BatchPredictionRequest):
 
             # Format results
             predictions = [
-                {
-                    "prediction": pred,
-                    "confidence": conf,
-                    "instance_index": i
-                }
+                {"prediction": pred, "confidence": conf, "instance_index": i}
                 for i, (pred, conf) in enumerate(results)
             ]
 
             # Record metrics
             PREDICTION_COUNT.labels(
-                model_name=model.name,
-                model_version=model.version,
-                status="success"
+                model_name=model.name, model_version=model.version, status="success"
             ).inc(len(request.instances))
             BATCH_SIZE.labels(model_name=model.name).observe(len(request.instances))
-            PREDICTION_LATENCY.labels(
-                model_name=model.name,
-                model_version=model.version
-            ).observe(time.time() - start_time)
+            PREDICTION_LATENCY.labels(model_name=model.name, model_version=model.version).observe(
+                time.time() - start_time
+            )
 
             logger.info(
                 f"Batch prediction complete: model={model.version}, "
@@ -384,18 +389,18 @@ async def predict_batch(request: BatchPredictionRequest):
                 predictions=predictions,
                 model_version=model.version,
                 total_processing_time_ms=processing_time,
-                batch_size=len(request.instances)
+                batch_size=len(request.instances),
             )
 
-        except Exception as e:
+        except Exception:
             PREDICTION_COUNT.labels(
-                model_name=model.name,
-                model_version=model.version,
-                status="error"
+                model_name=model.name, model_version=model.version, status="error"
             ).inc()
-            logger.error(f"Batch prediction failed: {str(e)}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            logger.exception("Batch prediction failed")
+            raise HTTPException(status_code=500, detail="Internal server error") from None
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    uvicorn.run(app, host=os.getenv("HOST", "127.0.0.1"), port=8000)

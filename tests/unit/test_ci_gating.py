@@ -17,7 +17,9 @@ def workflow(project_root: Path) -> dict:
     return yaml.safe_load((project_root / ".github/workflows/ci.yml").read_text())
 
 
-@pytest.mark.parametrize("required", ["CHANGES", "GO", "PYTHON", "SONAR", "REPOSITORY"])
+@pytest.mark.parametrize(
+    "required", ["CHANGES", "GO", "PYTHON", "PYTHON_EXAMPLES", "SONAR", "REPOSITORY"]
+)
 @pytest.mark.parametrize("result", ["failure", "cancelled", "skipped"])
 def test_required_prerequisite_cannot_be_skipped(workflow, required, result):
     assert run_gate(workflow, {required + "_RESULT": result}).returncode != 0
@@ -48,7 +50,8 @@ def run_gate(workflow, changes):
     env = {
         **os.environ,
         **{
-            key + "_RESULT": "success" for key in ["CHANGES", "GO", "PYTHON", "SONAR", "REPOSITORY"]
+            key + "_RESULT": "success"
+            for key in ["CHANGES", "GO", "PYTHON", "PYTHON_EXAMPLES", "SONAR", "REPOSITORY"]
         },
         **{key.upper() + "_SELECTED": "false" for key in COMPONENTS},
         **{key.upper() + "_RESULT": "skipped" for key in COMPONENTS},
