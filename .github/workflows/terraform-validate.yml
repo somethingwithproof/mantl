@@ -15,7 +15,7 @@ defaults:
 jobs:
   validate:
     name: Validate ${{ matrix.module }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DO_RUNNERS_ENABLED == 'true' && (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted","Linux","X64","mantl-do"]') || 'ubuntu-latest' }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -58,7 +58,7 @@ jobs:
           mise exec -- terraform validate -no-color
   lint:
     name: Supported-provider TFLint
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DO_RUNNERS_ENABLED == 'true' && (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted","Linux","X64","mantl-do"]') || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -80,7 +80,7 @@ jobs:
           done
   security:
     name: Terraform security report
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DO_RUNNERS_ENABLED == 'true' && (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted","Linux","X64","mantl-do"]') || 'ubuntu-latest' }}
     timeout-minutes: 15
     permissions:
       contents: read

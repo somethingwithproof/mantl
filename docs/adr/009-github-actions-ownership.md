@@ -10,7 +10,13 @@ validation with tests requiring clusters that CI does not create.
 
 ## Decision
 
-GitHub-hosted runners execute the default CI pipeline. One core workflow owns
+GitHub-hosted runners execute the default CI pipeline. A repository variable can
+opt eligible trusted Linux events into a dedicated, ephemeral DigitalOcean pool
+after provisioning, runtime compatibility and deletion have been verified.
+Fork and metadata events retain GitHub-hosted routing. A separate controller
+owns capacity and cleanup; workflows receive no cloud provisioning credentials.
+See [the runner rollout contract](../digitalocean-runners.md).
+One core workflow owns
 first-party Go testing and coverage, Python unit testing and coverage, and the
 SonarCloud quality gate. Sonar consumes those reports rather than rerunning tests.
 The final CI check fails when an unconditional prerequisite fails or a selected
@@ -32,7 +38,8 @@ content publication, provenance and scoped write permissions remain required.
 ## Consequences
 
 Maintainers get stable CI and quality-gate checks, fewer duplicate builds, and
-component-specific failures. New CI runs create no DigitalOcean droplets. The
+component-specific failures. Opted-in jobs allocate one-job DigitalOcean VMs
+through the external controller, capped independently of workflow concurrency. The
 manual orphan-runner cleanup remains available for legacy tagged CI droplets.
 Fork pull requests still require a reviewed same-repository branch for Sonar
 authentication. Optional example applications retain separate validation scope.
