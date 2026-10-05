@@ -1,5 +1,7 @@
+---
+# yamllint disable rule:line-length
 name: Artifact provenance
-on:
+'on':
   workflow_call:
     inputs:
       hashes:
@@ -10,6 +12,9 @@ on:
         type: string
 permissions:
   contents: read
+concurrency:
+  group: slsa-provenance-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   attest:
     permissions:
@@ -21,4 +26,4 @@ jobs:
       base64-subjects: ${{ inputs.hashes }}
       upload-assets: true
       upload-tag-name: ${{ inputs.tag }}
-      private-repository: true
+      private-repository: ${{ github.event.repository.private }}

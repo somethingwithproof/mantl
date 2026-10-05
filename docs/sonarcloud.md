@@ -13,8 +13,9 @@ this CI-based workflow. Set `SONAR_TOKEN` as a GitHub Actions repository secret
 using an analysis credential with access to this project. Read credentials from
 Keychain or the environment at runtime; never commit or print their values.
 
-The `SonarCloud quality gate` job runs on main pushes, pull requests and manual
-dispatches. Missing authentication, an inaccessible project, coverage generation
+Core CI invokes the reusable `SonarCloud quality gate` job on main pushes and
+pull requests, passing its coverage artifacts. Manual dispatch can generate its
+own reports. Missing authentication, an inaccessible project, coverage generation
 failure, an incompatible project visibility, analysis failure or a rejected quality gate
 fails the job before source upload where applicable. Fork pull
 requests cannot access repository secrets; a maintainer must run the reviewed
@@ -34,13 +35,13 @@ Run through the runtimes pinned in `mise.toml`:
 ```sh
 mise exec -- make go-coverage
 mise exec -- python -m venv .venv-sonar
-mise exec -- .venv-sonar/bin/python -m pip install -r requirements-test.txt PyYAML==6.0.3
-mise exec -- .venv-sonar/bin/python -m pytest tests/unit/ --cov=scripts --cov-report=xml:coverage-python.xml
+mise exec -- .venv-sonar/bin/python -m pip install -r requirements-test.txt
+mise exec -- .venv-sonar/bin/python -m pytest tests/unit/ --cov=scripts --cov=ci --cov-report=xml:coverage-python.xml
 ```
 
 Go coverage uses the same first-party package list as `make go-test`, including
 controllers and CLI packages while excluding vendored charts. Python coverage
-measures the release and Sonar verification scripts; the unit suite's
+measures CI selection, release and Sonar verification scripts; the unit suite's
 infrastructure checks are not represented as application-code coverage.
 
 Sonar classifies Go and Python test files as tests and excludes vendored charts,

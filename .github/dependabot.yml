@@ -1,233 +1,127 @@
-# Dependabot configuration for Mantl Platform
-# Comprehensive dependency tracking across all ecosystems
-# - GitHub Actions: Grouped updates to reduce PR noise
-# - Python (pip): Weekly security and feature updates
-# - Docker: Base image updates for containers
-# - Terraform: Provider and module updates across all blueprints
+---
+# yamllint disable rule:line-length
 version: 2
 updates:
-  # ========================================
-  # GitHub Actions
-  # ========================================
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directories:
+      - /
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "America/New_York"
-    open-pull-requests-limit: 10
+      interval: weekly
+      day: monday
+      time: 09:30
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "github-actions"
-      - "automated"
+      - dependencies
     commit-message:
-      prefix: "chore(deps)"
-      prefix-development: "chore(deps-dev)"
-      include: "scope"
+      prefix: chore(deps)
     groups:
-      github-actions:
+      github-actions-minor-and-patch:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
-
-  # ========================================
-  # Python (pip)
-  # ========================================
-  - package-ecosystem: "pip"
-    directory: "/"
+          - minor
+          - patch
+  - package-ecosystem: gomod
+    directories:
+      - /
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "America/New_York"
-    open-pull-requests-limit: 15
+      interval: weekly
+      day: monday
+      time: 09:30
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "python"
-      - "automated"
+      - dependencies
     commit-message:
-      prefix: "chore(deps)"
-      prefix-development: "chore(deps-dev)"
-    allow:
-      - dependency-type: "all"
+      prefix: chore(deps)
     groups:
-      python-dependencies:
+      gomod-minor-and-patch:
         patterns:
-          - "*"
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
-
-  # ========================================
-  # Docker
-  # ========================================
-  - package-ecosystem: "docker"
-    directory: "/"
+          - minor
+          - patch
+  - package-ecosystem: pip
+    directories:
+      - /
+      - /examples/**
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "America/New_York"
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "docker"
-      - "automated"
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-    allow:
-      - dependency-type: "all"
-
-  # ========================================
-  # Terraform - Root
-  # ========================================
-  - package-ecosystem: "terraform"
-    directory: "/terraform"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "America/New_York"
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "terraform"
-      - "automated"
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-
-  # ========================================
-  # Terraform - AWS Blueprint
-  # ========================================
-  - package-ecosystem: "terraform"
-    directory: "/terraform/blueprints/aws"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:30"
-      timezone: "America/New_York"
+      interval: weekly
+      day: monday
+      time: 09:30
+      timezone: America/Los_Angeles
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "terraform"
-      - "aws"
-      - "automated"
+      - dependencies
     commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-
-  # ========================================
-  # Terraform - GCP Blueprint
-  # ========================================
-  - package-ecosystem: "terraform"
-    directory: "/terraform/blueprints/gcp"
+      prefix: chore(deps)
+    groups:
+      pip-minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: terraform
+    directories:
+      - /infra/terraform/blueprints/*
+      - /infra/terraform/modules/*
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:30"
-      timezone: "America/New_York"
+      interval: weekly
+      day: monday
+      time: 09:30
+      timezone: America/Los_Angeles
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "terraform"
-      - "gcp"
-      - "automated"
+      - dependencies
     commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-
-  # ========================================
-  # Terraform - Azure Blueprint
-  # ========================================
-  - package-ecosystem: "terraform"
-    directory: "/terraform/blueprints/azure"
+      prefix: chore(deps)
+    groups:
+      terraform-minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: docker
+    directories:
+      - /
+      - /examples/**
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:30"
-      timezone: "America/New_York"
+      interval: weekly
+      day: monday
+      time: 09:30
+      timezone: America/Los_Angeles
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "terraform"
-      - "azure"
-      - "automated"
+      - dependencies
     commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-
-  # ========================================
-  # Terraform - Oracle Cloud Blueprint
-  # ========================================
-  - package-ecosystem: "terraform"
-    directory: "/terraform/blueprints/oci"
+      prefix: chore(deps)
+    groups:
+      docker-minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: npm
+    directories:
+      - /examples/ecommerce-microservices/src/frontend
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:30"
-      timezone: "America/New_York"
+      interval: weekly
+      day: monday
+      time: 09:30
+      timezone: America/Los_Angeles
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
-      - "terraform"
-      - "oci"
-      - "oracle-cloud"
-      - "automated"
+      - dependencies
     commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-
-  # ========================================
-  # Terraform - DigitalOcean Blueprint
-  # ========================================
-  - package-ecosystem: "terraform"
-    directory: "/terraform/blueprints/digitalocean"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:30"
-      timezone: "America/New_York"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "terraform"
-      - "digitalocean"
-      - "automated"
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-
-  # ========================================
-  # Terraform - Linode Blueprint
-  # ========================================
-  - package-ecosystem: "terraform"
-    directory: "/terraform/blueprints/linode"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:30"
-      timezone: "America/New_York"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "terraform"
-      - "linode"
-      - "automated"
-    commit-message:
-      prefix: "chore(deps)"
-      include: "scope"
-  - package-ecosystem: "npm"
-    directory: "/examples/ecommerce-microservices/src/frontend"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-  - package-ecosystem: "docker"
-    directory: "/examples/ecommerce-microservices/src/frontend"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      prefix: chore(deps)
+    groups:
+      npm-minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch

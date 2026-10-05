@@ -62,3 +62,6 @@ crash.*.log
 /.coverage*
 /htmlcov/
 /.venv-sonar/
+/.venv-ci/
+/.venv-audit/
+/charts/*/charts/

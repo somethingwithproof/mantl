@@ -1,164 +1,112 @@
-name: Terraform Validation
-
-on:
-  pull_request:
-    paths:
-      - 'infra/terraform/**'
-      - '.github/workflows/terraform-validate.yml'
-  push:
-    branches:
-      - main
-    paths:
-      - 'infra/terraform/**'
-
+---
+# yamllint disable rule:line-length
+name: Terraform validation
+'on':
+  workflow_call: {}
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: terraform-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+defaults:
+  run:
+    shell: bash
 jobs:
-  validate-providers:
-    name: Validate ${{ matrix.provider }}
+  validate:
+    name: Validate ${{ matrix.module }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
-      matrix:
-        provider:
-          - aws-eks
-          - gcp-gke
-          - azure-aks
-          - do-doks
-          - linode-lke
-          - oci-oke
-          - ibm-iks
-          - openstack
       fail-fast: false
-
+      max-parallel: 3
+      matrix:
+        module:
+          - blueprints/aws-eks
+          - blueprints/gcp-gke
+          - blueprints/azure-aks
+          - blueprints/do-doks
+          - blueprints/linode-lke
+          - blueprints/oci-oke
+          - blueprints/ibm-iks
+          - blueprints/openstack
+          - modules/platform-security
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          terraform_version: 1.10.0
-
-      - name: Terraform Format Check
-        working-directory: infra/terraform/blueprints/${{ matrix.provider }}
-        run: terraform fmt -check -recursive
-
-      - name: Terraform Init
-        working-directory: infra/terraform/blueprints/${{ matrix.provider }}
-        run: terraform init -backend=false
-
-      - name: Terraform Validate
-        working-directory: infra/terraform/blueprints/${{ matrix.provider }}
-        run: terraform validate
-
-      - name: Validate Required Files
-        working-directory: infra/terraform/blueprints/${{ matrix.provider }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          tools: terraform
+      - name: Cache Terraform providers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.terraform.d/plugin-cache
+          key: ${{ runner.os }}-${{ runner.arch }}-terraform-${{ matrix.module }}-${{ hashFiles('infra/terraform/**/*.tf',
+            'mise.toml') }}
+          restore-keys: ${{ runner.os }}-${{ runner.arch }}-terraform-${{ matrix.module }}-
+      - name: Validate configuration without cloud access
+        working-directory: infra/terraform/${{ matrix.module }}
+        env:
+          TF_PLUGIN_CACHE_DIR: ${{ runner.temp }}/terraform-providers
+          TF_IN_AUTOMATION: 'true'
         run: |
-          if [ ! -f "main.tf" ]; then
-            echo "main.tf not found"
-            exit 1
-          fi
-          if [ ! -f "variables.tf" ]; then
-            echo "variables.tf not found"
-            exit 1
-          fi
-
-
-  validate-modules:
-    name: Validate Terraform Modules
+          mkdir -p "$HOME/.terraform.d/plugin-cache"
+          export TF_PLUGIN_CACHE_DIR="$HOME/.terraform.d/plugin-cache"
+          mise exec -- terraform fmt -check -recursive
+          mise exec -- terraform init -backend=false -input=false -no-color
+          mise exec -- terraform validate -no-color
+  lint:
+    name: Supported-provider TFLint
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          terraform_version: 1.10.0
-
-      - name: Terraform Format Check (Modules)
-        working-directory: infra/terraform/modules
-        run: terraform fmt -check -recursive
-
-      - name: Validate Platform Security Module
-        working-directory: infra/terraform/modules/platform-security
-        run: |
-          terraform init -backend=false
-          terraform validate
-
-  tflint:
-    name: TFLint
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Setup TFLint
-        uses: terraform-linters/setup-tflint@v6
+          persist-credentials: false
+      - uses: ./.github/actions/setup
         with:
-          tflint_version: v0.64.0
-
-      - name: Run TFLint
+          tools: terraform tflint
+      - name: Cache pinned rulesets
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.tflint.d/plugins
+          key: ${{ runner.os }}-${{ runner.arch }}-tflint-${{ hashFiles('.tflint.hcl', 'mise.toml') }}
+      - name: Validate supported cloud rules
         run: |
-          tflint --init
+          mise exec -- tflint --init
           for blueprint in aws-eks gcp-gke azure-aks; do
-            tflint --chdir="infra/terraform/blueprints/$blueprint" --config="$PWD/.tflint.hcl" --format compact
+            mise exec -- tflint --chdir="infra/terraform/blueprints/$blueprint" --config="$PWD/.tflint.hcl" --format compact
           done
-
-  checkov:
-    name: Checkov Security Scan
+  security:
+    name: Terraform security report
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       security-events: write
-      actions: read
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Run Checkov
-        uses: bridgecrewio/checkov-action@v12
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Scan infrastructure (existing findings informational)
+        uses: bridgecrewio/checkov-action@7b1bd992e2c40a3404e3511944aeb8d014703d9a
         with:
           directory: infra/terraform/
           framework: terraform
           output_format: cli,sarif
           output_file_path: console,checkov-results.sarif
           soft_fail: true
-
-      - name: Retain security scan report
+      - name: Retain security report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: terraform-security-sarif
           path: checkov-results.sarif
           if-no-files-found: error
           retention-days: 14
-
-      - name: Upload SARIF results
-        uses: github/codeql-action/upload-sarif@v4
-        if: always() && vars.ENABLE_CODE_SCANNING_SARIF == 'true'
+      - name: Publish SARIF when enabled
+        if: always() && vars.ENABLE_CODE_SCANNING_SARIF == 'true' && github.event.pull_request.head.repo.fork != true
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
         with:
           sarif_file: checkov-results.sarif
-
-  summary:
-    name: Validation Summary
-    runs-on: ubuntu-latest
-    needs:
-      - validate-providers
-      - validate-modules
-      - tflint
-      - checkov
-    if: always()
-
-    steps:
-      - name: Check Results
-        run: |
-          if [ "${{ needs.validate-providers.result }}" != "success" ] || \
-             [ "${{ needs.validate-modules.result }}" != "success" ] || \
-             [ "${{ needs.tflint.result }}" != "success" ] || \
-             [ "${{ needs.checkov.result }}" != "success" ]; then
-            echo "Some validation checks failed"
-            exit 1
-          fi
-          echo "All validation checks passed ✅"

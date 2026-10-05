@@ -1,63 +1,36 @@
 ---
+# yamllint disable rule:line-length
 name: Dependabot Auto-Merge
-
-"on":
+'on':
   pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   schedule:
-    - cron: "17,47 * * * *"
-  workflow_dispatch:
-
+    - cron: 17 * * * *
+  workflow_dispatch: null
 permissions:
   contents: write
   pull-requests: write
   checks: read
-
 concurrency:
   group: dependabot-auto-merge
   cancel-in-progress: false
-
 jobs:
   merge:
-    if: >-
-      github.event_name != 'pull_request_target' ||
-      github.actor == 'dependabot[bot]'
+    if: github.event_name != 'pull_request_target' || github.actor == 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Merge Dependabot pull requests with successful checks
-        shell: bash
+      - name: Enable protected Dependabot auto-merge
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-
-          gh pr list \
-            --repo "$GITHUB_REPOSITORY" \
-            --state open \
-            --author "app/dependabot" \
-            --json number,isDraft,mergeable \
-            --jq '.[] |
-              select(.isDraft == false and .mergeable == "MERGEABLE") |
-              .number' |
-          while read -r pr; do
-            [ -n "$pr" ] || continue
-
-            states=$(gh pr checks "$pr" \
-              --repo "$GITHUB_REPOSITORY" \
-              --json state \
-              --jq '.[].state' 2>/dev/null || true)
-
-            # Fail closed when a repository has no CI checks.
-            [ -n "$states" ] || continue
-
-            blocked='^(PENDING|QUEUED|IN_PROGRESS|FAILURE|ERROR|CANCELLED|'
-            blocked+='STALE|ACTION_REQUIRED)$'
-            if grep -Eq "$blocked" <<<"$states"; then
-              continue
-            fi
-
-            gh pr merge "$pr" \
-              --repo "$GITHUB_REPOSITORY" \
-              --squash \
-              --delete-branch
+          gh pr list --repo "$GITHUB_REPOSITORY" --state open --author app/dependabot \
+            --json number,isDraft,headRefOid --jq '.[] | select(.isDraft == false) | [.number, .headRefOid] | @tsv' |
+          while read -r pr head; do
+            gh pr merge "$pr" --repo "$GITHUB_REPOSITORY" --auto --squash --match-head-commit "$head"
           done
+    timeout-minutes: 10

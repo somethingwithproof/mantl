@@ -1,10 +1,10 @@
 <?php
 
-use function Env\\env;
+use function Env\env;
 
 // Load environment variables
 if (file_exists(dirname(__DIR__).'/.env')) {
-    \\Env\\Env::init();
+    \Env\Env::init();
 }
 
 // Set up environment

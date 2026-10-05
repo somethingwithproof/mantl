@@ -1,0 +1,36 @@
+dependencies:
+- name: kube-prometheus-stack
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 56.0.5
+- name: grafana
+  repository: https://grafana.github.io/helm-charts
+  version: 7.3.12
+- name: velero
+  repository: https://vmware-tanzu.github.io/helm-charts
+  version: 5.3.0
+- name: trivy-operator
+  repository: https://aquasecurity.github.io/helm-charts
+  version: 0.20.6
+- name: falco
+  repository: https://falcosecurity.github.io/charts
+  version: 4.0.0
+- name: cloudnative-pg
+  repository: https://cloudnative-pg.github.io/charts
+  version: 0.20.2
+- name: flagger
+  repository: https://flagger.app
+  version: 1.35.0
+- name: opencost
+  repository: https://opencost.github.io/opencost-helm-chart
+  version: 1.26.4
+- name: chaos-mesh
+  repository: https://charts.chaos-mesh.org
+  version: 2.6.7
+- name: backstage
+  repository: https://backstage.github.io/charts
+  version: 1.8.3
+- name: vcluster
+  repository: https://charts.loft.sh
+  version: 0.19.10
+digest: sha256:fc6d1be970f18f4be6c211124cae68d9a3589b7592a8bda24d68967e8e6d861b
+generated: "2026-10-05T02:34:12.742165-07:00"

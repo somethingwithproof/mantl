@@ -1,0 +1,35 @@
+name: Set up Mantl tools
+description: Install only the requested mise tools and cache their dependencies
+inputs:
+  tools:
+    description: Space-separated tools to install from mise configuration
+    required: true
+  working-directory:
+    description: Directory containing the runtime configuration
+    default: .
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+      with:
+        version: '2026.10.2'
+        install_args: ${{ inputs.tools }}
+        working_directory: ${{ inputs.working-directory }}
+    - name: Cache Go dependencies and compilation
+      if: contains(format(' {0} ', inputs.tools), ' go ')
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-${{ runner.arch }}-go-${{ hashFiles('go.mod', 'go.sum', 'mise.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-go-
+    - name: Cache Python downloads
+      if: contains(format(' {0} ', inputs.tools), ' python ')
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-${{ runner.arch }}-python-${{ hashFiles('requirements*.txt', 'mise.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-python-

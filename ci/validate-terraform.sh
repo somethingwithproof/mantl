@@ -14,7 +14,7 @@ echo ""
 failed=0
 total=0
 
-for dir in terraform/blueprints/*/; do
+for dir in infra/terraform/blueprints/*/ infra/terraform/modules/*/; do
     if [ ! -f "$dir/main.tf" ]; then
         continue
     fi
@@ -22,20 +22,20 @@ for dir in terraform/blueprints/*/; do
     total=$((total + 1))
     echo -e "${YELLOW}Validating $dir${NC}"
 
-    (
-        cd "$dir"
-        if terraform init -backend=false -no-color > /dev/null 2>&1 && \
-           terraform validate -no-color > /dev/null 2>&1; then
-            echo -e "${GREEN}✓${NC} $dir"
-        else
-            echo -e "${RED}✗${NC} $dir"
-            failed=$((failed + 1))
-        fi
-    )
+    if (cd "$dir" && terraform init -backend=false -input=false -no-color && \
+        terraform validate -no-color); then
+        echo -e "${GREEN}✓${NC} $dir"
+    else
+        echo -e "${RED}✗${NC} $dir"
+        failed=$((failed + 1))
+    fi
 done
 
 echo ""
-if [ $failed -eq 0 ]; then
+if [ "$total" -eq 0 ]; then
+    echo "No first-party Terraform modules found" >&2
+    exit 1
+elif [ $failed -eq 0 ]; then
     echo -e "${GREEN}All Terraform configurations valid${NC}"
     exit 0
 else

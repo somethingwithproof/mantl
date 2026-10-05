@@ -1,34 +1,46 @@
+---
+# yamllint disable rule:line-length
 name: pre-commit
-
-on:
+'on':
   pull_request:
-
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: pre-commit-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          # Need the base commit to diff against for changed-files scoping.
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-python@v7
+      - uses: ./.github/actions/setup
         with:
-          # A hook pins python3.13 for its venv; the runner must provide it.
-          python-version: '3.13'
-      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+          tools: python go terraform tflint terraform-docs trivy pre-commit actionlint shellcheck
+      - name: Validate all workflow definitions
+        run: mise exec -- actionlint
+      - name: Cache hook environments
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          version: '2026.10.2'
-      - name: Install pre-commit
-        run: pip install pre-commit
-      - name: Install Trivy
-        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
-      # Lint only the files changed in the PR. The repo carries pre-existing
-      # lint/format debt; gating new changes keeps the bar without a blocking
-      # whole-repo cleanup (tracked separately).
-      - name: Run pre-commit on changed files
-        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
-        with:
-          extra_args: >-
-            --from-ref ${{ github.event.pull_request.base.sha }}
-            --to-ref ${{ github.event.pull_request.head.sha }}
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-${{ runner.arch }}-hooks-${{ hashFiles('.pre-commit-config.yaml', 'mise.toml') }}
+      - name: Check changed files
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BASE" ] || [[ "$BASE" =~ ^0+$ ]]; then
+            BASE=$(git rev-parse "$HEAD^")
+          fi
+          mise exec -- pre-commit run --from-ref "$BASE" --to-ref "$HEAD" --show-diff-on-failure
+    timeout-minutes: 20
+    name: Repository checks

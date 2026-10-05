@@ -1,14 +1,23 @@
+---
+# yamllint disable rule:line-length
 name: wp-ci
-
-on:
+'on':
   pull_request:
     paths:
-      - 'apps/pausatf-wp/**'
+      - apps/pausatf-wp/**
+      - .github/workflows/wp-ci.yml
   push:
-    branches: [ main, master ]
+    branches:
+      - main
     paths:
-      - 'apps/pausatf-wp/**'
-
+      - apps/pausatf-wp/**
+      - .github/workflows/wp-ci.yml
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: wordpress-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   php-lint:
     runs-on: ubuntu-latest
@@ -17,23 +26,43 @@ jobs:
         working-directory: apps/pausatf-wp
     strategy:
       matrix:
-        php: ['8.2', '8.3']
+        php:
+          - '8.2'
+          - '8.3'
     steps:
-      - uses: actions/checkout@v7
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240
         with:
           php-version: ${{ matrix.php }}
           coverage: none
           tools: composer
+      - name: Syntax-check tracked bootstrap PHP
+        run: git ls-files -z '*.php' | xargs -0 -r -n1 php -l
+      - name: Detect custom WordPress code
+        id: custom
+        run: |
+          if git ls-files 'web/app/*.php' 'web/app/**/*.php' | grep -q .; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::No tracked custom WordPress PHP; bootstrap syntax was validated.'
+          fi
       - name: Cache Composer
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          path: vendor
-          key: ${{ runner.os }}-composer-${{ hashFiles('apps/pausatf-wp/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
+          path: ~/.cache/composer
+          key: ${{ runner.os }}-php-${{ matrix.php }}-composer-${{ hashFiles('apps/pausatf-wp/composer.json', 'apps/pausatf-wp/composer.lock')
+            }}
+          restore-keys: ${{ runner.os }}-php-${{ matrix.php }}-composer-
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+        if: steps.custom.outputs.present == 'true'
       - name: PHPCS (WordPressCS)
         run: vendor/bin/phpcs --standard=phpcs.xml.dist --report=full
+        if: steps.custom.outputs.present == 'true'
       - name: PHPStan
         run: vendor/bin/phpstan analyse --no-progress
+        if: steps.custom.outputs.present == 'true'
+    timeout-minutes: 15

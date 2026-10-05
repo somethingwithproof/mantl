@@ -1,16 +1,23 @@
+---
+# yamllint disable rule:line-length
 name: release-please
-on:
+'on':
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch: {}
 permissions:
   contents: read
+concurrency:
+  group: release-please-main
+  cancel-in-progress: false
 jobs:
   release-please:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+      actions: write
     outputs:
       released: ${{ steps.release.outputs.release_created }}
       tag: ${{ steps.release.outputs.tag_name }}
@@ -20,6 +27,27 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+      - name: Dispatch CI for generated release PR
+        if: steps.release.outputs.prs_created == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr || '{}').number }}
+        with:
+          script: |
+            const pull_number = Number(process.env.PR_NUMBER);
+            if (!Number.isSafeInteger(pull_number) || pull_number < 1) {
+              throw new Error('Release Please did not return a valid PR number');
+            }
+            const { owner, repo } = context.repo;
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
+            if (pr.head.repo.full_name !== owner + '/' + repo) {
+              throw new Error('Release CI requires a branch in this repository');
+            }
+            await github.rest.actions.createWorkflowDispatch({
+              owner, repo, workflow_id: 'ci.yml', ref: pr.head.ref,
+              inputs: { 'pull-request': String(pull_number) }
+            });
+    timeout-minutes: 15
   publish:
     needs: release-please
     if: needs.release-please.outputs.released == 'true'
