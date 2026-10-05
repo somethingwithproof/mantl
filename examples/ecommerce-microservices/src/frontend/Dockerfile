@@ -1,5 +1,5 @@
 # Multi-stage build for React application
-FROM node:24.15.0-alpine AS builder
+FROM node:26.10.0-alpine AS builder
 
 WORKDIR /app
 
