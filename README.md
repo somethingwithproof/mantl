@@ -52,6 +52,7 @@ legacy paths and do not define the current operator contract.
 - [Installation, evidence export, and recovery](docs/compliance-operations.md)
 - [Features and architecture plan](docs/superpowers/plans/2026-10-04-features-and-architecture.md)
 - [Architecture decisions](docs/adr/)
+- [Codex repository instructions](AGENTS.md)
 - [Contribution guidance](CONTRIBUTING.md)
 - [Security reporting](SECURITY.md)
 
