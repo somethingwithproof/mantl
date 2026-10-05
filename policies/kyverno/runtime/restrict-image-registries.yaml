@@ -1,0 +1,159 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+  annotations:
+    policies.kyverno.io/title: Restrict Image Registries
+    policies.kyverno.io/category: Image Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: 'Only allow container images from approved registries. This prevents
+
+      pulling images from untrusted sources that may contain vulnerabilities
+
+      or malware.
+
+
+      Approved registries:
+
+      - gcr.io/*
+
+      - ghcr.io/*
+
+      - docker.io/library/*  (official images only)
+
+      - quay.io/*
+
+      - registry.k8s.io/*
+
+      - Your private registry
+
+
+      Compliance: CIS Kubernetes Benchmark 5.1.1
+
+      '
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: check-container-images
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+      validate:
+        message: 'Container images must come from approved registries:
+
+          - gcr.io/*
+
+          - ghcr.io/*
+
+          - docker.io/library/* (official images only)
+
+          - quay.io/*
+
+          - registry.k8s.io/*
+
+          - your-registry.example.com/*
+
+
+          Blocked image: {{ request.object.spec.containers[?!starts_with(image, ''gcr.io/'') && !starts_with(image, ''ghcr.io/'') && !starts_with(image, ''docker.io/library/'') && !starts_with(image, ''quay.io/'') && !starts_with(image, ''registry.k8s.io/'') && !starts_with(image, ''your-registry.example.com/'')].image | join('', '') }}
+
+          '
+        foreach:
+          - list: request.object.spec.containers[]
+            deny:
+              conditions:
+                all:
+                  - key: '{{ element.image }}'
+                    operator: NotIn
+                    value:
+                      - gcr.io/*
+                      - ghcr.io/*
+                      - docker.io/library/*
+                      - quay.io/*
+                      - registry.k8s.io/*
+                      - your-registry.example.com/*
+    - name: check-init-container-images
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+      preconditions:
+        any:
+          - key: '{{ request.object.spec.initContainers[] || `[]` | length(@) }}'
+            operator: GreaterThan
+            value: 0
+      validate:
+        message: 'Init container images must come from approved registries.
+
+          '
+        foreach:
+          - list: request.object.spec.initContainers[]
+            deny:
+              conditions:
+                all:
+                  - key: '{{ element.image }}'
+                    operator: NotIn
+                    value:
+                      - gcr.io/*
+                      - ghcr.io/*
+                      - docker.io/library/*
+                      - quay.io/*
+                      - registry.k8s.io/*
+                      - your-registry.example.com/*
+    - name: check-ephemeral-container-images
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+      preconditions:
+        any:
+          - key: '{{ request.object.spec.ephemeralContainers[] || `[]` | length(@) }}'
+            operator: GreaterThan
+            value: 0
+      validate:
+        message: 'Ephemeral container images must come from approved registries.
+
+          '
+        foreach:
+          - list: request.object.spec.ephemeralContainers[]
+            deny:
+              conditions:
+                all:
+                  - key: '{{ element.image }}'
+                    operator: NotIn
+                    value:
+                      - gcr.io/*
+                      - ghcr.io/*
+                      - docker.io/library/*
+                      - quay.io/*
+                      - registry.k8s.io/*
+                      - your-registry.example.com/*

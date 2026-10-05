@@ -1,0 +1,11 @@
+CC6.1:
+  - Review namespace NetworkPolicies and add only required ingress, DNS, and service egress.
+  - Set runAsNonRoot and RuntimeDefault seccomp in the workload security context.
+CC6.6:
+  - Remove unapproved external IP exposure and restrict network boundary rules.
+CC6.8:
+  - Pin the workload image digest and verify its trusted signature before deployment.
+CC7.1:
+  - Investigate the runtime finding and preserve evidence before changing the workload.
+C1.1:
+  - Restrict secret-access RBAC and replace embedded credentials with scoped workload identity.

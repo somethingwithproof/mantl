@@ -19,33 +19,53 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-      - command:
-        - /manager
-        args:
-        - --leader-elect
-        image: thomasvincent/mantl-compliance-operator:latest
-        name: manager
-        securityContext:
-          allowPrivilegeEscalation: false
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          limits:
-            cpu: 500m
-            memory: 128Mi
-          requests:
-            cpu: 10m
-            memory: 64Mi
+        - command:
+            - /manager
+          args:
+            - --leader-elect
+            - --framework-dir=/etc/compliance/frameworks
+            - --evidence-bucket=$(EVIDENCE_BUCKET)
+            - --evidence-kms-key=$(EVIDENCE_KMS_KEY)
+          env:
+            - name: EVIDENCE_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: evidence-storage
+                  key: bucket
+            - name: EVIDENCE_KMS_KEY
+              valueFrom:
+                configMapKeyRef:
+                  name: evidence-storage
+                  key: kms-key
+          image: mantl-compliance-operator:development
+          name: manager
+          securityContext:
+            allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+            requests:
+              cpu: 10m
+              memory: 64Mi
       serviceAccountName: compliance-operator-controller-manager
       terminationGracePeriodSeconds: 10

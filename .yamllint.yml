@@ -8,6 +8,7 @@ ignore: |
   # Vendored upstream Helm charts and their CRDs: ~110k findings that are not
   # ours to reformat, and re-vendoring would revert any edits anyway.
   **/charts/**
+  config/crd/bases/**
   platform/observability/prometheus/**/crds/**
 
 rules:

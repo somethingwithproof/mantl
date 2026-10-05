@@ -1,0 +1,8 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - network-secrets-security.yaml
+  - require-image-signatures.yaml
+  - require-network-policy.yaml
+  - require-pod-security-context.yaml
+  - require-resource-limits.yaml

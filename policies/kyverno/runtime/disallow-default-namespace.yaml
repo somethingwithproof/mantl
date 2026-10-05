@@ -1,0 +1,98 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-default-namespace
+  annotations:
+    policies.kyverno.io/title: Disallow Default Namespace
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod, Service, Deployment, StatefulSet, DaemonSet
+    policies.kyverno.io/description: 'Workloads should not be deployed in the default namespace.
+
+      Using the default namespace is an anti-pattern that:
+
+
+      - Makes resource organization difficult
+
+      - Prevents effective RBAC policies
+
+      - Complicates network policies
+
+      - Reduces visibility and accountability
+
+
+      Best practice: Create dedicated namespaces per application or team.
+
+
+      Compliance: CIS Kubernetes Benchmark 5.7.1
+
+      '
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: disallow-default-namespace
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+                - Deployment
+                - StatefulSet
+                - DaemonSet
+                - Job
+                - CronJob
+                - Service
+                - Ingress
+                - ConfigMap
+                - Secret
+                - ServiceAccount
+      validate:
+        message: "Workloads must not be deployed in the 'default' namespace.\n\nCreate a dedicated namespace instead:\n\n  kubectl create namespace myapp\n  kubectl apply -f deployment.yaml -n myapp\n\nOr specify namespace in the manifest:\n\n  metadata:\n    namespace: myapp\n"
+        deny:
+          conditions:
+            any:
+              - key: '{{request.object.metadata.namespace || ''default''}}'
+                operator: Equals
+                value: default
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-namespace-purpose
+  annotations:
+    policies.kyverno.io/title: Require Namespace Purpose Label
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/subject: Namespace
+    policies.kyverno.io/description: 'Require that all namespaces have a ''purpose'' label describing their use.
+
+      This improves organization and accountability.
+
+      '
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: check-namespace-purpose
+      match:
+        any:
+          - resources:
+              kinds:
+                - Namespace
+      exclude:
+        any:
+          - resources:
+              names:
+                - default
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - mantl-system
+      validate:
+        message: "Namespace must have a 'purpose' label describing its use.\n\nExamples:\n  purpose: \"production-workloads\"\n  purpose: \"development-testing\"\n  purpose: \"monitoring-infrastructure\"\n  purpose: \"ci-cd-pipelines\"\n"
+        pattern:
+          metadata:
+            labels:
+              purpose: ?*

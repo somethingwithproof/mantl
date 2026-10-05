@@ -1,11 +1,12 @@
-# Backstage Integration
+# Backstage integration
 
-## Import this repo
-- In Backstage, use "Register Existing Component" and paste the URL to `catalog-info.yaml` in this repo.
+Register `templates/backstage/web-service/template.yaml` in an existing Backstage
+catalog. Enable the `fetch:template` and `publish:github:pull-request` scaffolder
+actions with a scoped GitHub integration. The template renders its local skeleton
+and opens a pull request at `apps/services/<name>` in the selected GitOps repository.
 
-## Use the scaffolder template
-- Add `templates/backstage/web-service/template.yaml` to your Backstage Scaffolder catalog.
-- Generate a new service, then commit the generated `applications/services/<name>` directory.
-
-## CLI alternative
-- Use `scripts/create-service.sh <service-name>` to copy the web-service template locally.
+Choose an existing tenant namespace and a verified ghcr.io image digest. Generated
+workloads expose `/healthz` on port 8080, run as non-root, drop capabilities, and
+have resource limits. Review the pull request, provide explicit tenant network
+policies, then register its catalog-info.yaml in Backstage. No live portal service
+or automatic application deployment is enabled by this integration.

@@ -8,6 +8,9 @@ import (
 type ComplianceProfileSpec struct {
 	Framework string `json:"framework"`
 	Version   string `json:"version"`
+	// Namespaces restrict evidence collection. Defaults to the profile namespace.
+	Namespaces      []string `json:"namespaces,omitempty"`
+	IncludeControls []string `json:"includeControls,omitempty"`
 }
 
 // ComplianceProfileStatus defines the observed state of ComplianceProfile
@@ -74,18 +77,22 @@ type FindingList struct {
 
 // ComplianceAuditSpec defines the desired state of a Compliance Audit
 type ComplianceAuditSpec struct {
-	Profile   string `json:"profile"`
-	Frequency string `json:"frequency,omitempty"` // manual, daily, weekly
+	Profile string `json:"profile"`
+	// +kubebuilder:validation:Enum=manual;daily;weekly;framework
+	Frequency string `json:"frequency,omitempty"` // manual, daily, weekly, framework
 }
 
 // ComplianceAuditStatus defines the observed state of a Compliance Audit
 type ComplianceAuditStatus struct {
-	Phase        string       `json:"phase,omitempty"` // Pending, Running, Completed, PartiallyCompleted, Failed, NoEvidence
-	StartTime    *metav1.Time `json:"startTime,omitempty"`
-	EndTime      *metav1.Time `json:"endTime,omitempty"`
-	FindingCount int32        `json:"findingCount,omitempty"`
-	FailedCount  int32        `json:"failedCount,omitempty"`
-	EvidenceURI  string       `json:"evidenceUri,omitempty"`
+	Phase          string                 `json:"phase,omitempty"` // Pending, Running, Completed, PartiallyCompleted, Failed, NoEvidence
+	StartTime      *metav1.Time           `json:"startTime,omitempty"`
+	EndTime        *metav1.Time           `json:"endTime,omitempty"`
+	FindingCount   int32                  `json:"findingCount,omitempty"`
+	FailedCount    int32                  `json:"failedCount,omitempty"`
+	EvidenceURI    string                 `json:"evidenceUri,omitempty"`
+	ManifestHash   string                 `json:"manifestHash,omitempty"`
+	CollectorTimes map[string]metav1.Time `json:"collectorTimes,omitempty"`
+	CoverageGaps   []string               `json:"coverageGaps,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -14,7 +14,7 @@ import (
 // featureAppMap defines the mapping between the MantlCluster Features struct field names
 // and their corresponding manifest paths in the repository.
 var featureAppMap = map[string]string{
-	"Observability":       "platform/observability",
+	"Observability":       "platform/observability/prometheus/overlays/dev",
 	"Security":            "platform/security/base",
 	"Secrets":             "platform/secrets/base",
 	"Compliance":          "deploy/operator/base",
@@ -23,13 +23,32 @@ var featureAppMap = map[string]string{
 
 // RenderGitOps generates the ArgoCD application manifests for the platform.
 func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
+	if cluster == nil {
+		return fmt.Errorf("cluster must not be nil")
+	}
+	repository := cluster.Spec.GitOps.Repository
+	if repository == "" {
+		repository = "https://github.com/somethingwithproof/mantl.git"
+	}
+	revision := cluster.Spec.GitOps.Revision
+	if revision == "" {
+		revision = "main"
+	}
+	render := func(dir, name, path string) error { return renderAppSource(dir, name, path, repository, revision) }
 	gitopsDir := filepath.Join(outputDir, "gitops")
 	if err := os.MkdirAll(gitopsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create gitops directory: %w", err)
 	}
 
+	// Remove only known generated application files before writing the selected topology.
+	for _, name := range []string{"root-platform", "addon-observability", "addon-security", "addon-secrets", "addon-compliance", "addon-progressivedelivery", "platform-tenants"} {
+		if err := os.Remove(filepath.Join(gitopsDir, name+".yaml")); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("clear generated application: %w", err)
+		}
+	}
+
 	// 1. Generate the Root Application (App-of-Apps)
-	if err := renderApp(gitopsDir, "root-platform", "platform/base"); err != nil {
+	if err := render(gitopsDir, "root-platform", "deploy/gitops/core"); err != nil {
 		return err
 	}
 
@@ -44,29 +63,42 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 
 		if isEnabled {
 			if path, exists := featureAppMap[fieldName]; exists {
+				if fieldName == "Compliance" && cluster.Spec.GitOps.OperatorPath != "" {
+					path = cluster.Spec.GitOps.OperatorPath
+				}
 				appName := fmt.Sprintf("addon-%s", strings.ToLower(fieldName))
-				if err := renderApp(gitopsDir, appName, path); err != nil {
+				if err := render(gitopsDir, appName, path); err != nil {
 					return err
 				}
 			}
 		}
 	}
 
-	// 3. Generate Tenant manifests
-	if len(cluster.Spec.Tenants) > 0 {
+	// Keep an empty tenant application when its source is configured so ArgoCD can
+	// reconcile removals. Never discover desired tenants from stale output files.
+	if len(cluster.Spec.Tenants) > 0 || cluster.Spec.GitOps.TenantPath != "" {
 		tenantsDir := filepath.Join(outputDir, "tenants")
 		if err := os.MkdirAll(tenantsDir, 0755); err != nil {
 			return err
 		}
 
+		names := []string{}
 		for _, tenant := range cluster.Spec.Tenants {
 			if err := renderTenant(tenantsDir, tenant); err != nil {
 				return err
 			}
+			names = append(names, tenant.Name+".yaml")
+		}
+		kustomization, err := yaml.Marshal(map[string]interface{}{"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": names})
+		if err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(tenantsDir, "kustomization.yaml"), kustomization, 0600); err != nil {
+			return err
 		}
 
 		// Create an ArgoCD application to manage all tenants
-		if err := renderApp(gitopsDir, "platform-tenants", "tenants"); err != nil {
+		if err := render(gitopsDir, "platform-tenants", cluster.Spec.GitOps.TenantPath); err != nil {
 			return err
 		}
 	}
@@ -76,6 +108,9 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 
 // renderTenant generates Namespace and RBAC RoleBindings for a tenant.
 func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
+	if tenant.Name == "kustomization" {
+		return fmt.Errorf("tenant name kustomization conflicts with generated manifest index")
+	}
 	ns := tenant.Namespace
 	if ns == "" {
 		ns = tenant.Name
@@ -139,6 +174,20 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
 		content += string(rbData)
 	}
 
+	// Tenant workloads start with default-deny ingress/egress and bounded resources.
+	// Operators add reviewed application-specific policies through GitOps.
+	isolation := []map[string]interface{}{
+		{"apiVersion": "networking.k8s.io/v1", "kind": "NetworkPolicy", "metadata": map[string]interface{}{"name": "default-deny", "namespace": ns}, "spec": map[string]interface{}{"podSelector": map[string]interface{}{}, "policyTypes": []string{"Ingress", "Egress"}}},
+		{"apiVersion": "v1", "kind": "ResourceQuota", "metadata": map[string]interface{}{"name": "tenant-quota", "namespace": ns}, "spec": map[string]interface{}{"hard": map[string]string{"requests.cpu": "2", "requests.memory": "4Gi", "limits.cpu": "4", "limits.memory": "8Gi", "pods": "20"}}},
+		{"apiVersion": "v1", "kind": "LimitRange", "metadata": map[string]interface{}{"name": "tenant-defaults", "namespace": ns}, "spec": map[string]interface{}{"limits": []interface{}{map[string]interface{}{"type": "Container", "default": map[string]string{"cpu": "500m", "memory": "512Mi"}, "defaultRequest": map[string]string{"cpu": "100m", "memory": "128Mi"}}}}},
+	}
+	for _, obj := range isolation {
+		data, err := yaml.Marshal(obj)
+		if err != nil {
+			return err
+		}
+		content += "---\n" + string(data)
+	}
 	return os.WriteFile(tenantFile, []byte(content), 0600)
 }
 
@@ -161,6 +210,9 @@ var syncWavePriority = []syncWaveEntry{
 
 // renderApp is a helper to generate a standard ArgoCD Application manifest.
 func renderApp(outputDir, name, path string) error {
+	return renderAppSource(outputDir, name, path, "https://github.com/somethingwithproof/mantl.git", "main")
+}
+func renderAppSource(outputDir, name, path, repository, revision string) error {
 	wave := "3"
 	for _, entry := range syncWavePriority {
 		if strings.HasPrefix(name, entry.prefix) {
@@ -182,8 +234,8 @@ func renderApp(outputDir, name, path string) error {
 		"spec": map[string]interface{}{
 			"project": "default",
 			"source": map[string]interface{}{
-				"repoURL":        "https://github.com/thomasvincent/mantl",
-				"targetRevision": "main",
+				"repoURL":        repository,
+				"targetRevision": revision,
 				"path":           path,
 			},
 			"destination": map[string]interface{}{

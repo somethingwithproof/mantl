@@ -30,7 +30,7 @@ var kubectlHealthQuery = func(ctx context.Context) ([]byte, error) {
 	}
 	// Output (not CombinedOutput) so kubectl warnings on stderr never reach the
 	// parser; stderr is surfaced via ExitError on failure instead.
-	out, err := exec.CommandContext(ctx, "kubectl", "get", "applications", "-n", "argocd", "-o", healthJSONPath).Output()
+	out, err := exec.CommandContext(ctx, "kubectl", kubectlArgs("get", "applications", "-n", "argocd", "-o", healthJSONPath)...).Output()
 	if err != nil {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) && len(ee.Stderr) > 0 {

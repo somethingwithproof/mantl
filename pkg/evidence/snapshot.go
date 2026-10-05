@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"net/url"
 )
 
 // allowedEvidenceKinds lists resource kinds permitted for evidence collection.
@@ -169,31 +169,23 @@ func UploadToS3(ctx context.Context, s *Snapshot, bucket string) (string, error)
 
 // UploadToS3WithEncryption uploads the snapshot data to an S3 bucket with the
 // specified server-side encryption method (e.g. "AES256" or "aws:kms").
+// UploadToS3WithEncryption is retained for compatibility. New callers should
+// use Store so they retain the object version and manifest linkage.
 func UploadToS3WithEncryption(ctx context.Context, s *Snapshot, bucket string, encryption s3types.ServerSideEncryption) (string, error) {
+	if s == nil || s.ContentHash != Hash([]byte(s.Data)) {
+		return "", fmt.Errorf("invalid snapshot or content hash")
+	}
+	if encryption != s3types.ServerSideEncryptionAes256 {
+		return "", fmt.Errorf("configure a KMS key using S3Store for non-default encryption")
+	}
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		return "", fmt.Errorf("unable to load SDK config: %w", err)
+		return "", fmt.Errorf("configure immutable evidence store: %w", err)
 	}
-
-	client := s3.NewFromConfig(cfg)
-
-	key := fmt.Sprintf("evidence/%s/%s.json", s.Resource, s.CapturedAt.Format(time.RFC3339))
-
-	_, err = client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:               aws.String(bucket),
-		Key:                  aws.String(key),
-		Body:                 strings.NewReader(s.Data),
-		ContentType:          aws.String("application/json"),
-		ServerSideEncryption: encryption,
-		Metadata: map[string]string{
-			"mantl-content-hash": s.ContentHash,
-			"mantl-captured-at":  s.CapturedAt.Format(time.RFC3339),
-		},
-	})
-
+	store := &S3Store{Client: s3.NewFromConfig(cfg), Bucket: bucket}
+	ref, err := store.Put(ctx, "evidence/"+s.Resource+"/"+s.CapturedAt.UTC().Format(time.RFC3339Nano), []byte(s.Data), time.Now().UTC())
 	if err != nil {
-		return "", fmt.Errorf("failed to upload evidence to S3: %w", err)
+		return "", err
 	}
-
-	return fmt.Sprintf("s3://%s/%s", bucket, key), nil
+	return ref.URI + "?versionId=" + url.QueryEscape(ref.Version), nil
 }

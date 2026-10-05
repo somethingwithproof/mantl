@@ -1,0 +1,241 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: pss-restricted
+  annotations:
+    policies.kyverno.io/title: Pod Security Standards - Restricted
+    policies.kyverno.io/category: Pod Security Standards
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: 'Enforce Kubernetes Pod Security Standards (PSS) Restricted profile.
+
+      This is the most restrictive profile and requires pods to follow
+
+      hardening best practices.
+
+
+      Restricted profile requirements:
+
+      - Non-root containers
+
+      - No privilege escalation
+
+      - Drop ALL capabilities
+
+      - Read-only root filesystem (where possible)
+
+      - Seccomp profile must be set
+
+      - No host namespaces
+
+      - No host ports/paths
+
+      - No privileged containers
+
+
+      Compliance: PSS Restricted Profile, CIS Kubernetes Benchmark
+
+      '
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-run-as-non-root-user
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kyverno
+      validate:
+        message: "Running as root is not allowed. Set runAsNonRoot: true in\nsecurityContext at pod or container level.\n\nExample:\n  securityContext:\n    runAsNonRoot: true\n    runAsUser: 1000\n"
+        anyPattern:
+          - spec:
+              securityContext:
+                runAsNonRoot: true
+              containers:
+                - =(securityContext):
+                    =(runAsNonRoot): true
+          - spec:
+              containers:
+                - securityContext:
+                    runAsNonRoot: true
+    - name: disallow-privilege-escalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: "Privilege escalation is not allowed. Set allowPrivilegeEscalation: false\nin container securityContext.\n\nExample:\n  securityContext:\n    allowPrivilegeEscalation: false\n"
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  allowPrivilegeEscalation: false
+    - name: drop-all-capabilities
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: "Containers must drop ALL capabilities. Add to securityContext:\n  capabilities:\n    drop:\n    - ALL\n"
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
+    - name: require-seccomp-profile
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: "Seccomp profile must be set to RuntimeDefault or Localhost.\n\nExample (Pod level):\n  securityContext:\n    seccompProfile:\n      type: RuntimeDefault\n\nExample (Container level):\n  securityContext:\n    seccompProfile:\n      type: RuntimeDefault\n"
+        anyPattern:
+          - spec:
+              securityContext:
+                seccompProfile:
+                  type: RuntimeDefault | Localhost
+          - spec:
+              containers:
+                - securityContext:
+                    seccompProfile:
+                      type: RuntimeDefault | Localhost
+    - name: disallow-privileged-containers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: 'Privileged containers are not allowed.
+
+          Do not set privileged: true in securityContext.
+
+          '
+        pattern:
+          spec:
+            containers:
+              - =(securityContext):
+                  =(privileged): false
+    - name: disallow-host-namespaces
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: 'Sharing host namespaces is not allowed.
+
+          Do not set hostNetwork, hostIPC, or hostPID to true.
+
+          '
+        pattern:
+          spec:
+            =(hostNetwork): false
+            =(hostIPC): false
+            =(hostPID): false
+    - name: disallow-host-ports
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: 'Using host ports is not allowed. Do not specify hostPort in container ports.
+
+          '
+        pattern:
+          spec:
+            containers:
+              - =(ports):
+                  - X(hostPort): null
+    - name: disallow-host-path
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        message: 'HostPath volumes are not allowed. Use emptyDir, PersistentVolumeClaim,
+
+          or ConfigMap/Secret volumes instead.
+
+          '
+        pattern:
+          spec:
+            =(volumes):
+              - X(hostPath): null
+    - name: require-readonly-rootfs
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+      validate:
+        validationFailureAction: Audit
+        message: "Read-only root filesystem is recommended for security.\nAdd to securityContext: readOnlyRootFilesystem: true\n\nIf your application writes to disk, use emptyDir volumes:\n  volumeMounts:\n  - name: tmp\n    mountPath: /tmp\n  volumes:\n  - name: tmp\n    emptyDir: {}\n"
+        pattern:
+          spec:
+            containers:
+              - =(securityContext):
+                  =(readOnlyRootFilesystem): true

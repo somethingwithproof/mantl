@@ -1,18 +1,22 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"github.com/thomasvincent/mantl/controllers/compliance"
+	"github.com/thomasvincent/mantl/pkg/evidence"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -35,15 +39,21 @@ func main() {
 	var probeAddr string
 	var frameworkDir string
 	var evidenceBucket string
+	var kmsKey string
+	var allowCluster bool
+	var requireReports bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&frameworkDir, "framework-dir", "/etc/compliance/frameworks", "The directory containing framework mapping files.")
 	flag.StringVar(&evidenceBucket, "evidence-bucket", "", "The S3 bucket to store compliance evidence.")
+	flag.StringVar(&kmsKey, "evidence-kms-key", "", "Optional evidence KMS key ARN")
+	flag.BoolVar(&requireReports, "require-policy-reports", true, "Fail startup until required Kyverno report CRDs are installed")
+	flag.BoolVar(&allowCluster, "allow-cluster-evidence", false, "Allow explicit cluster RBAC evidence reads")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
-		Development: true,
+		Development: false,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -74,24 +84,47 @@ func main() {
 
 	// Register Finding controller
 	if err = (&compliance.FindingReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		RequireReports: requireReports,
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		FrameworkDir:   frameworkDir,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Finding")
 		os.Exit(1)
 	}
 
+	dynamicClient, err := dynamic.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		setupLog.Error(err, "unable to create evidence reader")
+		os.Exit(1)
+	}
+	awsConfig, err := config.LoadDefaultConfig(context.Background())
+	if err != nil {
+		setupLog.Error(err, "unable to configure evidence storage")
+		os.Exit(1)
+	}
+	if evidenceBucket == "" {
+		setupLog.Error(nil, "--evidence-bucket is required")
+		os.Exit(1)
+	}
+	evidenceStore := &evidence.S3Store{Client: s3.NewFromConfig(awsConfig), Bucket: evidenceBucket, KMSKey: kmsKey}
 	// Register ComplianceAudit controller
 	if err = (&compliance.ComplianceAuditReconciler{
 		Client:         mgr.GetClient(),
 		Scheme:         mgr.GetScheme(),
 		EvidenceBucket: evidenceBucket,
+		Reader:         &evidence.KubernetesReader{Client: dynamicClient, AllowCluster: allowCluster},
+		Store:          evidenceStore,
 		FrameworkDir:   frameworkDir,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ComplianceAudit")
 		os.Exit(1)
 	}
 
+	if err := mgr.Add(compliance.NewComplianceMonitor(mgr.GetClient())); err != nil {
+		setupLog.Error(err, "unable to register compliance metrics")
+		os.Exit(1)
+	}
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
 		os.Exit(1)

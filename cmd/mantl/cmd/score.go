@@ -21,8 +21,8 @@ var kubectlPolicyReportQuery = func(ctx context.Context) ([]byte, error) {
 	if _, err := exec.LookPath("kubectl"); err != nil {
 		return nil, fmt.Errorf("kubectl not found in PATH: %w", err)
 	}
-	out, err := exec.CommandContext(ctx, "kubectl", "get",
-		"policyreports,clusterpolicyreports", "-A", "-o", policyReportSummaryJSONPath).Output()
+	out, err := exec.CommandContext(ctx, "kubectl", kubectlArgs("get",
+		"policyreports,clusterpolicyreports", "-A", "-o", policyReportSummaryJSONPath)...).Output()
 	if err != nil {
 		var ee *exec.ExitError
 		if errors.As(err, &ee) && len(ee.Stderr) > 0 {

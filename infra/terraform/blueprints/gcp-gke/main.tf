@@ -292,3 +292,17 @@ output "workload_identity_config" {
     external_secrets_sa = module.external_secrets_workload_identity.gcp_service_account_email
   }
 }
+
+resource "google_project_iam_audit_config" "kubernetes" {
+  project = var.project
+  service = "container.googleapis.com"
+  audit_log_config {
+    log_type = "ADMIN_READ"
+  }
+  audit_log_config {
+    log_type = "DATA_READ"
+  }
+  audit_log_config {
+    log_type = "DATA_WRITE"
+  }
+}

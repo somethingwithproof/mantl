@@ -193,6 +193,7 @@ module "eks" {
 
   # Cluster access
   cluster_endpoint_public_access  = var.cluster_endpoint_public_access
+  enable_irsa                     = true
   cluster_endpoint_private_access = true
 
   # Security

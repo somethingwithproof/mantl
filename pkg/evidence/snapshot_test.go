@@ -200,7 +200,7 @@ func TestCaptureResource_Args(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := CaptureResource(tt.kind, tt.resName, tt.namespace)
+			err := validateCaptureArgs(tt.kind, tt.resName, tt.namespace)
 
 			if tt.wantErr != "" {
 				if err == nil {
@@ -277,6 +277,7 @@ func TestCaptureResource_ResourceID(t *testing.T) {
 }
 
 func TestCaptureResource_EmptyStderr(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
 	// CaptureResource will fail because kubectl is not available. When stderr
 	// is empty, the error message should contain "(no stderr output)".
 	_, err := CaptureResource("Deployment", "my-app", "default")
@@ -294,6 +295,7 @@ func TestCaptureResource_EmptyStderr(t *testing.T) {
 }
 
 func TestCaptureResourceWithContext(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
 	// Verify CaptureResourceWithContext accepts a caller-provided context
 	// and passes validation (will fail at kubectl exec).
 	ctx := context.Background()
@@ -304,6 +306,7 @@ func TestCaptureResourceWithContext(t *testing.T) {
 }
 
 func TestCaptureResourceWithContext_CancelledContext(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	_, err := CaptureResourceWithContext(ctx, "Deployment", "my-app", "default")
@@ -316,6 +319,7 @@ func TestCaptureResourceWithContext_CancelledContext(t *testing.T) {
 }
 
 func TestCaptureResourceWithContext_ExpiredDeadline(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
 	defer cancel()
 	_, err := CaptureResourceWithContext(ctx, "Deployment", "my-app", "default")
@@ -328,6 +332,7 @@ func TestCaptureResourceWithContext_ExpiredDeadline(t *testing.T) {
 }
 
 func TestCaptureResource_DefaultTimeout(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
 	// Verify CaptureResource reaches kubectl exec (confirming the 30-second
 	// default timeout context was created and passed through).
 	_, err := CaptureResource("Pod", "test-pod", "kube-system")

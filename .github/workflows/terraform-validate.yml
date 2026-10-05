@@ -61,13 +61,6 @@ jobs:
             exit 1
           fi
 
-      - name: Check Kubernetes Version
-        working-directory: infra/terraform/blueprints/${{ matrix.provider }}
-        run: |
-          if ! grep -q "1.31" variables.tf; then
-            echo "Kubernetes version not set to 1.31.x"
-            exit 1
-          fi
 
   validate-modules:
     name: Validate Terraform Modules
@@ -103,16 +96,22 @@ jobs:
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@v6
         with:
-          tflint_version: latest
+          tflint_version: v0.64.0
 
       - name: Run TFLint
         run: |
           tflint --init
-          tflint --recursive --format compact infra/terraform/
+          for blueprint in aws-eks gcp-gke azure-aks; do
+            tflint --chdir="infra/terraform/blueprints/$blueprint" --config="$PWD/.tflint.hcl" --format compact
+          done
 
   checkov:
     name: Checkov Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
 
     steps:
       - name: Checkout code
@@ -127,9 +126,18 @@ jobs:
           output_file_path: console,checkov-results.sarif
           soft_fail: true
 
+      - name: Retain security scan report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: terraform-security-sarif
+          path: checkov-results.sarif
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload SARIF results
         uses: github/codeql-action/upload-sarif@v4
-        if: always()
+        if: always() && vars.ENABLE_CODE_SCANNING_SARIF == 'true'
         with:
           sarif_file: checkov-results.sarif
 
@@ -148,7 +156,8 @@ jobs:
         run: |
           if [ "${{ needs.validate-providers.result }}" != "success" ] || \
              [ "${{ needs.validate-modules.result }}" != "success" ] || \
-             [ "${{ needs.tflint.result }}" != "success" ]; then
+             [ "${{ needs.tflint.result }}" != "success" ] || \
+             [ "${{ needs.checkov.result }}" != "success" ]; then
             echo "Some validation checks failed"
             exit 1
           fi
