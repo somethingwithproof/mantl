@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	api "github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
+
+	api "github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type historyStore struct {
@@ -73,6 +75,30 @@ func TestFindingHistoryRejectsIncompleteMetadata(t *testing.T) {
 		if len(store.reads) != 0 {
 			t.Fatal("invalid metadata caused storage access")
 		}
+	}
+}
+
+func TestFindingHistoryPreservesURLParseErrors(t *testing.T) {
+	finding, _ := historyFixture(t)
+	finding.Status.HistoryHead.URI = "s3://bucket/%ZZ"
+	validators := map[string]func() error{
+		"bucket": func() error {
+			_, err := FindingHistoryBucket(finding)
+			return err
+		},
+		"scope": func() error {
+			return findingHistoryScope(finding.Status.HistoryHead, finding)
+		},
+	}
+	for name, validate := range validators {
+		t.Run(name, func(t *testing.T) {
+			err := validate()
+			var parseError *url.Error
+			var escapeError url.EscapeError
+			if !errors.As(err, &parseError) || !errors.As(err, &escapeError) {
+				t.Fatalf("URL parse error chain lost: %v", err)
+			}
+		})
 	}
 }
 func TestFindingHistoryRejectsForeignOrTamperedRecords(t *testing.T) {

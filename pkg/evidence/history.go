@@ -19,7 +19,10 @@ func FindingHistoryBucket(finding api.Finding) (string, error) {
 		return "", fmt.Errorf("finding has no recorded lifecycle")
 	}
 	uri, err := url.Parse(finding.Status.HistoryHead.URI)
-	if err != nil || uri.Scheme != "s3" || uri.Host == "" {
+	if err != nil {
+		return "", fmt.Errorf("parse finding history reference: %w", err)
+	}
+	if uri.Scheme != "s3" || uri.Host == "" {
 		return "", fmt.Errorf("invalid finding history reference")
 	}
 	return uri.Host, nil
@@ -66,7 +69,10 @@ func ReadFindingHistory(ctx context.Context, store Store, finding api.Finding) (
 
 func findingHistoryScope(head *api.HistoryReference, finding api.Finding) error {
 	uri, err := url.Parse(head.URI)
-	if err != nil || uri.Scheme != "s3" || uri.Host == "" || uri.User != nil || uri.RawQuery != "" || uri.Fragment != "" {
+	if err != nil {
+		return fmt.Errorf("parse finding history scope: %w", err)
+	}
+	if uri.Scheme != "s3" || uri.Host == "" || uri.User != nil || uri.RawQuery != "" || uri.Fragment != "" {
 		return fmt.Errorf("finding history scope mismatch")
 	}
 	parts := strings.Split(strings.TrimPrefix(uri.Path, "/"), "/")
