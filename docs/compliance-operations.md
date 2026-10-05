@@ -78,8 +78,10 @@ The evidence-age threshold is a default to tune for your collector schedules.
 - An operator restart preserves persisted run identity and collector timestamps.
 - Report deletion marks prior findings unknown. A current passing report resolves
   a finding; losing its source is not evidence of compliance.
-- If Kyverno CRDs were missing at operator startup, install them and restart the
-  operator so its report watches are registered.
+- Startup requires Kyverno report CRDs by default. Kubernetes retries the operator
+  until they exist, so bootstrap cannot silently omit finding watches. The explicit
+  `--require-policy-reports=false` compatibility mode exposes a disabled-watch
+  metric; install the CRDs and restart before relying on findings.
 - Before an upgrade, back up profile/audit/finding metadata and record immutable
   evidence versions. Restore metadata into an isolated environment, verify archive
   hashes, and confirm scoped identity access before resuming scheduled audits.

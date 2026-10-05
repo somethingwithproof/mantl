@@ -41,11 +41,13 @@ func main() {
 	var evidenceBucket string
 	var kmsKey string
 	var allowCluster bool
+	var requireReports bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&frameworkDir, "framework-dir", "/etc/compliance/frameworks", "The directory containing framework mapping files.")
 	flag.StringVar(&evidenceBucket, "evidence-bucket", "", "The S3 bucket to store compliance evidence.")
 	flag.StringVar(&kmsKey, "evidence-kms-key", "", "Optional evidence KMS key ARN")
+	flag.BoolVar(&requireReports, "require-policy-reports", true, "Fail startup until required Kyverno report CRDs are installed")
 	flag.BoolVar(&allowCluster, "allow-cluster-evidence", false, "Allow explicit cluster RBAC evidence reads")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -82,9 +84,10 @@ func main() {
 
 	// Register Finding controller
 	if err = (&compliance.FindingReconciler{
-		Client:       mgr.GetClient(),
-		Scheme:       mgr.GetScheme(),
-		FrameworkDir: frameworkDir,
+		RequireReports: requireReports,
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		FrameworkDir:   frameworkDir,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Finding")
 		os.Exit(1)

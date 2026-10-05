@@ -27,9 +27,10 @@ import (
 // FindingReconciler reconciles Kyverno PolicyReports into Mantl Findings
 type FindingReconciler struct {
 	client.Client
-	Scheme       *runtime.Scheme
-	FrameworkDir string
-	Namespace    string
+	Scheme         *runtime.Scheme
+	FrameworkDir   string
+	RequireReports bool
+	Namespace      string
 }
 
 // policyReportGVK is the GroupVersionKind for Kyverno PolicyReports.
@@ -295,6 +296,9 @@ func (r *FindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		reportWatch.Set(1)
 	}
 	if !available {
+		if r.RequireReports {
+			return fmt.Errorf("PolicyReport CRD is required; retry startup after Kyverno is installed")
+		}
 		mgr.GetLogger().Info("PolicyReport CRD not registered; FindingReconciler disabled until Kyverno is installed and the operator restarts")
 		return nil
 	}
