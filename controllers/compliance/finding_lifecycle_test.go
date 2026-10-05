@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"testing"
@@ -25,6 +26,11 @@ func TestFindingLifecycle(t *testing.T) {
 	c.List(context.Background(), &findings)
 	if len(findings.Items) != 1 || findings.Items[0].Spec.Status != "fail" || findings.Items[0].Spec.ID == "" {
 		t.Fatal("finding missing")
+	}
+	for _, value := range findings.Items[0].Labels {
+		if len(validation.IsValidLabelValue(value)) > 0 {
+			t.Fatal("finding label rejected by Kubernetes")
+		}
 	}
 	results := report.Object["results"].([]interface{})
 	results[0].(map[string]interface{})["result"] = "pass"

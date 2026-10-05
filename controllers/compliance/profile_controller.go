@@ -46,6 +46,12 @@ func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	// 2. Load the Framework mapping file
 	loaded, err := framework.Load(r.FrameworkDir, profile.Spec.Framework, profile.Spec.Version)
 	if err != nil {
+		profile.Status.State = "Invalid"
+		profile.Status.ActivePolicies = 0
+		profile.Status.UnresolvedTemplates = []string{"framework configuration is invalid or unavailable"}
+		if statusErr := r.Status().Update(ctx, &profile); statusErr != nil {
+			return ctrl.Result{}, statusErr
+		}
 		return ctrl.Result{}, err
 	}
 	framework := *loaded

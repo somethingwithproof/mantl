@@ -119,9 +119,11 @@ func Validate(root string) ([]Result, error) {
 			checks["workload_identity"] = d.boolean(b, "oidc_issuer_enabled", true) && d.boolean(b, "workload_identity_enabled", true)
 			checks["audit_logging"] = d.block("resource", "azurerm_monitor_diagnostic_setting", "aks_audit") != nil
 			checks["secrets_encryption"] = false // pragma: allowlist secret (boolean validation result)
-			for _, child := range b.Body.Blocks {
-				if child.Type == "key_management_service" {
-					checks["secrets_encryption"] = child.Body.Attributes["key_vault_key_id"] != nil // pragma: allowlist secret (schema field name)
+			if b != nil {
+				for _, child := range b.Body.Blocks {
+					if child.Type == "key_management_service" {
+						checks["secrets_encryption"] = child.Body.Attributes["key_vault_key_id"] != nil // pragma: allowlist secret (schema field name)
+					}
 				}
 			}
 			checks["platform_federation"] = d.block("resource", "azurerm_federated_identity_credential", "external_secrets") != nil

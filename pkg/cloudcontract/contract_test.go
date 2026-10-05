@@ -26,3 +26,19 @@ func TestPrivateDefaultChecksValueNotComment(t *testing.T) {
 		t.Fatal("insecure private default accepted")
 	}
 }
+
+func TestMissingCloudModulesReturnFailures(t *testing.T) {
+	root := t.TempDir()
+	for _, name := range []string{"aws-eks", "gcp-gke", "azure-aks"} {
+		dir := filepath.Join(root, "infra/terraform/blueprints", name)
+		os.MkdirAll(dir, 0700)
+		os.WriteFile(filepath.Join(dir, "main.tf"), []byte("variable \"kubernetes_version\" { default = \"1.31\" }\n"), 0600)
+	}
+	results, err := Validate(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(Failures(results)) == 0 {
+		t.Fatal("missing modules accepted")
+	}
+}

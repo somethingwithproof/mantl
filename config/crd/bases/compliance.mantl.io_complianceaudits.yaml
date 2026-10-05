@@ -41,6 +41,11 @@ spec:
               Audit
             properties:
               frequency:
+                enum:
+                - manual
+                - daily
+                - weekly
+                - framework
                 type: string
               profile:
                 type: string

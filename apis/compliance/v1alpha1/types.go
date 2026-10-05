@@ -77,7 +77,8 @@ type FindingList struct {
 
 // ComplianceAuditSpec defines the desired state of a Compliance Audit
 type ComplianceAuditSpec struct {
-	Profile   string `json:"profile"`
+	Profile string `json:"profile"`
+	// +kubebuilder:validation:Enum=manual;daily;weekly;framework
 	Frequency string `json:"frequency,omitempty"` // manual, daily, weekly, framework
 }
 

@@ -34,6 +34,9 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err := r.Get(ctx, req.NamespacedName, &audit); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	if audit.Spec.Frequency != "" && audit.Spec.Frequency != "manual" && audit.Spec.Frequency != "daily" && audit.Spec.Frequency != "weekly" && audit.Spec.Frequency != "framework" {
+		return ctrl.Result{}, fmt.Errorf("unsupported audit frequency %q", audit.Spec.Frequency)
+	}
 	now := time.Now().UTC()
 	if r.Now != nil {
 		now = r.Now().UTC()
@@ -62,9 +65,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if r.Reader == nil || r.Store == nil {
 		return ctrl.Result{}, fmt.Errorf("evidence reader and immutable store must be configured")
 	}
-	if audit.Spec.Frequency != "" && audit.Spec.Frequency != "manual" && audit.Spec.Frequency != "daily" && audit.Spec.Frequency != "weekly" && audit.Spec.Frequency != "framework" {
-		return ctrl.Result{}, fmt.Errorf("unsupported audit frequency %q", audit.Spec.Frequency)
-	}
+
 	next := time.Duration(0)
 	type task struct{ key, control, resource, namespace string }
 	var tasks []task
