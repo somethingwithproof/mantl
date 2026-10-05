@@ -13,8 +13,8 @@ run "all_roles_are_private" {
   variables {
     use_modern_gce_schema  = true
     use_modern_gce_network = true
-    control_count         = 1
-    worker_count          = 1
+    control_count          = 1
+    worker_count           = 1
     kubeworker_count       = 1
   }
   assert {
@@ -38,8 +38,8 @@ run "reject_public_ip_even_with_managed_network" {
   variables {
     use_modern_gce_schema  = true
     use_modern_gce_network = true
-    control_count         = 1
-    gce_public_ip         = true
+    control_count          = 1
+    gce_public_ip          = true
   }
   expect_failures = [var.gce_public_ip]
 }
@@ -64,8 +64,8 @@ run "private_existing_subnet" {
   command = plan
   variables {
     use_modern_gce_schema       = true
-    control_count              = 1
-    worker_count               = 1
+    control_count               = 1
+    worker_count                = 1
     kubeworker_count            = 1
     modern_subnetwork_self_link = "projects/test/regions/us-central1/subnetworks/external"
   }
@@ -91,7 +91,7 @@ run "iap_ssh_is_scoped_and_logged" {
   variables {
     use_modern_gce_schema  = true
     use_modern_gce_network = true
-    control_count         = 1
+    control_count          = 1
     enable_iap_ssh         = true
   }
   assert {
