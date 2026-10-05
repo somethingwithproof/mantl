@@ -181,7 +181,7 @@ resource "aws_flow_log" "vpc" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.31"
+  version = "~> 21.26"
 
   cluster_name    = local.name
   cluster_version = local.cluster_version
