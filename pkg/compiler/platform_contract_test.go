@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"sigs.k8s.io/yaml"
 )
 
 func TestTenantIsolationAndCommittedSource(t *testing.T) {
@@ -32,6 +34,59 @@ func TestTenantIsolationAndCommittedSource(t *testing.T) {
 	k, _ := os.ReadFile(filepath.Join(dir, "tenants/kustomization.yaml"))
 	if strings.Contains(string(k), "- kustomization.yaml") {
 		t.Fatal("recursive Kustomization generated")
+	}
+}
+
+func TestTenantReplanExcludesRemovedAndUnmanagedFiles(t *testing.T) {
+	cluster := newTestCluster("small")
+	cluster.Spec.GitOps.TenantPath = "tenants/dev"
+	cluster.Spec.Tenants = []api.TenantSpec{{Name: "former", Admins: []string{"alice"}}}
+	dir := t.TempDir()
+	if err := RenderGitOps(cluster, dir); err != nil {
+		t.Fatal(err)
+	}
+	unmanaged := filepath.Join(dir, "tenants/unmanaged.yaml")
+	if err := os.WriteFile(unmanaged, []byte("owned by someone else"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tenants := range [][]api.TenantSpec{{{Name: "current"}}, nil} {
+		cluster.Spec.Tenants = tenants
+		if err := RenderGitOps(cluster, dir); err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(dir, "tenants/kustomization.yaml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var index struct {
+			Resources []string `json:"resources"`
+		}
+		if err := yaml.Unmarshal(data, &index); err != nil {
+			t.Fatal(err)
+		}
+		if len(index.Resources) != len(tenants) || len(tenants) > 0 && index.Resources[0] != "current.yaml" {
+			t.Fatalf("stale or unmanaged tenant included: %v", index.Resources)
+		}
+		if _, err := os.Stat(filepath.Join(dir, "gitops/platform-tenants.yaml")); err != nil {
+			t.Fatal("tenant application must remain to reconcile removals", err)
+		}
+	}
+	if data, err := os.ReadFile(unmanaged); err != nil || string(data) != "owned by someone else" {
+		t.Fatal("unmanaged file changed", err)
+	}
+}
+
+func TestSpecRejectsTenantFilenameCollisions(t *testing.T) {
+	for _, tenants := range [][]api.TenantSpec{
+		{{Name: "kustomization"}},
+		{{Name: "team", Namespace: "first"}, {Name: "team", Namespace: "second"}},
+	} {
+		cluster := newTestCluster("small")
+		cluster.Spec.GitOps.TenantPath = "tenants/dev"
+		cluster.Spec.Tenants = tenants
+		if err := Validate(cluster); err == nil {
+			t.Fatalf("tenant filename collision accepted: %v", tenants)
+		}
 	}
 }
 func TestSpecRejectsUnsafeTenantAndProvider(t *testing.T) {

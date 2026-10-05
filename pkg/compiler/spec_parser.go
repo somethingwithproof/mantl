@@ -82,15 +82,17 @@ func Validate(cluster *v1alpha1.MantlCluster) error {
 		return fmt.Errorf("gitops.tenantPath is required; commit generated tenants at this path")
 	}
 	seen := map[string]bool{}
+	seenNames := map[string]bool{}
 	for _, t := range cluster.Spec.Tenants {
 		ns := t.Namespace
 		if ns == "" {
 			ns = t.Name
 		}
-		if !dnsName.MatchString(t.Name) || !dnsName.MatchString(ns) || len(ns) > 63 || len(t.Name) > 63 || seen[ns] {
+		if !dnsName.MatchString(t.Name) || !dnsName.MatchString(ns) || len(ns) > 63 || len(t.Name) > 63 || seen[ns] || seenNames[t.Name] || t.Name == "kustomization" {
 			return fmt.Errorf("tenant names and namespaces must be unique DNS labels")
 		}
 		seen[ns] = true
+		seenNames[t.Name] = true
 	}
 	return nil
 }

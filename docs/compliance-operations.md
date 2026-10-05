@@ -104,6 +104,12 @@ and resource limits. Tenant namespaces have quotas, LimitRanges, and default-den
 network policies; add explicit DNS and service traffic rules through GitOps before
 running an application. These protections require a NetworkPolicy-enforcing CNI.
 
+Replanning lists only the current spec's tenants in the generated Kustomization;
+stale and unrelated YAML files are left on disk but excluded. Keep `tenantPath`
+configured when removing the last tenant so its ArgoCD application can reconcile
+the empty desired state. Review tenant removal before committing: automated
+pruning can delete the tenant namespace and its workloads, not just access grants.
+
 ## Implementation review boundaries
 
 The local implementation review checked that GitOps remains the policy owner,

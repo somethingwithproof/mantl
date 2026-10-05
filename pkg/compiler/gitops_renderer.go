@@ -74,28 +74,20 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 		}
 	}
 
-	// 3. Generate Tenant manifests
-	if len(cluster.Spec.Tenants) > 0 {
+	// Keep an empty tenant application when its source is configured so ArgoCD can
+	// reconcile removals. Never discover desired tenants from stale output files.
+	if len(cluster.Spec.Tenants) > 0 || cluster.Spec.GitOps.TenantPath != "" {
 		tenantsDir := filepath.Join(outputDir, "tenants")
 		if err := os.MkdirAll(tenantsDir, 0755); err != nil {
 			return err
 		}
 
+		names := []string{}
 		for _, tenant := range cluster.Spec.Tenants {
 			if err := renderTenant(tenantsDir, tenant); err != nil {
 				return err
 			}
-		}
-
-		tenantFiles, err := filepath.Glob(filepath.Join(tenantsDir, "*.yaml"))
-		if err != nil {
-			return err
-		}
-		names := []string{}
-		for _, file := range tenantFiles {
-			if filepath.Base(file) != "kustomization.yaml" {
-				names = append(names, filepath.Base(file))
-			}
+			names = append(names, tenant.Name+".yaml")
 		}
 		kustomization, err := yaml.Marshal(map[string]interface{}{"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": names})
 		if err != nil {
@@ -116,6 +108,9 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 
 // renderTenant generates Namespace and RBAC RoleBindings for a tenant.
 func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
+	if tenant.Name == "kustomization" {
+		return fmt.Errorf("tenant name kustomization conflicts with generated manifest index")
+	}
 	ns := tenant.Namespace
 	if ns == "" {
 		ns = tenant.Name
