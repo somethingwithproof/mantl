@@ -30,9 +30,11 @@ only documentation. ADR 009 records the ownership and test-scope rules.
 Release Please dispatches preflight CI on its generated PR head branch. CI verifies
 the PR is open and the dispatched commit matches its current head before selecting
 checks or attaching Sonar analysis. GitHub does not count workflow_dispatch job
-checks toward required PR checks. A maintainer must push the reviewed release
-branch through authenticated Git to trigger the normal pull_request checks before
-merging a PR created with GITHUB_TOKEN; the preflight does not replace those gates.
+checks toward required PR checks. For a PR created or updated with GITHUB_TOKEN,
+a maintainer reviews the generated changes and approves its pending PR workflows
+using GitHub’s “Approve workflows to run” control. Those pull_request checks must
+pass before merging; the preflight does not replace those gates. See
+[GitHub’s token-triggered workflow rules](https://docs.github.com/en/actions/concepts/security/github_token).
 
 ## Runtime and cache policy
 

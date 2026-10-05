@@ -18,14 +18,34 @@ existing subnet. The default image is Debian 12, resolved from its image family;
 this is not an immutable-image production deployment contract. Data disks and
 boot disks accept an optional `gce_boot_kms_key` for CMEK.
 
-External IPs remain disabled by default. Opting in with `gce_public_ip = true`
-requires the managed network and a nonempty `allowed_cidrs` list, so the source
-firewall is actually installed. Invalid CIDRs and IPv4 or IPv6 zero-prefix
-ranges are rejected. Review every permitted source and exposed firewall port
-before provisioning. The managed subnetwork enables full-sampling VPC Flow Logs;
-configure retention and log access separately. An externally supplied subnetwork
-requires an independent logging review. Existing state and disk lifecycle changes
-require a reviewed migration plan; do not apply these updates blindly.
+All VM roles are private-only. There are no external-IP attachment blocks or
+external service-ingress firewall rules. The deprecated `gce_public_ip` input
+accepts only `false`, and `allowed_cidrs` accepts only an empty list; incompatible
+legacy inputs fail validation rather than retaining public access.
+
+Administrative ingress is disabled by default. Optional `enable_iap_ssh = true`
+requires the managed network and creates a logged TCP/22-only firewall rule from
+Google IAP's `35.235.240.0/20` service range, targeted to this module's VM tag. This
+firewall does not grant tunnel access or authenticate SSH. Before use, provision
+and review least-privilege IAP tunnel IAM (scoped to the intended instances and
+port 22), SSH authentication and audit-log retention. Network tags scope firewall
+traffic, not IAP IAM authorization. See
+[Google's IAP prerequisites](https://docs.cloud.google.com/iap/docs/using-tcp-forwarding).
+Externally supplied subnets require independent firewall and logging review;
+this module cannot ensure they lack broader pre-existing rules.
+
+The managed subnet retains full-sampling VPC Flow Logs. Configure retention and
+log access separately. Internal subnet traffic remains broadly permitted and
+requires a workload-specific segmentation review before production. Private
+outbound connectivity, such as reviewed Cloud NAT or Private Google Access, must
+be provisioned independently when needed; this module adds neither a NAT gateway
+nor a bastion. IAP does not provide outbound internet connectivity.
+
+For existing deployments, removing external addresses and the old firewall can
+interrupt access. Review the Terraform plan and state, prove a private or IAP
+administration path, and record a rollback procedure before applying. No cloud
+resources are changed by the local checks. See
+[ADR 010](../../../docs/adr/010-security-exception-boundaries.md).
 
 Local checks do not use cloud credentials or provision resources:
 
@@ -37,9 +57,11 @@ mise exec -- terraform -chdir=infra/terraform/gce test
 
 The test suite uses a mocked provider and plan-only runs. Its public-key fixture
 is an inert string for metadata assertions, not a usable deployment key. Tests
-verify private defaults, subnet logging, explicit public-IP opt-in and rejection
-of missing networks, malformed CIDRs and global access ranges. These checks do
-not establish deployment success, usable SSH access or log delivery.
+verify private interfaces for all VM roles on managed and supplied subnets,
+rejection of legacy public-access inputs, no default administrative ingress, and
+the IAP rule's exact source, target, SSH port and logging configuration. These
+checks do not establish deployment success, IAP authorization, SSH access or log
+delivery. This module remains experimental and is not approved for production.
 
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
@@ -66,7 +88,7 @@ No modules.
 | [google_compute_disk.mi-control-lvm](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_disk) | resource |
 | [google_compute_disk.mi-kubeworker-lvm](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_disk) | resource |
 | [google_compute_disk.mi-worker-lvm](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_disk) | resource |
-| [google_compute_firewall.external_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_firewall) | resource |
+| [google_compute_firewall.iap_ssh](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_firewall) | resource |
 | [google_compute_firewall.internal_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_firewall) | resource |
 | [google_compute_instance.control_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_instance) | resource |
 | [google_compute_instance.kubeworker_modern](https://registry.terraform.io/providers/hashicorp/google/7.45.0/docs/resources/compute_instance) | resource |
@@ -79,15 +101,16 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_allowed_cidrs"></a> [allowed\_cidrs](#input\_allowed\_cidrs) | Source IP ranges allowed to access external firewall ports. Must be explicitly set. | `list(string)` | `[]` | no |
+| <a name="input_allowed_cidrs"></a> [allowed\_cidrs](#input\_allowed\_cidrs) | Deprecated compatibility input. External source allowlists are unsupported; must remain empty. | `list(string)` | `[]` | no |
 | <a name="input_control_count"></a> [control\_count](#input\_control\_count) | n/a | `number` | `0` | no |
 | <a name="input_control_type"></a> [control\_type](#input\_control\_type) | n/a | `string` | `"e2-standard-2"` | no |
 | <a name="input_control_volume_size"></a> [control\_volume\_size](#input\_control\_volume\_size) | n/a | `number` | `50` | no |
 | <a name="input_datacenter"></a> [datacenter](#input\_datacenter) | n/a | `string` | `"gce"` | no |
+| <a name="input_enable_iap_ssh"></a> [enable\_iap\_ssh](#input\_enable\_iap\_ssh) | Allow SSH from Google IAP to this module's tagged VMs. Requires separately reviewed IAP IAM and the managed network. | `bool` | `false` | no |
 | <a name="input_gce_boot_image_family"></a> [gce\_boot\_image\_family](#input\_gce\_boot\_image\_family) | Boot image family for control instances. | `string` | `"debian-12"` | no |
 | <a name="input_gce_boot_image_project"></a> [gce\_boot\_image\_project](#input\_gce\_boot\_image\_project) | GCP project hosting the image family. | `string` | `"debian-cloud"` | no |
 | <a name="input_gce_boot_kms_key"></a> [gce\_boot\_kms\_key](#input\_gce\_boot\_kms\_key) | Optional self\_link of the KMS crypto key for boot disk encryption. | `string` | `""` | no |
-| <a name="input_gce_public_ip"></a> [gce\_public\_ip](#input\_gce\_public\_ip) | Explicit opt-in to external IPs; requires restricted allowed\_cidrs. | `bool` | `false` | no |
+| <a name="input_gce_public_ip"></a> [gce\_public\_ip](#input\_gce\_public\_ip) | Deprecated compatibility input. Public IPs are unsupported; only false is accepted. | `bool` | `false` | no |
 | <a name="input_kubeworker_count"></a> [kubeworker\_count](#input\_kubeworker\_count) | n/a | `number` | `0` | no |
 | <a name="input_long_name"></a> [long\_name](#input\_long\_name) | Inputs for the experimental standalone VM module. No cluster bootstrap is performed. | `string` | n/a | yes |
 | <a name="input_modern_subnetwork_self_link"></a> [modern\_subnetwork\_self\_link](#input\_modern\_subnetwork\_self\_link) | Optional self\_link of a modern subnetwork to attach (use with use\_modern\_gce\_network). | `string` | `""` | no |

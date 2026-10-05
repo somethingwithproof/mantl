@@ -16,3 +16,11 @@ retention and access controls, and review a complete TLS deployment. No load
 balancer request-logging coverage is claimed by this archive.
 
 [AWS NLB access logging limitations](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/load-balancer-access-logs.html).
+
+The logging exception is acceptable only while this archive remains undeployed
+and unsupported. It is not approved for production or experimental reuse. Any
+reactivation requires a new supported design, independently verified network and
+application audit delivery, retention/access controls, a complete TLS contract,
+and recorded deployment acceptance before use. Do not treat Sonar's accepted
+classification as satisfying those requirements. See
+[ADR 010](../../../adr/010-security-exception-boundaries.md).

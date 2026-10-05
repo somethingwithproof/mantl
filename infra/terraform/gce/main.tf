@@ -1,5 +1,5 @@
 # Mantl GCE instances using the modern google_compute_instance schema:
-# shielded VMs, optional CMEK boot disks, and no public IP by default.
+# shielded VMs, optional CMEK boot disks, and private-only network interfaces.
 
 variable "use_modern_gce_schema" {
   description = "If true, create control nodes with modern google_compute_instance schema."
@@ -8,13 +8,13 @@ variable "use_modern_gce_schema" {
 }
 
 variable "gce_public_ip" {
-  description = "Explicit opt-in to external IPs; requires restricted allowed_cidrs."
+  description = "Deprecated compatibility input. Public IPs are unsupported; only false is accepted."
   type        = bool
   default     = false
 
   validation {
-    condition     = !var.gce_public_ip || (var.use_modern_gce_network && length(var.allowed_cidrs) > 0)
-    error_message = "Public IPs require the managed network and an explicit, restricted allowed_cidrs list."
+    condition     = !var.gce_public_ip
+    error_message = "Public IPs are unsupported. Use private connectivity or reviewed IAP SSH access."
   }
 }
 
@@ -84,13 +84,9 @@ resource "google_compute_instance" "control_modern" {
   }
 
   # Network
-  # Networking: default to no public IP; modern subnetwork when provided.
+  # Private interfaces only; no external IP attachment is supported.
   network_interface {
     subnetwork = var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : var.modern_subnetwork_self_link
-    dynamic "access_config" {
-      for_each = var.gce_public_ip ? [1] : []
-      content {}
-    }
   }
 
   # Shielded VM
@@ -137,10 +133,6 @@ resource "google_compute_instance" "worker_modern" {
 
   network_interface {
     subnetwork = var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : var.modern_subnetwork_self_link
-    dynamic "access_config" {
-      for_each = var.gce_public_ip ? [1] : []
-      content {}
-    }
   }
 
   shielded_instance_config {
@@ -184,10 +176,6 @@ resource "google_compute_instance" "kubeworker_modern" {
 
   network_interface {
     subnetwork = var.use_modern_gce_network ? google_compute_subnetwork.mi_subnet_modern[0].self_link : var.modern_subnetwork_self_link
-    dynamic "access_config" {
-      for_each = var.gce_public_ip ? [1] : []
-      content {}
-    }
   }
 
   shielded_instance_config {
