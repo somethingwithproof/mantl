@@ -39,6 +39,35 @@ type fixtureIndex struct {
 	listError error
 }
 
+func TestEnrollmentValidationRejectsInvalidIdentityAndTenantConflicts(t *testing.T) {
+	fingerprint := evidence.Hash([]byte("certificate-a"))
+	other := evidence.Hash([]byte("certificate-b"))
+	for _, test := range []struct {
+		name        string
+		enrollments map[string]Scope
+		valid       bool
+	}{
+		{"no enrollments", nil, false},
+		{"collector", map[string]Scope{fingerprint: {Tenant: "tenant-a", Cluster: "cluster-a", Role: "collector"}}, true},
+		{"tenant viewer", map[string]Scope{fingerprint: {Tenant: "tenant-a", Role: "viewer"}}, true},
+		{"invalid certificate digest", map[string]Scope{"invalid": {Tenant: "tenant-a", Role: "viewer"}}, false},
+		{"missing tenant", map[string]Scope{fingerprint: {Role: "viewer"}}, false},
+		{"invalid cluster identity", map[string]Scope{fingerprint: {Tenant: "tenant-a", Cluster: "foreign/cluster", Role: "viewer"}}, false},
+		{"unknown role", map[string]Scope{fingerprint: {Tenant: "tenant-a", Role: "administrator"}}, false},
+		{"unscoped collector", map[string]Scope{fingerprint: {Tenant: "tenant-a", Role: "collector"}}, false},
+		{"conflicting cluster tenants", map[string]Scope{
+			fingerprint: {Tenant: "tenant-a", Cluster: "cluster-a", Role: "collector"},
+			other:       {Tenant: "tenant-b", Cluster: "cluster-a", Role: "collector"},
+		}, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if err := ValidateEnrollments(test.enrollments); (err == nil) != test.valid {
+				t.Fatalf("enrollment validation: %v", err)
+			}
+		})
+	}
+}
+
 func (i *fixtureIndex) Put(_ context.Context, scope Scope, events []Event, source evidence.ObjectRef) error {
 	if i.putError != nil {
 		return i.putError
