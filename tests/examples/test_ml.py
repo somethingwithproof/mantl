@@ -63,3 +63,16 @@ def test_model_metadata_and_input_validation(example):
                 cls(**kwargs)
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("endpoint", ["http://collector:4317", "collector:4317", "https://"])
+def test_rejects_insecure_transport(example, monkeypatch, endpoint):
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint)
+    validate = example.telemetry_endpoint
+    with pytest.raises(RuntimeError, match="HTTPS"):
+        validate()
+
+
+def test_verified_transport_endpoint(example, monkeypatch):
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://collector.example:4317")
+    assert example.telemetry_endpoint() == "https://collector.example:4317"

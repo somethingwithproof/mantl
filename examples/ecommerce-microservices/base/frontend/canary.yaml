@@ -34,42 +34,42 @@ spec:
 
     # Metrics to evaluate during analysis
     metrics:
-    # Request success rate
-    - name: request-success-rate
-      thresholdRange:
-        min: 99
-      interval: 1m
+      # Request success rate
+      - name: request-success-rate
+        thresholdRange:
+          min: 99
+        interval: 1m
 
-    # Request duration
-    - name: request-duration
-      thresholdRange:
-        max: 500
-      interval: 1m
+      # Request duration
+      - name: request-duration
+        thresholdRange:
+          max: 500
+        interval: 1m
 
-    # Custom metric: frontend page load time (if available)
-    - name: frontend-page-load-time
-      thresholdRange:
-        max: 2000  # 2 seconds
-      interval: 1m
-      query: |
-        histogram_quantile(0.99,
-          sum(rate(http_request_duration_milliseconds_bucket{
-            job="frontend"
-          }[1m])) by (le)
-        )
+      # Custom metric: frontend page load time (if available)
+      - name: frontend-page-load-time
+        thresholdRange:
+          max: 2000 # 2 seconds
+        interval: 1m
+        query: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_milliseconds_bucket{
+              job="frontend"
+            }[1m])) by (le)
+          )
 
-  # Webhooks for notifications
-  webhooks:
-  - name: load-test
-    type: rollout
-    url: http://flagger-loadtester.mantl-system/
-    timeout: 15s
-    metadata:
-      type: cmd
-      cmd: "hey -z 1m -q 10 -c 2 http://frontend.ecommerce/"
+    # Webhooks for notifications
+    webhooks:
+      - name: load-test
+        type: rollout
+        url: https://loadtester.example.invalid/
+        timeout: 15s
+        metadata:
+          type: cmd
+          cmd: "hey -z 1m -q 10 -c 2 http://frontend.ecommerce/"
 
-  - name: notify-slack
-    type: post-rollout
-    url: http://flagger-slack-notifier.mantl-system/
-    metadata:
-      message: "Frontend canary deployment"
+      - name: notify-slack
+        type: post-rollout
+        url: https://notifier.example.invalid/
+        metadata:
+          message: "Frontend canary deployment"

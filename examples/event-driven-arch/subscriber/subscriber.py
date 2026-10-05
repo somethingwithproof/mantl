@@ -67,10 +67,10 @@ FETCH_BATCH_SIZE_GAUGE = Gauge(
 shutdown_requested = asyncio.Event()
 
 
-async def wait_for_shutdown(timeout: float):
+async def wait_for_shutdown(backoff_seconds: float):
     """Wake immediately on shutdown, or resume after the backoff interval."""
     with suppress(TimeoutError):
-        async with asyncio.timeout(timeout):
+        async with asyncio.timeout(backoff_seconds):
             await shutdown_requested.wait()
 
 
@@ -212,7 +212,7 @@ async def main():
             FILTER_SUBJECT, DURABLE_NAME, stream=STREAM_NAME, config=consumer_config
         )
 
-        logger.info(f"Subscribed to stream {STREAM_NAME} " f"with filter {FILTER_SUBJECT}")
+        logger.info("Subscribed to stream %r with filter %r", STREAM_NAME, FILTER_SUBJECT)
 
         # Process messages
         while not shutdown_requested.is_set():

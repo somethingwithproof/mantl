@@ -31,6 +31,7 @@ jobs:
           - blueprints/ibm-iks
           - blueprints/openstack
           - modules/platform-security
+          - gce
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -56,6 +57,10 @@ jobs:
           mise exec -- terraform fmt -check -recursive
           mise exec -- terraform init -backend=false -input=false -no-color
           mise exec -- terraform validate -no-color
+      - name: Test experimental GCE security contracts with mocked provider
+        if: matrix.module == 'gce'
+        working-directory: infra/terraform/gce
+        run: mise exec -- terraform test -no-color
   lint:
     name: Supported-provider TFLint
     runs-on: ${{ vars.DO_RUNNERS_ENABLED == 'true' && (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted","Linux","X64","mantl-do"]') || 'ubuntu-latest' }}

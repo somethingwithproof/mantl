@@ -418,7 +418,11 @@ resource "aws_launch_template" "nomad_server" {
     name = aws_iam_instance_profile.nomad.name
   }
 
-  vpc_security_group_ids = [aws_security_group.nomad_server.id]
+  network_interfaces {
+    device_index                = 0
+    associate_public_ip_address = false
+    security_groups             = [aws_security_group.nomad_server.id]
+  }
 
   block_device_mappings {
     device_name = "/dev/sda1"
@@ -519,7 +523,11 @@ resource "aws_launch_template" "nomad_client" {
     name = aws_iam_instance_profile.nomad.name
   }
 
-  vpc_security_group_ids = [aws_security_group.nomad_client.id]
+  network_interfaces {
+    device_index                = 0
+    associate_public_ip_address = false
+    security_groups             = [aws_security_group.nomad_client.id]
+  }
 
   block_device_mappings {
     device_name = "/dev/sda1"

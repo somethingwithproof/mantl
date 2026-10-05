@@ -5,6 +5,14 @@ variable "allowed_cidrs" {
   description = "Source IP ranges allowed to access external firewall ports. Must be explicitly set."
   type        = list(string)
   default     = []
+
+  validation {
+    condition = alltrue([
+      for cidr in var.allowed_cidrs : can(cidrhost(cidr, 0)) &&
+      try(tonumber(split("/", cidr)[1]) > 0, false)
+    ])
+    error_message = "allowed_cidrs must contain valid CIDRs with a nonzero prefix; global access is forbidden."
+  }
 }
 
 # Custom-mode network with managed subnetwork
@@ -20,6 +28,12 @@ resource "google_compute_subnetwork" "mi_subnet_modern" {
   region        = var.region
   ip_cidr_range = var.network_ipv4
   network       = google_compute_network.mi_network_modern[0].self_link
+
+  log_config {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 1.0
+    metadata             = "INCLUDE_ALL_METADATA"
+  }
 }
 
 resource "google_compute_firewall" "external_modern" {
