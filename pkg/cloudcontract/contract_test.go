@@ -60,25 +60,17 @@ func TestAWSContractRejectsSecurityRegressions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
 			for _, provider := range []string{"aws-eks", "gcp-gke", "azure-aks"} {
-				copyBlueprintFixture(t, root, provider, func(name string, data []byte) []byte {
-					if provider != "aws-eks" || name != "main.tf" {
-						return data
-					}
-					if !strings.Contains(string(data), tc.before) {
-						t.Fatalf("fixture missing %q", tc.before)
-					}
-					return []byte(strings.ReplaceAll(string(data), tc.before, tc.after))
-				})
+				edit := func(_ string, data []byte) []byte { return data }
+				if provider == "aws-eks" {
+					edit = awsRegressionEdit(t, tc.before, tc.after)
+				}
+				copyBlueprintFixture(t, root, provider, edit)
 			}
 			results, err := Validate(root)
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, result := range results {
-				if result.Provider == "aws-eks" && result.Checks[tc.check] {
-					t.Fatalf("security regression accepted: %s", tc.check)
-				}
-			}
+			assertAWSContractRejected(t, results, tc.check)
 		})
 	}
 }
@@ -104,4 +96,31 @@ func copyBlueprintFixture(t *testing.T, root, provider string, edit func(string,
 			t.Fatal(err)
 		}
 	}
+}
+
+func awsRegressionEdit(t *testing.T, before, after string) func(string, []byte) []byte {
+	t.Helper()
+	return func(name string, data []byte) []byte {
+		if name != "main.tf" {
+			return data
+		}
+		if !strings.Contains(string(data), before) {
+			t.Fatalf("fixture missing %q", before)
+		}
+		return []byte(strings.ReplaceAll(string(data), before, after))
+	}
+}
+
+func assertAWSContractRejected(t *testing.T, results []Result, check string) {
+	t.Helper()
+	for _, result := range results {
+		if result.Provider != "aws-eks" {
+			continue
+		}
+		if result.Checks[check] {
+			t.Fatalf("security regression accepted: %s", check)
+		}
+		return
+	}
+	t.Fatal("AWS contract result missing")
 }
