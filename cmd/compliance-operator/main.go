@@ -28,6 +28,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
+const controllerSetupFailure = "unable to create controller"
+
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
@@ -79,37 +81,22 @@ func main() {
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "compliance.mantl.io",
 	})
-	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
-	}
+	failStartup(err, "unable to start manager")
 
 	var clusterNamespace core.Namespace
-	if err = mgr.GetAPIReader().Get(context.Background(), client.ObjectKey{Name: "kube-system"}, &clusterNamespace); err != nil {
-		setupLog.Error(err, "read immutable cluster identity")
-		os.Exit(1)
-	}
+	failStartup(mgr.GetAPIReader().Get(context.Background(), client.ObjectKey{Name: "kube-system"}, &clusterNamespace), "read immutable cluster identity")
 	actualClusterID := string(clusterNamespace.UID)
 	// Register ComplianceProfile controller
-	if err = (&compliance.ComplianceProfileReconciler{
+	failStartup((&compliance.ComplianceProfileReconciler{
 		Client:       mgr.GetClient(),
 		Scheme:       mgr.GetScheme(),
 		FrameworkDir: frameworkDir,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ComplianceProfile")
-		os.Exit(1)
-	}
+	}).SetupWithManager(mgr), controllerSetupFailure, "controller", "ComplianceProfile")
 
 	dynamicClient, err := dynamic.NewForConfig(mgr.GetConfig())
-	if err != nil {
-		setupLog.Error(err, "unable to create evidence reader")
-		os.Exit(1)
-	}
+	failStartup(err, "unable to create evidence reader")
 	awsConfig, err := config.LoadDefaultConfig(context.Background())
-	if err != nil {
-		setupLog.Error(err, "unable to configure evidence storage")
-		os.Exit(1)
-	}
+	failStartup(err, "unable to configure evidence storage")
 	if evidenceBucket == "" {
 		setupLog.Error(nil, "--evidence-bucket is required")
 		os.Exit(1)
@@ -117,76 +104,52 @@ func main() {
 	evidenceStore := &evidence.S3Store{Client: s3.NewFromConfig(awsConfig), Bucket: evidenceBucket, KMSKey: kmsKey}
 
 	// Register Finding controller
-	if err = (&compliance.FindingReconciler{
+	failStartup((&compliance.FindingReconciler{
 		Store: evidenceStore, ClusterID: actualClusterID, RequireReports: requireReports,
 		Client:       mgr.GetClient(),
 		Scheme:       mgr.GetScheme(),
 		FrameworkDir: frameworkDir,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Finding")
-		os.Exit(1)
-	}
+	}).SetupWithManager(mgr), controllerSetupFailure, "controller", "Finding")
 
 	// Register the selected audit execution adapter.
 	if inlineAudits {
-		if err = (&compliance.ComplianceAuditReconciler{
+		failStartup((&compliance.ComplianceAuditReconciler{
 			Client:         mgr.GetClient(),
 			Scheme:         mgr.GetScheme(),
 			EvidenceBucket: evidenceBucket,
 			Reader:         &evidence.KubernetesReader{Client: dynamicClient, AllowCluster: allowCluster},
 			Store:          evidenceStore,
 			FrameworkDir:   frameworkDir,
-		}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "ComplianceAudit")
-			os.Exit(1)
-		}
+		}).SetupWithManager(mgr), controllerSetupFailure, "controller", "ComplianceAudit")
 
 	} else {
 		if collectorImage == "" {
 			setupLog.Error(nil, "--collector-image is required for isolated collection")
 			os.Exit(1)
 		}
-		if err = (&compliance.AuditScheduler{Client: mgr.GetClient(), FrameworkDir: frameworkDir, ControlNamespace: controlNamespace, CollectorImage: collectorImage, CollectorServiceAccount: collectorAccount, ClusterID: actualClusterID, Bucket: evidenceBucket, KMSKey: kmsKey}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to register audit scheduler")
-			os.Exit(1)
-		}
-		if err = (&compliance.AuditRunReconciler{Client: mgr.GetClient(), Store: evidenceStore, Image: collectorImage, Bucket: evidenceBucket, KMSKey: kmsKey, ServiceAccount: collectorAccount, AllowCluster: allowCluster, ControlNamespace: controlNamespace, ClusterID: actualClusterID}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to register audit run controller")
-			os.Exit(1)
-		}
+		failStartup((&compliance.AuditScheduler{Client: mgr.GetClient(), FrameworkDir: frameworkDir, ControlNamespace: controlNamespace, CollectorImage: collectorImage, CollectorServiceAccount: collectorAccount, ClusterID: actualClusterID, Bucket: evidenceBucket, KMSKey: kmsKey}).SetupWithManager(mgr), "unable to register audit scheduler")
+		failStartup((&compliance.AuditRunReconciler{Client: mgr.GetClient(), Store: evidenceStore, Image: collectorImage, Bucket: evidenceBucket, KMSKey: kmsKey, ServiceAccount: collectorAccount, AllowCluster: allowCluster, ControlNamespace: controlNamespace, ClusterID: actualClusterID}).SetupWithManager(mgr), "unable to register audit run controller")
 	}
 
-	if err = (&compliance.EvaluationReconciler{Client: mgr.GetClient(), FrameworkDir: frameworkDir}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to register control evaluations")
-		os.Exit(1)
-	}
+	failStartup((&compliance.EvaluationReconciler{Client: mgr.GetClient(), FrameworkDir: frameworkDir}).SetupWithManager(mgr), "unable to register control evaluations")
 	if fleetURL != "" {
 		remote, clientErr := fleet.NewClient(fleetURL, fleetCert, fleetKey, fleetCA)
-		if clientErr != nil {
-			setupLog.Error(clientErr, "configure fleet transport")
-			os.Exit(1)
-		}
-		if err = mgr.Add(&compliance.FleetPublisher{Client: mgr.GetClient(), Reader: mgr.GetAPIReader(), Remote: remote, Store: evidenceStore, ClusterID: clusterID}); err != nil {
-			setupLog.Error(err, "register fleet publisher")
-			os.Exit(1)
-		}
+		failStartup(clientErr, "configure fleet transport")
+		failStartup(mgr.Add(&compliance.FleetPublisher{Client: mgr.GetClient(), Reader: mgr.GetAPIReader(), Remote: remote, Store: evidenceStore, ClusterID: clusterID}), "register fleet publisher")
 	}
-	if err := mgr.Add(compliance.NewComplianceMonitor(mgr.GetClient())); err != nil {
-		setupLog.Error(err, "unable to register compliance metrics")
-		os.Exit(1)
-	}
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
-	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
-	}
+	failStartup(mgr.Add(compliance.NewComplianceMonitor(mgr.GetClient())), "unable to register compliance metrics")
+	failStartup(mgr.AddHealthzCheck("healthz", healthz.Ping), "unable to set up health check")
+	failStartup(mgr.AddReadyzCheck("readyz", healthz.Ping), "unable to set up ready check")
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+	failStartup(mgr.Start(ctrl.SetupSignalHandler()), "problem running manager")
+}
+
+// failStartup terminates before starting reconciliation when a required dependency
+// or controller cannot be configured. Every call retains its setup diagnostic.
+func failStartup(err error, message string, fields ...any) {
+	if err != nil {
+		setupLog.Error(err, message, fields...)
 		os.Exit(1)
 	}
 }

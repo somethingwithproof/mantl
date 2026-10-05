@@ -1,6 +1,7 @@
 package compliance
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -49,18 +50,8 @@ func TestBuildFindingName_Basic(t *testing.T) {
 			if !strings.Contains(got, tt.wantContains) {
 				t.Errorf("buildFindingName() = %q, want it to contain %q", got, tt.wantContains)
 			}
-			// Verify the result is valid DNS name (only lowercase letters, digits, dashes)
-			for i, c := range got {
-				if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' {
-					t.Errorf("buildFindingName() = %q, invalid character %q at position %d", got, c, i)
-				}
-			}
-			// Verify no leading or trailing dashes
-			if len(got) > 0 && got[0] == '-' {
-				t.Errorf("buildFindingName() = %q, starts with dash", got)
-			}
-			if len(got) > 0 && got[len(got)-1] == '-' {
-				t.Errorf("buildFindingName() = %q, ends with dash", got)
+			if !regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`).MatchString(got) {
+				t.Errorf("buildFindingName() = %q, want a lowercase DNS label", got)
 			}
 		})
 	}

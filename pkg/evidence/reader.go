@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -21,10 +22,10 @@ type ResourceType struct {
 
 var resources = map[string]ResourceType{
 	"networkpolicies":     {schema.GroupVersionResource{Group: "networking.k8s.io", Version: "v1", Resource: "networkpolicies"}, "NetworkPolicy", false},
-	"roles":               {schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "roles"}, "Role", false},
-	"rolebindings":        {schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "rolebindings"}, "RoleBinding", false},
-	"clusterroles":        {schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterroles"}, "ClusterRole", true},
-	"clusterrolebindings": {schema.GroupVersionResource{Group: "rbac.authorization.k8s.io", Version: "v1", Resource: "clusterrolebindings"}, "ClusterRoleBinding", true},
+	"roles":               {schema.GroupVersionResource{Group: rbac.GroupName, Version: "v1", Resource: "roles"}, "Role", false},
+	"rolebindings":        {schema.GroupVersionResource{Group: rbac.GroupName, Version: "v1", Resource: "rolebindings"}, "RoleBinding", false},
+	"clusterroles":        {schema.GroupVersionResource{Group: rbac.GroupName, Version: "v1", Resource: "clusterroles"}, "ClusterRole", true},
+	"clusterrolebindings": {schema.GroupVersionResource{Group: rbac.GroupName, Version: "v1", Resource: "clusterrolebindings"}, "ClusterRoleBinding", true},
 	"deployments":         {schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"}, "Deployment", false},
 	"pods":                {schema.GroupVersionResource{Version: "v1", Resource: "pods"}, "Pod", false},
 	"serviceaccounts":     {schema.GroupVersionResource{Version: "v1", Resource: "serviceaccounts"}, "ServiceAccount", false},

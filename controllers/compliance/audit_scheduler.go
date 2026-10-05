@@ -36,72 +36,31 @@ func (r *AuditScheduler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if r.Now != nil {
 		now = r.Now().UTC()
 	}
-	if audit.Spec.Frequency != "" && audit.Spec.Frequency != "manual" && audit.Spec.Frequency != "daily" && audit.Spec.Frequency != "weekly" && audit.Spec.Frequency != "framework" {
+	if !validAuditFrequency(audit.Spec.Frequency) {
 		return ctrl.Result{}, fmt.Errorf("unsupported audit frequency")
 	}
 	if audit.Status.ActiveRun != "" {
-		var run api.AuditRun
-		if err := r.Get(ctx, client.ObjectKey{Namespace: audit.Namespace, Name: audit.Status.ActiveRun}, &run); err != nil {
-			return ctrl.Result{}, fmt.Errorf("load active audit run: %w", err)
-		}
-		if run.Spec.AuditUID != string(audit.UID) {
-			return ctrl.Result{}, fmt.Errorf("audit run ownership mismatch")
-		}
-		if run.Status.EndTime == nil {
-			return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
-		}
-		audit.Status.Phase = run.Status.Phase
-		audit.Status.EndTime = run.Status.EndTime
-		audit.Status.EvidenceURI = run.Status.EvidenceURI
-		audit.Status.ManifestHash = run.Status.ManifestHash
-		audit.Status.CoverageGaps = run.Status.CoverageGaps
-		audit.Status.FailedCount = int32(len(run.Status.CoverageGaps))
-		audit.Status.FindingCount = 0
-		if audit.Status.CollectorTimes == nil {
-			audit.Status.CollectorTimes = map[string]metav1.Time{}
-		}
-		failed := map[string]bool{}
-		for _, task := range run.Spec.Tasks {
-			if run.Status.Results[task.ID].Phase != "Completed" {
-				failed[task.Collector] = true
-			}
-			for _, gap := range run.Status.CoverageGaps {
-				if strings.HasPrefix(gap, task.Control+":") {
-					failed[task.Collector] = true
-				}
-			}
-		}
-		for _, task := range run.Spec.Tasks {
-			if run.Status.Results[task.ID].Phase == "Completed" {
-				audit.Status.FindingCount++
-			}
-			if !failed[task.Collector] {
-				audit.Status.CollectorTimes[task.Collector] = *run.Status.EndTime
-			}
-		}
-		audit.Status.ActiveRun = ""
-		if err := r.Status().Update(ctx, &audit); err != nil {
+		pending, err := r.completeActiveRun(ctx, &audit)
+		if err != nil {
 			return ctrl.Result{}, err
 		}
-	}
-	if audit.Spec.Frequency != "framework" {
-		var end *time.Time
-		if audit.Status.EndTime != nil {
-			end = &audit.Status.EndTime.Time
-		}
-		action, after := planAudit(audit.Status.Phase, end, audit.Spec.Frequency, now)
-		if action == actionDone {
-			return ctrl.Result{}, nil
-		}
-		if action == actionWaitRequeue {
-			return ctrl.Result{RequeueAfter: after}, nil
+		if pending {
+			return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 		}
 	}
+	if result, stop := regularAuditWait(&audit, now); stop {
+		return result, nil
+	}
+
 	if audit.Spec.Frequency == "framework" && audit.Status.EndTime != nil && len(audit.Status.CoverageGaps) > 0 {
 		if wait := audit.Status.EndTime.Time.Add(time.Hour).Sub(now); wait > 0 {
 			return ctrl.Result{RequeueAfter: wait}, nil
 		}
 	}
+	return r.scheduleRun(ctx, &audit, now)
+}
+
+func (r *AuditScheduler) scheduleRun(ctx context.Context, audit *api.ComplianceAudit, now time.Time) (ctrl.Result, error) {
 	var profile api.ComplianceProfile
 	if err := r.Get(ctx, client.ObjectKey{Name: audit.Spec.Profile, Namespace: audit.Namespace}, &profile); err != nil {
 		return ctrl.Result{}, err
@@ -110,7 +69,7 @@ func (r *AuditScheduler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	plan := auditplan.Build(fw, &profile, &audit, now)
+	plan := auditplan.Build(fw, &profile, audit, now)
 	if audit.Spec.Frequency == "framework" && len(plan.Tasks) == 0 && len(plan.Gaps) == 0 {
 		return ctrl.Result{RequeueAfter: plan.Next}, nil
 	}
@@ -122,7 +81,7 @@ func (r *AuditScheduler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	audit.Status.EndTime = nil
 	audit.Status.EvidenceURI = ""
 	audit.Status.ManifestHash = ""
-	if err = r.Status().Update(ctx, &audit); err != nil {
+	if err = r.Status().Update(ctx, audit); err != nil {
 		return ctrl.Result{}, err
 	}
 	name := "audit-" + evidence.Hash([]byte(string(audit.UID) + "/" + audit.Status.StartTime.Format(time.RFC3339Nano)))[:32]
@@ -133,11 +92,64 @@ func (r *AuditScheduler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 	audit.Status.ActiveRun = name
-	if err = r.Status().Update(ctx, &audit); err != nil {
+	if err = r.Status().Update(ctx, audit); err != nil {
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{RequeueAfter: 15 * time.Second}, nil
 }
+
 func (r *AuditScheduler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).Named("audit-scheduler").For(&api.ComplianceAudit{}).WithEventFilter(predicate.GenerationChangedPredicate{}).Complete(r)
+}
+
+func (r *AuditScheduler) completeActiveRun(ctx context.Context, audit *api.ComplianceAudit) (bool, error) {
+	var run api.AuditRun
+	if err := r.Get(ctx, client.ObjectKey{Namespace: audit.Namespace, Name: audit.Status.ActiveRun}, &run); err != nil {
+		return false, fmt.Errorf("load active audit run: %w", err)
+	}
+	if run.Spec.AuditUID != string(audit.UID) {
+		return false, fmt.Errorf("audit run ownership mismatch")
+	}
+	if run.Status.EndTime == nil {
+		return true, nil
+	}
+	audit.Status.Phase = run.Status.Phase
+	audit.Status.EndTime = run.Status.EndTime
+	audit.Status.EvidenceURI = run.Status.EvidenceURI
+	audit.Status.ManifestHash = run.Status.ManifestHash
+	audit.Status.CoverageGaps = run.Status.CoverageGaps
+	audit.Status.FailedCount = int32(len(run.Status.CoverageGaps))
+	audit.Status.FindingCount = 0
+	if audit.Status.CollectorTimes == nil {
+		audit.Status.CollectorTimes = map[string]metav1.Time{}
+	}
+	failed := failedCollectors(&run)
+	for _, task := range run.Spec.Tasks {
+		if run.Status.Results[task.ID].Phase == "Completed" {
+			audit.Status.FindingCount++
+		}
+		if !failed[task.Collector] {
+			audit.Status.CollectorTimes[task.Collector] = *run.Status.EndTime
+		}
+	}
+	audit.Status.ActiveRun = ""
+	if err := r.Status().Update(ctx, audit); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+func failedCollectors(run *api.AuditRun) map[string]bool {
+	failed := map[string]bool{}
+	for _, task := range run.Spec.Tasks {
+		if run.Status.Results[task.ID].Phase != "Completed" {
+			failed[task.Collector] = true
+		}
+		for _, gap := range run.Status.CoverageGaps {
+			if strings.HasPrefix(gap, task.Control+":") {
+				failed[task.Collector] = true
+			}
+		}
+	}
+	return failed
 }

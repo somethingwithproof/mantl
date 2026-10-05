@@ -9,11 +9,14 @@ import (
 	"strings"
 
 	"github.com/thomasvincent/mantl/apis/platform/v1alpha1"
+	rbac "k8s.io/api/rbac/v1"
 	"sigs.k8s.io/yaml"
 )
 
 // featureAppMap defines the mapping between the MantlCluster Features struct field names
 // and their corresponding manifest paths in the repository.
+const rootPlatformApp = "root-platform"
+
 var featureAppMap = map[string]string{
 	"Observability":       "platform/observability/prometheus/overlays/dev",
 	"Security":            "platform/security/base",
@@ -42,17 +45,24 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 	}
 
 	// Remove only known generated application files before writing the selected topology.
-	for _, name := range []string{"root-platform", "addon-observability", "addon-security", "addon-secrets", "addon-compliance", "addon-progressivedelivery", "platform-tenants"} {
+	for _, name := range []string{rootPlatformApp, "addon-observability", "addon-security", "addon-secrets", "addon-compliance", "addon-progressivedelivery", "platform-tenants"} {
 		if err := os.Remove(filepath.Join(gitopsDir, name+".yaml")); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("clear generated application: %w", err)
 		}
 	}
 
 	// 1. Generate the Root Application (App-of-Apps)
-	if err := render(gitopsDir, "root-platform", "deploy/gitops/core"); err != nil {
+	if err := render(gitopsDir, rootPlatformApp, "deploy/gitops/core"); err != nil {
 		return err
 	}
 
+	if err := renderSelectedAddons(cluster, gitopsDir, render); err != nil {
+		return err
+	}
+	return renderTenantTopology(cluster, outputDir, gitopsDir, render)
+}
+
+func renderSelectedAddons(cluster *v1alpha1.MantlCluster, gitopsDir string, render func(string, string, string) error) error {
 	// 2. Dynamically generate Addon Applications based on features using reflection
 	features := cluster.Spec.Features
 	featuresValue := reflect.ValueOf(features)
@@ -75,6 +85,10 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 		}
 	}
 
+	return nil
+}
+
+func renderTenantTopology(cluster *v1alpha1.MantlCluster, outputDir, gitopsDir string, render func(string, string, string) error) error {
 	// Keep an empty tenant application when its source is configured so ArgoCD can
 	// reconcile removals. Never discover desired tenants from stale output files.
 	if len(cluster.Spec.Tenants) > 0 || cluster.Spec.GitOps.TenantPath != "" {
@@ -85,10 +99,7 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 
 		names := []string{}
 		for _, tenant := range cluster.Spec.Tenants {
-			environment := cluster.Spec.Environment
-			if environment == "" {
-				environment = map[string]string{"small": "dev", "medium": "staging", "full": "production"}[cluster.Spec.Profile.Size]
-			}
+			environment := tenantEnvironment(cluster)
 			if err := renderTenant(tenantsDir, tenant, environment); err != nil {
 				return err
 			}
@@ -169,7 +180,7 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec, environment stri
 				"namespace": ns,
 			},
 			"roleRef": map[string]interface{}{
-				"apiGroup": "rbac.authorization.k8s.io",
+				"apiGroup": rbac.GroupName,
 				"kind":     "ClusterRole",
 				"name":     "admin",
 			},
@@ -180,7 +191,7 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec, environment stri
 			rb["subjects"] = append(rb["subjects"].([]map[string]interface{}), map[string]interface{}{
 				"kind":     "User",
 				"name":     admin,
-				"apiGroup": "rbac.authorization.k8s.io",
+				"apiGroup": rbac.GroupName,
 			})
 		}
 
@@ -291,4 +302,11 @@ func renderAppSource(outputDir, name, path, repository, revision string) error {
 		return fmt.Errorf("app name %q results in path outside output directory", name)
 	}
 	return os.WriteFile(outPath, data, 0600)
+}
+
+func tenantEnvironment(cluster *v1alpha1.MantlCluster) string {
+	if cluster.Spec.Environment != "" {
+		return cluster.Spec.Environment
+	}
+	return map[string]string{"small": "dev", "medium": "staging", "full": "production"}[cluster.Spec.Profile.Size]
 }

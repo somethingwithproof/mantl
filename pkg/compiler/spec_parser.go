@@ -69,6 +69,13 @@ func Validate(cluster *v1alpha1.MantlCluster) error {
 	if (cluster.Spec.Provider.Kind == "gcp" || cluster.Spec.Provider.Kind == "azure") && cluster.Spec.Provider.AccountID == "" {
 		return fmt.Errorf("provider.accountId is required for the GCP project or Azure resource group")
 	}
+	if err := validateGitOps(cluster); err != nil {
+		return err
+	}
+	return validateTenants(cluster.Spec.Tenants)
+}
+
+func validateGitOps(cluster *v1alpha1.MantlCluster) error {
 	git := cluster.Spec.GitOps
 	if git.Repository != "" {
 		u, err := url.Parse(git.Repository)
@@ -84,9 +91,13 @@ func Validate(cluster *v1alpha1.MantlCluster) error {
 	if len(cluster.Spec.Tenants) > 0 && git.TenantPath == "" {
 		return fmt.Errorf("gitops.tenantPath is required; commit generated tenants at this path")
 	}
+	return nil
+}
+
+func validateTenants(tenants []v1alpha1.TenantSpec) error {
 	seen := map[string]bool{}
 	seenNames := map[string]bool{}
-	for _, t := range cluster.Spec.Tenants {
+	for _, t := range tenants {
 		ns := t.Namespace
 		if ns == "" {
 			ns = t.Name

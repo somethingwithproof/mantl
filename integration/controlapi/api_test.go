@@ -22,32 +22,8 @@ import (
 )
 
 func TestGeneratedCRDsAndImmutableRuns(t *testing.T) {
-	environment := &envtest.Environment{CRDDirectoryPaths: []string{filepath.Join("..", "..", "config", "crd", "bases")}, ErrorIfCRDPathMissing: true}
-	cfg, err := environment.Start()
-	if err != nil {
-		t.Fatal("start explicitly configured API fixture", err)
-	}
-	defer func() {
-		if err := environment.Stop(); err != nil {
-			t.Error(err)
-		}
-	}()
-	scheme := runtime.NewScheme()
-	if err = core.AddToScheme(scheme); err != nil {
-		t.Fatal(err)
-	}
-	if err = batch.AddToScheme(scheme); err != nil {
-		t.Fatal(err)
-	}
-	if err = api.AddToScheme(scheme); err != nil {
-		t.Fatal(err)
-	}
-	c, err := client.New(cfg, client.Options{Scheme: scheme})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	c, ctx := testControlAPI(t)
+	var err error
 	namespace := &core.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "fixture"}}
 	if err = c.Create(ctx, namespace); err != nil {
 		t.Fatal(err)
@@ -88,4 +64,35 @@ func (unusedStore) Put(context.Context, string, []byte, time.Time) (evidence.Obj
 }
 func (unusedStore) Get(context.Context, evidence.ObjectRef) ([]byte, error) {
 	return nil, fmt.Errorf("no collector has completed")
+}
+
+func testControlAPI(t *testing.T) (client.Client, context.Context) {
+	t.Helper()
+	environment := &envtest.Environment{CRDDirectoryPaths: []string{filepath.Join("..", "..", "config", "crd", "bases")}, ErrorIfCRDPathMissing: true}
+	cfg, err := environment.Start()
+	if err != nil {
+		t.Fatal("start explicitly configured API fixture", err)
+	}
+	t.Cleanup(func() {
+		if err := environment.Stop(); err != nil {
+			t.Error(err)
+		}
+	})
+	scheme := runtime.NewScheme()
+	if err = core.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err = batch.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err = api.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	c, err := client.New(cfg, client.Options{Scheme: scheme})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	t.Cleanup(cancel)
+	return c, ctx
 }

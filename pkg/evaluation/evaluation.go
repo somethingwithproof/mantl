@@ -40,40 +40,11 @@ func Assess(in Input) api.ControlEvaluationStatus {
 		result.Coverage = "partial"
 		result.Reason = "unsupported or unresolved mapping"
 	}
-	latest := map[string]Observation{}
-	for _, o := range in.Observations {
-		if old, ok := latest[o.Key+"\x00"+o.Resource]; !ok || o.At.After(old.At) || o.At.Equal(old.At) && stateRank(o.Result) > stateRank(old.Result) {
-			latest[o.Key+"\x00"+o.Resource] = o
-		}
-	}
-	missing, failed, errored := false, false, false
-	for _, key := range in.Expected {
-		seen := false
-		for _, o := range latest {
-			if o.Key != key {
-				continue
-			}
-			seen = true
-			if o.At.IsZero() || o.At.After(in.Now.Add(time.Minute)) || in.Now.Sub(o.At) > in.MaxAge {
-				missing = true
-				result.Freshness = "stale"
-				continue
-			}
-			switch o.Result {
-			case "pass":
-			case "fail", "warn":
-				failed = true
-				result.FindingCount++
-			case "error":
-				errored = true
-			default:
-				missing = true
-			}
-		}
-		if !seen {
-			missing = true
-			result.Freshness = "stale"
-		}
+	state := assessExpected(in.Expected, latestObservations(in.Observations), in)
+	missing, failed, errored := state.missing, state.failed, state.errored
+	result.FindingCount = state.findings
+	if state.stale {
+		result.Freshness = "stale"
 	}
 	if in.EvidenceRequired && (in.EvidenceAt == nil || in.EvidenceURI == "" || in.EvidenceAt.After(in.Now.Add(time.Minute)) || in.Now.Sub(*in.EvidenceAt) > in.MaxAge) {
 		missing = true
@@ -111,5 +82,69 @@ func stateRank(state string) int {
 		return 2
 	default:
 		return 1
+	}
+}
+
+type observedState struct {
+	missing, failed, errored, stale bool
+	findings                        int32
+}
+
+func latestObservations(observations []Observation) map[string]Observation {
+	latest := map[string]Observation{}
+	for _, o := range observations {
+		if old, ok := latest[o.Key+"\x00"+o.Resource]; !ok || o.At.After(old.At) || o.At.Equal(old.At) && stateRank(o.Result) > stateRank(old.Result) {
+			latest[o.Key+"\x00"+o.Resource] = o
+		}
+	}
+	return latest
+}
+
+func (s *observedState) merge(next observedState) {
+	s.missing = s.missing || next.missing
+	s.failed = s.failed || next.failed
+	s.errored = s.errored || next.errored
+	s.stale = s.stale || next.stale
+	s.findings += next.findings
+}
+
+func assessExpected(expected []string, latest map[string]Observation, in Input) observedState {
+	var state observedState
+	for _, key := range expected {
+		state.merge(assessExpectedKey(key, latest, in))
+	}
+	return state
+}
+
+func assessExpectedKey(key string, latest map[string]Observation, in Input) observedState {
+	seen := false
+	var state observedState
+	for _, observation := range latest {
+		if observation.Key != key {
+			continue
+		}
+		seen = true
+		state.merge(assessObservation(observation, in))
+	}
+	if !seen {
+		state.missing = true
+		state.stale = true
+	}
+	return state
+}
+
+func assessObservation(o Observation, in Input) observedState {
+	if o.At.IsZero() || o.At.After(in.Now.Add(time.Minute)) || in.Now.Sub(o.At) > in.MaxAge {
+		return observedState{missing: true, stale: true}
+	}
+	switch o.Result {
+	case "pass":
+		return observedState{}
+	case "fail", "warn":
+		return observedState{failed: true, findings: 1}
+	case "error":
+		return observedState{errored: true}
+	default:
+		return observedState{missing: true}
 	}
 }
