@@ -1,6 +1,6 @@
 # Mantl AWS EKS Blueprint
 
-Production-ready Amazon EKS cluster with IRSA roles for Mantl platform components.
+Beta Amazon EKS blueprint with IRSA roles for Mantl platform components. Static validation does not establish production readiness; deployment requires cloud acceptance evidence.
 
 ## Features
 
@@ -13,8 +13,53 @@ Production-ready Amazon EKS cluster with IRSA roles for Mantl platform component
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
-- Terraform >= 1.5.0
+- Terraform >= 1.6
 - kubectl >= 1.28
+
+## Upgrading existing deployments
+
+This blueprint uses EKS module 21, IAM module 6, VPC module 6, KMS module 4,
+and AWS provider 6. Kubernetes and Helm providers remain on their supported
+major version 2. The public blueprint variables and output names are unchanged.
+
+Before upgrading an existing deployment, back up Terraform state and inspect a
+plan against that deployment. The IAM module consolidates its policy resources. All six IRSA modules retain
+their role resource address (`aws_iam_role.this[0]`) and set
+`use_name_prefix = false` to preserve their role names and ARNs. Review the EKS node AMI,
+IMDS hop limit, OIDC issuer, monitoring, and add-on changes for your workloads.
+IRSA trust remains limited to the existing namespace/service-account pairs.
+No state migration or cloud apply is performed by local validation or CI.
+
+### IRSA policy state migration
+
+`migrations.tf` declares both policy and policy-attachment address moves for
+all six modules. Terraform includes these moves in a reviewed plan; no separate
+`terraform state mv` commands or role-state removal are required. For each row,
+`module.<module>.aws_iam_policy.<old>[0]` moves to
+`module.<module>.aws_iam_policy.this[0]`, and the matching
+`aws_iam_role_policy_attachment.<old>[0]` moves to
+`aws_iam_role_policy_attachment.this[0]`.
+
+| Module | Old policy and attachment resource name |
+| --- | --- |
+| `external_dns_irsa` | `external_dns` |
+| `external_secrets_irsa` | `external_secrets` |
+| `cert_manager_irsa` | `cert_manager` |
+| `cluster_autoscaler_irsa` | `cluster_autoscaler` |
+| `ebs_csi_irsa` | `ebs_csi` |
+| `load_balancer_controller_irsa` | `load_balancer_controller` |
+
+Back up the state for the selected backend and workspace before planning. Do
+not remove or import any of the six role resources: their addresses stay the
+same. Stop if the plan replaces an IRSA role or changes a role name/ARN.
+Managed policies move to unique, fixed cluster/component names, replacing the
+old generated policy names; review their replacements, attachment ordering and
+permission changes in a maintenance window. State-address moves alone do not
+prevent policy replacements or establish uninterrupted access. Review the
+EKS OIDC-provider changes with the corresponding trust-policy updates.
+
+- [EKS 21 migration guide](https://github.com/terraform-aws-modules/terraform-aws-eks/blob/v21.26.0/docs/UPGRADE-21.0.md)
+- [IAM 6 migration guide](https://github.com/terraform-aws-modules/terraform-aws-iam/blob/v6.8.0/docs/UPGRADE-6.0.md)
 
 ## Quick Start
 
@@ -166,30 +211,30 @@ aws eks describe-cluster --name mantl --query cluster.identity.oidc.issuer
 | Name | Version |
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 5.40.0, < 6.0.0 |
-| <a name="requirement_helm"></a> [helm](#requirement\_helm) | >= 2.12.0 |
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | >= 2.27.0 |
-| <a name="requirement_tls"></a> [tls](#requirement\_tls) | >= 4.0.0 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 6.67.0 |
+| <a name="requirement_helm"></a> [helm](#requirement\_helm) | ~> 2.17.0 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | ~> 2.38.0 |
+| <a name="requirement_tls"></a> [tls](#requirement\_tls) | ~> 4.4.0 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.100.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 6.67.0 |
 
 ## Modules
 
 | Name | Source | Version |
 | ---- | ------ | ------- |
-| <a name="module_cert_manager_irsa"></a> [cert\_manager\_irsa](#module\_cert\_manager\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks | ~> 5.37 |
-| <a name="module_cluster_autoscaler_irsa"></a> [cluster\_autoscaler\_irsa](#module\_cluster\_autoscaler\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks | ~> 5.37 |
-| <a name="module_ebs_csi_irsa"></a> [ebs\_csi\_irsa](#module\_ebs\_csi\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks | ~> 5.37 |
-| <a name="module_eks"></a> [eks](#module\_eks) | terraform-aws-modules/eks/aws | ~> 20.31 |
-| <a name="module_external_dns_irsa"></a> [external\_dns\_irsa](#module\_external\_dns\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks | ~> 5.37 |
-| <a name="module_external_secrets_irsa"></a> [external\_secrets\_irsa](#module\_external\_secrets\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks | ~> 5.37 |
-| <a name="module_kms"></a> [kms](#module\_kms) | terraform-aws-modules/kms/aws | ~> 3.1 |
-| <a name="module_load_balancer_controller_irsa"></a> [load\_balancer\_controller\_irsa](#module\_load\_balancer\_controller\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks | ~> 5.37 |
-| <a name="module_vpc"></a> [vpc](#module\_vpc) | terraform-aws-modules/vpc/aws | ~> 5.21 |
+| <a name="module_cert_manager_irsa"></a> [cert\_manager\_irsa](#module\_cert\_manager\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts | ~> 6.8 |
+| <a name="module_cluster_autoscaler_irsa"></a> [cluster\_autoscaler\_irsa](#module\_cluster\_autoscaler\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts | ~> 6.8 |
+| <a name="module_ebs_csi_irsa"></a> [ebs\_csi\_irsa](#module\_ebs\_csi\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts | ~> 6.8 |
+| <a name="module_eks"></a> [eks](#module\_eks) | terraform-aws-modules/eks/aws | ~> 21.26 |
+| <a name="module_external_dns_irsa"></a> [external\_dns\_irsa](#module\_external\_dns\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts | ~> 6.8 |
+| <a name="module_external_secrets_irsa"></a> [external\_secrets\_irsa](#module\_external\_secrets\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts | ~> 6.8 |
+| <a name="module_kms"></a> [kms](#module\_kms) | terraform-aws-modules/kms/aws | ~> 4.2 |
+| <a name="module_load_balancer_controller_irsa"></a> [load\_balancer\_controller\_irsa](#module\_load\_balancer\_controller\_irsa) | terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts | ~> 6.8 |
+| <a name="module_vpc"></a> [vpc](#module\_vpc) | terraform-aws-modules/vpc/aws | ~> 6.7 |
 
 ## Resources
 

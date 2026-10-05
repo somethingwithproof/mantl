@@ -79,3 +79,7 @@ helper validates real infra/terraform paths and retains failures across modules.
 Release publication retains exact-tag validation, immutable registry/content
 versions, least-privilege signing, checksums, SBOMs, and generated provenance.
 See ../../docs/releases.md for the supported artifacts and release process.
+
+The core Python job also checks the ML example’s pinned dependencies and health
+handler when its source, runtime, shared setup, or CI configuration changes. Its
+coverage is appended to the same report used by SonarCloud.

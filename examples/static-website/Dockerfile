@@ -1,5 +1,6 @@
 # Multi-stage build for static website
-FROM nginx:1.25-alpine
+# Official nginx:1.31-alpine image, pinned to its multi-platform digest.
+FROM nginx@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2
 
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf && \

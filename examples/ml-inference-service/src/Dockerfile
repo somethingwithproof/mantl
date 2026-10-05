@@ -1,5 +1,6 @@
 # Multi-stage build for ML inference service
-FROM python:3.11-slim as builder
+# Official Python 3.12.12 runtime; NumPy 2.5 requires Python >= 3.12.
+FROM python@sha256:f3fa41d74a768c2fce8016b98c191ae8c1bacd8f1152870a3f9f87d350920b7c AS builder
 
 WORKDIR /build
 
@@ -13,7 +14,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Final stage
-FROM python:3.11-slim
+FROM python@sha256:f3fa41d74a768c2fce8016b98c191ae8c1bacd8f1152870a3f9f87d350920b7c
 
 # Install runtime dependencies
 RUN apt-get update && \
