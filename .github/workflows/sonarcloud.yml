@@ -50,7 +50,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup
         with:
-          tools: go python
+          tools: ${{ inputs.coverage-artifacts && 'python' || 'go python' }}
       - name: Verify configured SonarCloud project
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

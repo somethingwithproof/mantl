@@ -18,8 +18,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   merge:
-    # Dependabot's immutable GitHub account ID.
-    if: github.event_name != 'pull_request_target' || github.actor_id == '49699333'
+    # Verify the PR author's immutable Dependabot account ID.
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.user.id == 49699333
     permissions:
       contents: write
       pull-requests: write
