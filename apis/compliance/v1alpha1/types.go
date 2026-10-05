@@ -144,9 +144,3 @@ type ComplianceAuditList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ComplianceAudit `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&ComplianceProfile{}, &ComplianceProfileList{})
-	SchemeBuilder.Register(&Finding{}, &FindingList{})
-	SchemeBuilder.Register(&ComplianceAudit{}, &ComplianceAuditList{})
-}

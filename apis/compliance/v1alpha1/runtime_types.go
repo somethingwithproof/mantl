@@ -128,7 +128,3 @@ type ComplianceExceptionList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ComplianceException `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&AuditRun{}, &AuditRunList{}, &ControlEvaluation{}, &ControlEvaluationList{}, &ComplianceException{}, &ComplianceExceptionList{})
-}
