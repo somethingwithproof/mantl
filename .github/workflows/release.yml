@@ -1,47 +1,176 @@
----
-# yamllint disable rule:line-length
 name: Release
-"on":
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing SemVer release tag on main
+        required: true
+        type: string
   release:
     types: [published]
-  workflow_dispatch:
 permissions:
-  contents: write
-  packages: write
-  id-token: write
+  contents: read
+concurrency:
+  group: release-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
 jobs:
-  build-publish:
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      tag: ${{ steps.identity.outputs.tag }}
+      commit: ${{ steps.identity.outputs.commit }}
     steps:
-      - uses: actions/checkout@v7
-      - name: Set tag
-        id: tag
-        run: echo "TAG=${GITHUB_REF_NAME:-${{ github.event.release.tag_name }}}" >> $GITHUB_OUTPUT
-      - name: Install kustomize
-        uses: imranismail/setup-kustomize@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          kustomize-version: v5.4.3
-      - name: Render bundles
-        run: |
-          mkdir -p dist
-          kustomize build clusters/production > dist/cluster-production.yaml
-      - name: Install ORAS
-        uses: oras-project/setup-oras@v2
-      - name: Push bundles to GHCR
+          ref: ${{ inputs.tag || github.event.release.tag_name }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate immutable release identity
+        id: identity
         env:
-          REPO_OWNER: ${{ github.repository_owner }}
-          TAG: ${{ steps.tag.outputs.TAG }}
+          RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
-          oras push ghcr.io/${REPO_OWNER}/mantl-bundles:${TAG} \
-            --artifact-type application/vnd.cncf.kustomize+yaml \
-            dist/cluster-production.yaml:application/yaml
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v4.1.2
-      - name: Sign bundles (keyless)
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
+          git merge-base --is-ancestor HEAD origin/main
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+        with:
+          version: '2026.10.2'
+      - name: Test and package Go CLI
+        run: |
+          mise exec -- make go-test
+          mise exec -- goreleaser release --clean
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: cli-release
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+          if-no-files-found: error
+  image:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.name }}
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.build.outputs.commit }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve registry name
+        id: image
         env:
-          COSIGN_EXPERIMENTAL: 1
-          REPO_OWNER: ${{ github.repository_owner }}
-          TAG: ${{ steps.tag.outputs.TAG }}
+          REPOSITORY: ${{ github.repository }}
+        run: echo "name=ghcr.io/${REPOSITORY,,}-operator" >> "$GITHUB_OUTPUT"
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+        with:
+          version: '2026.10.2'
+      - name: Refuse replacing a published operator tag
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+          TAG: ${{ needs.build.outputs.tag }}
         run: |
-          cosign sign --yes ghcr.io/${REPO_OWNER}/mantl-bundles:${TAG}
-      # GitHub Release is already created by release-please; no need to create it here
+          set -euo pipefail
+          if mise exec -- oras resolve "$IMAGE:$TAG" > /tmp/existing-image-digest 2>/tmp/image-resolution-error; then
+            echo "Operator tag already exists; rerun failed publishing jobs instead of rebuilding."
+            exit 1
+          fi
+          if ! grep -Eiq 'not found|manifest_unknown|name_unknown' /tmp/image-resolution-error; then
+            echo "Registry resolution failed; refusing publication."
+            exit 1
+          fi
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        id: push
+        with:
+          context: .
+          file: Dockerfile.compliance-operator
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.name }}:${{ needs.build.outputs.tag }}
+          provenance: mode=max
+          sbom: true
+  publish:
+    needs: [build, image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    outputs:
+      hashes: ${{ steps.hashes.outputs.hashes }}
+    env:
+      RELEASE_TAG: ${{ needs.build.outputs.tag }}
+      OPERATOR_IMAGE: ${{ needs.image.outputs.image }}@${{ needs.image.outputs.digest }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.build.outputs.commit }}
+          persist-credentials: false
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+        with:
+          version: '2026.10.2'
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: cli-release
+          path: dist/release
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Assemble installation and control bundles
+        run: |
+          set -euo pipefail
+          mise exec -- python scripts/package_release.py --tag "$RELEASE_TAG" --image "$OPERATOR_IMAGE"
+          CONTENT_VERSION=$(cat compliance/bundle-version.txt)
+          mise exec -- go run ./cmd/mantl bundle build --version "$CONTENT_VERSION" --output dist/release/controls.tar.gz > dist/release/control-identity.json
+          mise exec -- go run ./cmd/mantl bundle unpack dist/release/controls.tar.gz dist/verified-controls
+          mise exec -- python scripts/publish_control_bundle.py --repository "${OPERATOR_IMAGE%@*}-controls" --version "$CONTENT_VERSION" --archive dist/release/controls.tar.gz --identity dist/release/control-oci-identity.json
+          mise exec -- python scripts/publish_control_bundle.py --repository "${OPERATOR_IMAGE%@*}-platform" --version "${RELEASE_TAG#v}" --archive "dist/release/mantl-platform_${RELEASE_TAG}.tar.gz" --identity dist/release/platform-oci-identity.json
+      - name: Generate SBOMs, checksums and keyless signatures
+        id: hashes
+        run: |
+          set -euo pipefail
+          for asset in dist/release/*.tar.gz dist/release/*.deb dist/release/*.rpm; do
+            mise exec -- syft "$asset" -o "spdx-json=$asset.spdx.json"
+          done
+          mise exec -- cosign sign --yes "$OPERATOR_IMAGE"
+          cd dist/release
+          sha256sum -- *.tar.gz *.deb *.rpm *.yaml *.json > checksums.txt
+          mise exec -- cosign sign-blob --yes --bundle checksums.sigstore.json checksums.txt
+          echo "hashes=$(base64 -w0 checksums.txt)" >> "$GITHUB_OUTPUT"
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY"
+          gh release upload "$RELEASE_TAG" ./* --repo "$GITHUB_REPOSITORY"
+  provenance:
+    needs: [build, publish]
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/slsa-provenance.yml
+    with:
+      hashes: ${{ needs.publish.outputs.hashes }}
+      tag: ${{ needs.build.outputs.tag }}

@@ -17,6 +17,7 @@ import (
 const MinimumRetentionDays = 2557
 
 type ObjectRef struct {
+	CapturedAt  *time.Time `json:"capturedAt,omitempty"`
 	RetainUntil *time.Time `json:"retainUntil,omitempty"`
 	URI         string     `json:"uri"`
 	Hash        string     `json:"sha256"`
@@ -25,11 +26,13 @@ type ObjectRef struct {
 	Resource    string     `json:"resource,omitempty"`
 }
 type Manifest struct {
+	ClusterID        string      `json:"clusterId,omitempty"`
 	SchemaVersion    int         `json:"schemaVersion"`
 	Audit            string      `json:"audit"`
 	Run              string      `json:"run"`
 	Framework        string      `json:"framework"`
 	FrameworkVersion string      `json:"frameworkVersion"`
+	BundleDigest     string      `json:"bundleDigest,omitempty"`
 	CapturedAt       time.Time   `json:"capturedAt"`
 	Objects          []ObjectRef `json:"objects"`
 	Gaps             []string    `json:"coverageGaps,omitempty"`

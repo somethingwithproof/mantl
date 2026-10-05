@@ -1,0 +1,147 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: auditruns.compliance.mantl.io
+spec:
+  group: compliance.mantl.io
+  names:
+    kind: AuditRun
+    listKind: AuditRunList
+    plural: auditruns
+    singular: auditrun
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              audit:
+                type: string
+              auditUid:
+                type: string
+              bundleDigest:
+                type: string
+              clusterId:
+                type: string
+              collectorImage:
+                type: string
+              collectorServiceAccount:
+                type: string
+              coverageGaps:
+                items:
+                  type: string
+                type: array
+              evidenceBucket:
+                type: string
+              evidenceKmsKey:
+                type: string
+              framework:
+                type: string
+              frameworkVersion:
+                type: string
+              profile:
+                type: string
+              scheduledAt:
+                format: date-time
+                type: string
+              tasks:
+                items:
+                  description: CollectorTask is an immutable resource scope; it contains
+                    no evidence payloads.
+                  properties:
+                    collector:
+                      type: string
+                    control:
+                      type: string
+                    id:
+                      type: string
+                    namespace:
+                      type: string
+                    resource:
+                      type: string
+                  required:
+                  - collector
+                  - control
+                  - id
+                  - resource
+                  type: object
+                type: array
+            required:
+            - audit
+            - auditUid
+            - bundleDigest
+            - framework
+            - frameworkVersion
+            - profile
+            - scheduledAt
+            - tasks
+            type: object
+            x-kubernetes-validations:
+            - message: audit run input is immutable
+              rule: self == oldSelf
+          status:
+            properties:
+              coverageGaps:
+                items:
+                  type: string
+                type: array
+              endTime:
+                format: date-time
+                type: string
+              evidenceUri:
+                type: string
+              manifestHash:
+                type: string
+              phase:
+                type: string
+              results:
+                additionalProperties:
+                  properties:
+                    capturedAt:
+                      format: date-time
+                      type: string
+                    phase:
+                      type: string
+                    retainUntil:
+                      format: date-time
+                      type: string
+                    sha256:
+                      type: string
+                    uri:
+                      type: string
+                    version:
+                      type: string
+                  required:
+                  - phase
+                  type: object
+                type: object
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

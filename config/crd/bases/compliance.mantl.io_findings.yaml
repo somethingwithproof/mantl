@@ -62,6 +62,52 @@ spec:
             - severity
             - status
             type: object
+          status:
+            properties:
+              historyGap:
+                type: boolean
+              historyHead:
+                properties:
+                  sha256:
+                    type: string
+                  uri:
+                    type: string
+                  version:
+                    type: string
+                required:
+                - sha256
+                - uri
+                - version
+                type: object
+              lastQueuedState:
+                type: string
+              pending:
+                items:
+                  properties:
+                    at:
+                      format: date-time
+                      type: string
+                    control:
+                      type: string
+                    framework:
+                      type: string
+                    id:
+                      type: string
+                    resource:
+                      type: string
+                    state:
+                      type: string
+                  required:
+                  - at
+                  - control
+                  - framework
+                  - id
+                  - resource
+                  - state
+                  type: object
+                maxItems: 64
+                type: array
+            type: object
         type: object
     served: true
     storage: true

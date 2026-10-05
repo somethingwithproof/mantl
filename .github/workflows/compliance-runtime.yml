@@ -1,10 +1,10 @@
 name: Compliance runtime
 on:
   pull_request:
-    paths: ["apis/**", "cmd/**", "controllers/**", "pkg/**", "compliance/**", "deploy/**", "templates/backstage/**", "infra/terraform/**", "go.*", "mise.toml", "Dockerfile.compliance-operator", ".github/workflows/compliance-runtime.yml"]
+    paths: ["apis/**", "cmd/**", "controllers/**", "pkg/**", "compliance/**", "deploy/**", "templates/backstage/**", "infra/terraform/**", "go.*", "mise.toml", "Dockerfile.compliance-operator", ".github/workflows/compliance-runtime.yml", ".github/workflows/release*.yml", ".goreleaser.yaml", "scripts/package_release.py", "scripts/publish_control_bundle.py", "integration/**"]
   push:
     branches: [main]
-    paths: ["apis/**", "cmd/**", "controllers/**", "pkg/**", "compliance/**", "deploy/**", "templates/backstage/**", "infra/terraform/**", "go.*", "mise.toml", "Dockerfile.compliance-operator", ".github/workflows/compliance-runtime.yml"]
+    paths: ["apis/**", "cmd/**", "controllers/**", "pkg/**", "compliance/**", "deploy/**", "templates/backstage/**", "infra/terraform/**", "go.*", "mise.toml", "Dockerfile.compliance-operator", ".github/workflows/compliance-runtime.yml", ".github/workflows/release*.yml", ".goreleaser.yaml", "scripts/package_release.py", "scripts/publish_control_bundle.py", "integration/**"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,3 +35,55 @@ jobs:
         run: |
           docker build -f Dockerfile.compliance-operator -t mantl-compliance-operator:ci .
           docker run --rm mantl-compliance-operator:ci --help
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18.3@sha256:7e32e9833a6fb1c92c32552794cb6ed569d51b445a54907d35fc112ef39684db
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: mantl_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+        with:
+          version: '2026.10.2'
+      - name: Create a database role that cannot bypass tenant isolation
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          docker exec "$POSTGRES_CONTAINER" psql -U postgres -d mantl_test -v ON_ERROR_STOP=1 -c "CREATE ROLE mantl_test LOGIN NOSUPERUSER NOBYPASSRLS; ALTER DATABASE mantl_test OWNER TO mantl_test; ALTER SCHEMA public OWNER TO mantl_test;"
+      - name: Exercise real Kubernetes admission and PostgreSQL RLS
+        env:
+          MANTL_TEST_DATABASE_URL: postgres://mantl_test@127.0.0.1:5432/mantl_test?sslmode=disable
+        run: |
+          set -euo pipefail
+          KUBEBUILDER_ASSETS=$(mise exec -- go run sigs.k8s.io/controller-runtime/tools/setup-envtest@f9589b9f2b9dddf8532b432bb8315f2820ab9971 use 1.35.0 -p path)
+          export KUBEBUILDER_ASSETS
+          mise exec -- go test -tags=integration ./integration/controlapi ./pkg/fleet
+  packaging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+        with:
+          version: '2026.10.2'
+      - name: Build downloadable packages and verify control content
+        run: |
+          mise exec -- goreleaser release --snapshot --clean
+          mise exec -- python scripts/package_release.py --tag v0.0.0-local --image ghcr.io/somethingwithproof/mantl-operator@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          mise exec -- go run ./cmd/mantl bundle build --version "$(cat compliance/bundle-version.txt)" --output dist/controls.tar.gz > dist/control-identity.json
+          mise exec -- go run ./cmd/mantl bundle unpack dist/controls.tar.gz dist/control-content
+          kubectl kustomize dist/control-content > dist/control-install.yaml
+          mise exec -- kubeconform -strict -ignore-missing-schemas -kubernetes-version 1.35.0 -summary dist/release/operator-install.yaml

@@ -6,10 +6,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/thomasvincent/mantl/pkg/evidence"
 	"github.com/thomasvincent/mantl/pkg/framework"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sort"
 	"strings"
+	"time"
 
 	complianceapi "github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +28,8 @@ import (
 
 // FindingReconciler reconciles Kyverno PolicyReports into Mantl Findings
 type FindingReconciler struct {
+	Store     evidence.Store
+	ClusterID string
 	client.Client
 	Scheme         *runtime.Scheme
 	FrameworkDir   string
@@ -69,9 +73,13 @@ func (r *FindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		for i := range previous.Items {
 			f := &previous.Items[i]
+			if f.Annotations == nil {
+				f.Annotations = map[string]string{}
+			}
+			f.Annotations["mantl.io/observed-at"] = time.Now().UTC().Format(time.RFC3339Nano)
 			f.Spec.Status = "unknown"
 			f.Spec.Message = "Source PolicyReport deleted; current evaluation unavailable"
-			if err := r.Update(ctx, f); err != nil {
+			if err := r.persistFinding(ctx, f, false); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
@@ -123,7 +131,7 @@ func (r *FindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					continue
 				}
 			}
-			fw, loadErr := framework.Load(r.FrameworkDir, profile.Spec.Framework, profile.Spec.Version)
+			fw, loadErr := framework.LoadSelected(r.FrameworkDir, profile.Spec.Framework, profile.Spec.Version, profile.Spec.BundleDigest, profile.Spec.IncludeControls)
 			if loadErr != nil {
 				return ctrl.Result{}, loadErr
 			}
@@ -189,12 +197,12 @@ func (r *FindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			} else if state != "fail" && state != "warn" {
 				status = "unknown"
 			}
-			f.Spec = complianceapi.FindingSpec{ID: findingName, ControlID: controlID, Framework: frameworkID, Severity: normalizeSeverity(severity), Resource: fmt.Sprintf("%s/%s/%s", kind, ns, name), Message: message, Status: status}
-			if errors.IsNotFound(getErr) {
-				err = r.Create(ctx, &f)
-			} else {
-				err = r.Update(ctx, &f)
+			if f.Annotations == nil {
+				f.Annotations = map[string]string{}
 			}
+			f.Annotations["mantl.io/observed-at"] = time.Now().UTC().Format(time.RFC3339Nano)
+			f.Spec = complianceapi.FindingSpec{ID: findingName, ControlID: controlID, Framework: frameworkID, Severity: normalizeSeverity(severity), Resource: fmt.Sprintf("%s/%s/%s", kind, ns, name), Message: message, Status: status}
+			err = r.persistFinding(ctx, &f, errors.IsNotFound(getErr))
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -203,9 +211,13 @@ func (r *FindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	for i := range previous.Items {
 		f := &previous.Items[i]
 		if !seen[f.Name] {
+			if f.Annotations == nil {
+				f.Annotations = map[string]string{}
+			}
+			f.Annotations["mantl.io/observed-at"] = time.Now().UTC().Format(time.RFC3339Nano)
 			f.Spec.Status = "resolved"
 			f.Spec.Message = "Violation absent from current PolicyReport"
-			if err := r.Update(ctx, f); err != nil {
+			if err := r.persistFinding(ctx, f, false); err != nil {
 				return ctrl.Result{}, err
 			}
 		}

@@ -39,7 +39,7 @@ var complianceStatusCmd = &cobra.Command{Use: "status", Short: "Print profiles, 
 	ctx, cancel := context.WithTimeout(cmd.Context(), 15*time.Second)
 	defer cancel()
 	result := map[string]json.RawMessage{}
-	for _, kind := range []string{"complianceprofiles", "findings", "complianceaudits"} {
+	for _, kind := range []string{"complianceprofiles", "findings", "complianceaudits", "auditruns", "controlevaluations", "complianceexceptions"} {
 		data, err := queryCompliance(ctx, kind, "", complianceNamespace)
 		if err != nil {
 			return err
@@ -52,10 +52,15 @@ var complianceStatusCmd = &cobra.Command{Use: "status", Short: "Print profiles, 
 	return json.NewEncoder(cmd.OutOrStdout()).Encode(result)
 }}
 var exportOutput string
+var exportRun bool
 var exportCmd = &cobra.Command{Use: "export AUDIT", Short: "Download and verify an evidence archive", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(cmd.Context(), 10*time.Minute)
 	defer cancel()
-	data, err := queryCompliance(ctx, "complianceaudit", args[0], complianceNamespace)
+	kind := "complianceaudit"
+	if exportRun {
+		kind = "auditrun"
+	}
+	data, err := queryCompliance(ctx, kind, args[0], complianceNamespace)
 	if err != nil {
 		return err
 	}
@@ -96,6 +101,12 @@ var exportCmd = &cobra.Command{Use: "export AUDIT", Short: "Download and verify 
 var falcoFrameworkDir string
 var falcoMappings string
 var falcoCmd = &cobra.Command{Use: "ingest-falco EVENT.json", Short: "Convert a Falco event into a mapped Finding manifest for reviewed ingestion", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+	if !cmd.Flags().Changed("framework-dir") {
+		falcoFrameworkDir = filepath.Join(sourceDir, "compliance/frameworks")
+	}
+	if !cmd.Flags().Changed("mappings") {
+		falcoMappings = filepath.Join(sourceDir, "compliance/integration/falco-mappings.yaml")
+	}
 	info, err := os.Stat(args[0])
 	if err != nil {
 		return err
@@ -162,6 +173,9 @@ var remediateCmd = &cobra.Command{Use: "remediation", Short: "Print GitOps remed
 		Control  string   `json:"control"`
 		Actions  []string `json:"actions"`
 	}
+	if !cmd.Flags().Changed("guidance") {
+		remediationGuidance = filepath.Join(sourceDir, "compliance/remediation.yaml")
+	}
 	guidanceData, err := os.ReadFile(remediationGuidance)
 	if err != nil {
 		return err
@@ -193,6 +207,7 @@ func init() {
 	complianceCmd.PersistentFlags().StringVar(&complianceNamespace, "namespace", "mantl-compliance-system", "Namespace containing compliance metadata")
 	complianceCmd.AddCommand(complianceStatusCmd, exportCmd, falcoCmd, remediateCmd)
 	remediateCmd.Flags().StringVar(&remediationGuidance, "guidance", "compliance/remediation.yaml", "Reviewed control remediation guidance")
+	exportCmd.Flags().BoolVar(&exportRun, "run", false, "Export a historical AuditRun instead of the audit latest pointer")
 	exportCmd.Flags().StringVar(&exportOutput, "output", "evidence.tar.gz", "Verified archive output")
 	falcoCmd.Flags().StringVar(&falcoFrameworkDir, "framework-dir", "compliance/frameworks", "Packaged framework directory")
 	falcoCmd.Flags().StringVar(&falcoMappings, "mappings", "compliance/integration/falco-mappings.yaml", "Reviewed rule-to-control mapping")

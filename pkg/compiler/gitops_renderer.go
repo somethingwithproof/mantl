@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -84,7 +85,11 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 
 		names := []string{}
 		for _, tenant := range cluster.Spec.Tenants {
-			if err := renderTenant(tenantsDir, tenant); err != nil {
+			environment := cluster.Spec.Environment
+			if environment == "" {
+				environment = map[string]string{"small": "dev", "medium": "staging", "full": "production"}[cluster.Spec.Profile.Size]
+			}
+			if err := renderTenant(tenantsDir, tenant, environment); err != nil {
 				return err
 			}
 			names = append(names, tenant.Name+".yaml")
@@ -107,7 +112,13 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 }
 
 // renderTenant generates Namespace and RBAC RoleBindings for a tenant.
-func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
+func renderTenant(outputDir string, tenant v1alpha1.TenantSpec, environment string) error {
+	if environment == "" {
+		environment = "dev"
+	}
+	if environment != "dev" && environment != "staging" && environment != "production" {
+		return fmt.Errorf("invalid tenant environment")
+	}
 	if tenant.Name == "kustomization" {
 		return fmt.Errorf("tenant name kustomization conflicts with generated manifest index")
 	}
@@ -137,7 +148,10 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec) error {
 		"metadata": map[string]interface{}{
 			"name": ns,
 			"labels": map[string]interface{}{
-				"mantl.io/tenant": tenant.Name,
+				"mantl.io/tenant":     tenant.Name,
+				"opencost.io/team":    tenant.Name,
+				"opencost.io/project": "mantl",
+				"environment":         environment,
 			},
 		},
 	}
@@ -252,6 +266,13 @@ func renderAppSource(outputDir, name, path, repository, revision string) error {
 		},
 	}
 
+	if name == "root-platform" {
+		patch, err := json.Marshal([]map[string]interface{}{{"op": "replace", "path": "/spec/source/repoURL", "value": repository}, {"op": "replace", "path": "/spec/source/targetRevision", "value": revision}})
+		if err != nil {
+			return err
+		}
+		app["spec"].(map[string]interface{})["source"].(map[string]interface{})["kustomize"] = map[string]interface{}{"patches": []interface{}{map[string]interface{}{"target": map[string]string{"group": "argoproj.io", "version": "v1alpha1", "kind": "Application", "name": "kyverno-policies"}, "patch": string(patch)}}}
+	}
 	data, err := yaml.Marshal(app)
 	if err != nil {
 		return fmt.Errorf("failed to render application %s: %w", name, err)

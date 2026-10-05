@@ -44,7 +44,7 @@ func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	l.Info("Reconciling ComplianceProfile", "Name", profile.Name, "Framework", profile.Spec.Framework)
 
 	// 2. Load the Framework mapping file
-	loaded, err := framework.Load(r.FrameworkDir, profile.Spec.Framework, profile.Spec.Version)
+	loaded, err := framework.LoadSelected(r.FrameworkDir, profile.Spec.Framework, profile.Spec.Version, profile.Spec.BundleDigest, profile.Spec.IncludeControls)
 	if err != nil {
 		profile.Status.State = "Invalid"
 		profile.Status.ActivePolicies = 0
@@ -54,10 +54,13 @@ func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 		return ctrl.Result{}, err
 	}
-	framework := *loaded
+	catalog := *loaded
 
 	var referenced []string
-	for _, control := range framework.Controls {
+	for _, control := range catalog.Controls {
+		if !framework.Selected(control.ID, profile.Spec.IncludeControls) {
+			continue
+		}
 		for _, m := range control.Mappings {
 			if m.PolicyRef != nil && m.PolicyRef.Template != "" {
 				referenced = append(referenced, m.PolicyRef.Template)
@@ -73,7 +76,7 @@ func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 	resolved, unresolved := resolveTemplates(referenced, index, templateAliases)
-	l.Info("Resolved framework policies", "framework", framework.Name,
+	l.Info("Resolved framework policies", "framework", catalog.Name,
 		"resolved", len(resolved), "unresolved", len(unresolved))
 
 	profile.Status.State = "Active"

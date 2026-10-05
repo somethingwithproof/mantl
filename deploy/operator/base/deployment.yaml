@@ -5,6 +5,10 @@ metadata:
   namespace: mantl-compliance-system
   labels:
     control-plane: controller-manager
+    app.kubernetes.io/name: mantl-compliance
+    app.kubernetes.io/part-of: mantl
+    app.kubernetes.io/version: development
+    app.kubernetes.io/managed-by: kustomize
 spec:
   selector:
     matchLabels:
@@ -16,6 +20,10 @@ spec:
         kubectl.kubernetes.io/default-container: manager
       labels:
         control-plane: controller-manager
+        app.kubernetes.io/name: mantl-compliance
+        app.kubernetes.io/part-of: mantl
+        app.kubernetes.io/version: development
+        app.kubernetes.io/managed-by: kustomize
     spec:
       securityContext:
         runAsNonRoot: true
@@ -28,6 +36,7 @@ spec:
           args:
             - --leader-elect
             - --framework-dir=/etc/compliance/frameworks
+            - --collector-image=mantl-compliance-operator:development
             - --evidence-bucket=$(EVIDENCE_BUCKET)
             - --evidence-kms-key=$(EVIDENCE_KMS_KEY)
           env:
@@ -45,9 +54,9 @@ spec:
           name: manager
           securityContext:
             allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: [ALL]
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
           livenessProbe:
             httpGet:
               path: /healthz

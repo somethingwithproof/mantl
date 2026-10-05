@@ -17,6 +17,11 @@ rules:
       - complianceaudits
       - complianceaudits/status
       - findings
+      - findings/status
+      - auditruns
+      - auditruns/status
+      - controlevaluations
+      - controlevaluations/status
     verbs:
       - get
       - list
@@ -25,6 +30,20 @@ rules:
       - update
       - patch
       - delete
+  - apiGroups:
+      - compliance.mantl.io
+    resources:
+      - complianceexceptions
+      - complianceexceptions/status
+    verbs: [get, list, watch]
+  - apiGroups:
+      - batch
+    resources: [jobs]
+    verbs: [get, list, watch, create]
+  - apiGroups: ['']
+    resources: [namespaces]
+    resourceNames: [kube-system]
+    verbs: [get]
   - apiGroups:
       - wgpolicyk8s.io
     resources:
@@ -70,12 +89,14 @@ rules:
   - apiGroups:
       - ''
     resources:
-      - pods
       - services
       - serviceaccounts
     verbs:
       - get
       - list
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list, watch]
   - apiGroups:
       - kyverno.io
     resources:

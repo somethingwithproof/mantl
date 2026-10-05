@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.26.7 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.7@sha256:e30143be198ab04cf7ba25fba83ab3a692ca584c994aad0bf131fa0eb32dd8c1 AS builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -16,15 +16,27 @@ COPY controllers/ controllers/
 COPY pkg/ pkg/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux go build -a -o manager cmd/compliance-operator/main.go
+ARG TARGETOS
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -o manager ./cmd/compliance-operator && \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -o collector ./cmd/evidence-collector && \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -o fleet ./cmd/mantl-fleet
+
+COPY compliance/frameworks/ compliance/frameworks/
+COPY compliance/bundle-version.txt compliance/bundle-version.txt
+COPY policies/kyverno/ policies/kyverno/
+RUN go run ./cmd/mantl bundle build --version "$(cat compliance/bundle-version.txt)" --output /tmp/controls.tar.gz && \
+    go run ./cmd/mantl bundle unpack /tmp/controls.tar.gz /workspace/control-content && \
+    chmod -R a+rX /workspace/control-content
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
 WORKDIR /
 COPY --from=builder /workspace/manager .
-COPY compliance/frameworks/ /etc/compliance/frameworks/
-COPY policies/kyverno/ /etc/compliance/policies/
+COPY --from=builder /workspace/collector .
+COPY --from=builder /workspace/fleet .
+COPY --from=builder /workspace/control-content/ /etc/compliance/
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]

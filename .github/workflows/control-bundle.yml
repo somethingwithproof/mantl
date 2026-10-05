@@ -1,0 +1,44 @@
+name: Publish control content
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: mantl-control-content
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
+        with:
+          version: '2026.10.2'
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify, publish and sign independently versioned content
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/controls
+          CONTENT_VERSION=$(cat compliance/bundle-version.txt)
+          mise exec -- go test ./pkg/controlbundle ./pkg/framework
+          mise exec -- go run ./cmd/mantl bundle build --version "$CONTENT_VERSION" --output dist/controls/controls.tar.gz > dist/controls/control-identity.json
+          mise exec -- python scripts/publish_control_bundle.py --repository "ghcr.io/${REPOSITORY,,}-operator-controls" --version "$CONTENT_VERSION" --archive dist/controls/controls.tar.gz --identity dist/controls/oci-identity.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: control-content
+          path: dist/controls
+          if-no-files-found: error

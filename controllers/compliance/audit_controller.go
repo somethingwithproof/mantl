@@ -58,7 +58,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if err := r.Get(ctx, client.ObjectKey{Name: audit.Spec.Profile, Namespace: audit.Namespace}, &profile); err != nil {
 		return ctrl.Result{}, fmt.Errorf("load audit profile: %w", err)
 	}
-	fw, err := framework.Load(r.FrameworkDir, profile.Spec.Framework, profile.Spec.Version)
+	fw, err := framework.LoadSelected(r.FrameworkDir, profile.Spec.Framework, profile.Spec.Version, profile.Spec.BundleDigest, profile.Spec.IncludeControls)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -112,7 +112,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 				}
 			}
 			due[key] = true
-			if collector.Type != "config-snapshot" || len(collector.Resources) == 0 {
+			if collector.Type != "config-snapshot" || collector.Query != "" || len(collector.Resources) == 0 {
 				gaps = append(gaps, control.ID+": unsupported collector "+collector.Type)
 				continue
 			}
@@ -149,7 +149,7 @@ func (r *ComplianceAuditReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 	run := audit.Status.StartTime.Time.UTC().Format(time.RFC3339Nano)
 	prefix := fmt.Sprintf("audits/%s/%s/%s/%s", audit.Namespace, audit.Name, audit.UID, run)
-	manifest := evidence.Manifest{SchemaVersion: 1, Audit: audit.Namespace + "/" + audit.Name, Run: run, Framework: profile.Spec.Framework, FrameworkVersion: fw.Version, CapturedAt: audit.Status.StartTime.Time, Objects: []evidence.ObjectRef{}}
+	manifest := evidence.Manifest{SchemaVersion: 1, Audit: audit.Namespace + "/" + audit.Name, Run: run, Framework: profile.Spec.Framework, FrameworkVersion: fw.Version, BundleDigest: fw.ContentDigest, CapturedAt: audit.Status.StartTime.Time, Objects: []evidence.ObjectRef{}}
 	failed := incomplete
 	for _, t := range tasks {
 		captureCtx, cancel := context.WithTimeout(ctx, 30*time.Second)

@@ -8,6 +8,12 @@ import (
 type ComplianceProfileSpec struct {
 	Framework string `json:"framework"`
 	Version   string `json:"version"`
+	// BundleDigest pins a verified control-content manifest, independent of framework version.
+	// +kubebuilder:validation:Pattern="^sha256:[a-f0-9]{64}$"
+	BundleDigest string `json:"bundleDigest,omitempty"`
+	// +kubebuilder:validation:Minimum=60
+	// +kubebuilder:validation:Maximum=31536000
+	MaxEvidenceAgeSeconds int64 `json:"maxEvidenceAgeSeconds,omitempty"`
 	// Namespaces restrict evidence collection. Defaults to the profile namespace.
 	Namespaces      []string `json:"namespaces,omitempty"`
 	IncludeControls []string `json:"includeControls,omitempty"`
@@ -55,6 +61,27 @@ type FindingSpec struct {
 	Status    string `json:"status"` // pass, fail, warn
 }
 
+type FindingTransition struct {
+	ID        string      `json:"id"`
+	State     string      `json:"state"`
+	At        metav1.Time `json:"at"`
+	Control   string      `json:"control"`
+	Framework string      `json:"framework"`
+	Resource  string      `json:"resource"`
+}
+type HistoryReference struct {
+	URI     string `json:"uri"`
+	Version string `json:"version"`
+	SHA256  string `json:"sha256"`
+}
+type FindingStatus struct {
+	LastQueuedState string            `json:"lastQueuedState,omitempty"`
+	HistoryHead     *HistoryReference `json:"historyHead,omitempty"`
+	// +kubebuilder:validation:MaxItems=64
+	Pending    []FindingTransition `json:"pending,omitempty"`
+	HistoryGap bool                `json:"historyGap,omitempty"`
+}
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
@@ -63,7 +90,8 @@ type Finding struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec FindingSpec `json:"spec,omitempty"`
+	Spec   FindingSpec   `json:"spec,omitempty"`
+	Status FindingStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -84,6 +112,7 @@ type ComplianceAuditSpec struct {
 
 // ComplianceAuditStatus defines the observed state of a Compliance Audit
 type ComplianceAuditStatus struct {
+	ActiveRun      string                 `json:"activeRun,omitempty"`
 	Phase          string                 `json:"phase,omitempty"` // Pending, Running, Completed, PartiallyCompleted, Failed, NoEvidence
 	StartTime      *metav1.Time           `json:"startTime,omitempty"`
 	EndTime        *metav1.Time           `json:"endTime,omitempty"`

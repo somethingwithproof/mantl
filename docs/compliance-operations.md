@@ -6,7 +6,9 @@ acceptance. SOC2 policy coverage is not SOC2 certification.
 
 ## Install
 
-Use `mise install`, then `mise exec -- go install ./cmd/mantl`. The shell
+Install a verified CLI release archive or Linux deb/rpm package; see
+[release verification](releases.md). For source development use `mise install`,
+then `mise exec -- go install ./cmd/mantl`. The shell
 `bin/mantl` is a legacy installer; the supported Go entrypoint provides `plan`,
 `apply`, `status`, `validate-clouds`, and `compliance` commands.
 
@@ -34,8 +36,9 @@ Set `spec.gitops.repository`, `revision`, `operatorPath`, and `tenantPath` in a
 MantlCluster spec. Commit generated `.mantl/build/tenants` at tenantPath before
 bootstrap; ArgoCD does not read local build files. The built-in topology installs
 Kyverno/cert-manager and the reviewed SOC2 policy bundle. Review namespace
-exclusions and enforcement modes before adoption. Existing source-directory
-blueprints are needed for cloud `apply`; release packaging is separate work.
+exclusions and enforcement modes before adoption. The matching release platform bundle supplies the source-directory blueprints
+needed for cloud `apply`. Tenant environment labels follow profile size by default
+(small/dev, medium/staging, full/production); `spec.environment` overrides this.
 
 Cloud bootstrap requires `--context` and accepts `--source-dir`. The target
 context must already authenticate to the provisioned cluster; Terraform outputs
@@ -52,7 +55,8 @@ mantl --context TARGET compliance export soc2-scheduled --output evidence.tar.gz
 mantl validate-clouds --source-dir .
 ```
 
-Status returns separate profile coverage, findings, and audits as JSON. Existing
+Status returns profiles, findings, audit schedules, historical runs, control
+evaluations and exceptions as separate JSON dimensions. Existing
 `mantl status SPEC` reports live ArgoCD health and aggregate PolicyReport results;
 that score does not claim framework certification. Audit CoverageGaps identifies
 unsupported collectors, denied reads, and upload failures. Framework cron schedules
@@ -116,7 +120,8 @@ The local implementation review checked that GitOps remains the policy owner,
 Secret/ConfigMap collection is denied, workload payloads omit credential-bearing
 pod templates and annotations, cluster evidence requires an opt-in, retention is
 verified after upload, exports verify hashes, and report loss is unknown rather
-than passing. Signing and release publication were not changed.
+than passing. The new release path is documented in releases.md; local validation does not
+claim that hosted signing or publication has completed.
 
 Cloud identity and encryption edits still require the repository's pre-merge
 security review. Static validation cannot establish actual role propagation,
@@ -126,3 +131,7 @@ CI retains Checkov SARIF reports as `terraform-security-sarif` artifacts for 14
 days. Set the repository variable `ENABLE_CODE_SCANNING_SARIF=true` only after
 GitHub code scanning is available to upload those reports into the Security tab.
 Scan execution and report retention are required even when that integration is off.
+
+See [the new runtime architecture](architecture-runtime.md) for collector identities,
+content pins, exception approvals, immutable history, optional fleet setup and
+provider acceptance limitations.

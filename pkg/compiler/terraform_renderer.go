@@ -30,6 +30,16 @@ func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
 		return fmt.Errorf("unsupported profile size %q: expected one of small, medium, full", cluster.Spec.Profile.Size)
 	}
 
+	if cluster.Spec.Environment != "" {
+		switch cluster.Spec.Environment {
+		case "dev", "staging":
+			environment = cluster.Spec.Environment
+		case "production":
+			environment = "prod"
+		default:
+			return fmt.Errorf("unsupported environment %q", cluster.Spec.Environment)
+		}
+	}
 	vars := TFVars{"cluster_name": cluster.Name, "kubernetes_version": cluster.Spec.Kubernetes.Version, "environment": environment}
 	switch cluster.Spec.Provider.Kind {
 	case "gcp":

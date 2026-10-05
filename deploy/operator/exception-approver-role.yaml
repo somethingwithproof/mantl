@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mantl-exception-approver
+  namespace: mantl-compliance-system
+rules:
+  - apiGroups: [compliance.mantl.io]
+    resources: [complianceexceptions]
+    verbs: [get]
+  - apiGroups: [compliance.mantl.io]
+    resources: [complianceexceptions/status]
+    verbs: [get, patch, update]
