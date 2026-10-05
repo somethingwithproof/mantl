@@ -33,6 +33,7 @@ def select(paths):
             "scripts/publish_control_bundle.py",
         ),
         "frontend": ("examples/ecommerce-microservices/src/frontend/",),
+        "ml_example": ("examples/ml-inference-service/src/", "ci/smoke_ml_example.py"),
         "developer_image": ("Dockerfile", "requirements.txt", "requirements-test.txt"),
     }
     result = {}
@@ -42,6 +43,7 @@ def select(paths):
             "charts": "helm-validate",
             "runtime": "compliance-runtime",
             "frontend": "example-frontend",
+            "ml_example": "ci",
             "developer_image": "developer-image",
         }[component]
         result[component] = shared or any(
