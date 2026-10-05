@@ -96,16 +96,21 @@ jobs:
       - name: Setup TFLint
         uses: terraform-linters/setup-tflint@v6
         with:
-          tflint_version: latest
+          tflint_version: v0.64.0
 
       - name: Run TFLint
         run: |
           tflint --init
-          tflint --recursive --format compact infra/terraform/
+          for blueprint in aws-eks gcp-gke azure-aks; do
+            tflint --chdir="infra/terraform/blueprints/$blueprint" --config="$PWD/.tflint.hcl" --format compact
+          done
 
   checkov:
     name: Checkov Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout code

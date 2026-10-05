@@ -88,6 +88,9 @@ resource "azurerm_network_watcher" "main" {
 
 # Storage account for flow logs
 resource "azurerm_storage_account" "flow_logs" {
+  lifecycle {
+    prevent_destroy = true
+  }
   name                            = replace("${local.name}flowlogs", "-", "")
   resource_group_name             = azurerm_resource_group.main.name
   location                        = azurerm_resource_group.main.location
@@ -152,6 +155,9 @@ resource "azurerm_network_watcher_flow_log" "aks_nodes" {
 ################################################################################
 
 resource "azurerm_log_analytics_workspace" "main" {
+  lifecycle {
+    prevent_destroy = true
+  }
   name                = "${local.name}-logs"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
@@ -168,6 +174,9 @@ resource "azurerm_log_analytics_workspace" "main" {
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_key_vault" "main" {
+  lifecycle {
+    prevent_destroy = true
+  }
   name                = "${local.name}-kv"
   location            = azurerm_resource_group.main.location
   resource_group_name = azurerm_resource_group.main.name
@@ -195,6 +204,9 @@ resource "azurerm_key_vault" "main" {
 
 # Key for AKS secrets encryption
 resource "azurerm_key_vault_key" "aks" {
+  lifecycle {
+    prevent_destroy = true
+  }
   name         = "${local.name}-aks-key"
   key_vault_id = azurerm_key_vault.main.id
   key_type     = "RSA"
