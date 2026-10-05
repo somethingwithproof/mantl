@@ -7,6 +7,7 @@ name: SonarCloud
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,44 +18,58 @@ concurrency:
 
 jobs:
   scan:
+    name: SonarCloud quality gate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
-      # Skip cleanly when the maintainer has not provisioned SONAR_TOKEN.
-      # The scan never fails CI on a missing secret.
-      - name: Check for SONAR_TOKEN
-        id: guard
+      - name: Require SonarCloud authentication
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           if [ -z "${SONAR_TOKEN}" ]; then
-            echo "SONAR_TOKEN not set; skipping SonarCloud scan."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "::error::SONAR_TOKEN is missing. SonarCloud analysis and its quality gate cannot run."
+            exit 1
           fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        if: steps.guard.outputs.enabled == 'true'
         with:
           # Full history improves SonarCloud blame and new-code detection.
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up Go
-        if: steps.guard.outputs.enabled == 'true'
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+      - name: Set up pinned runtimes
+        uses: jdx/mise-action@5228313ee0372e111a38da051671ca30fc5a96db
         with:
-          go-version-file: go.mod
-          cache: true
+          version: '2026.10.2'
 
-      - name: Generate coverage
-        if: steps.guard.outputs.enabled == 'true'
-        run: go test -coverprofile=coverage.out -covermode=atomic ./pkg/...
+      - name: Verify configured SonarCloud project
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          MANTL_REPOSITORY_VISIBILITY: ${{ github.event.repository.visibility }}
+        run: mise exec -- python scripts/verify_sonar_project.py
 
-      - name: SonarCloud scan
-        if: steps.guard.outputs.enabled == 'true'
+      - name: Generate first-party Go coverage
+        run: mise exec -- make go-coverage
+
+      - name: Generate Python release-tool coverage
+        run: |
+          mise exec -- python -m venv .venv-sonar
+          mise exec -- .venv-sonar/bin/python -m pip install -r requirements-test.txt PyYAML==6.0.3
+          mise exec -- .venv-sonar/bin/python -m pytest tests/unit/ --cov=scripts --cov-report=xml:coverage-python.xml
+
+      - name: SonarCloud analysis and quality gate
         uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Save coverage reports
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: sonar-coverage
+          path: |
+            coverage.out
+            coverage-python.xml
+          if-no-files-found: ignore
+          retention-days: 7

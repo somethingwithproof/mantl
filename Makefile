@@ -1,4 +1,4 @@
-.PHONY: help install-dev install-staging install-production install-small install-medium install-full clean test go-test test-unit test-coverage test-watch lint format validate security-scan audit wizard cli-install
+.PHONY: help install-dev install-staging install-production install-small install-medium install-full clean test go-test go-coverage test-unit test-coverage test-watch lint format validate security-scan audit wizard cli-install
 
 # Default target
 .DEFAULT_GOAL := help
@@ -87,6 +87,9 @@ GO_PKGS := $(shell go list ./... | grep -v 'github.com/thomasvincent/mantl/platf
 
 go-test: ## Run Go unit tests excluding vendored charts
 	go test $(GO_PKGS)
+
+go-coverage: ## Measure all first-party Go packages, excluding vendored charts
+	go test -coverprofile=coverage.out -covermode=atomic $(GO_PKGS)
 
 # Pinned so `make manifests`/`make generate` are deterministic and the CI
 # generated-code drift check does not flap on a controller-gen version bump.

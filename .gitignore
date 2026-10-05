@@ -55,3 +55,10 @@ crash.*.log
 
 # Local compiler output
 /.mantl/
+
+# Local test coverage reports
+/coverage.out
+/coverage-python.xml
+/.coverage*
+/htmlcov/
+/.venv-sonar/
