@@ -116,17 +116,20 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup
         with:
-          tools: python terraform kubectl kustomize
+          tools: python terraform kubectl kustomize uv
+      - name: Verify Python dependency locks
+        run: mise exec -- python ci/lock_python_dependencies.py --check
       - name: Test infrastructure contracts and release tools
         run: |
           mise exec -- python -m venv .venv-ci
-          mise exec -- .venv-ci/bin/python -m pip install -r requirements-test.txt
+          mise exec -- .venv-ci/bin/python -m pip install --only-binary :all: --require-hashes -r requirements-test.txt
           mise exec -- .venv-ci/bin/python -m pytest tests/unit/ --cov=scripts --cov=ci --cov-report=xml:coverage-python.xml
       - name: Check ML example dependency and runtime compatibility
         if: needs.changes.outputs.ml_example == 'true'
         run: |
-          mise exec -- .venv-ci/bin/python -m pip install -r examples/ml-inference-service/src/requirements.txt
-          mise exec -- .venv-ci/bin/python -m coverage run --source=scripts,ci ci/smoke_ml_example.py
+          mise exec -- python -m venv .venv-ml
+          mise exec -- .venv-ml/bin/python -m pip install --only-binary :all: --require-hashes -r requirements-test.txt -r examples/ml-inference-service/src/requirements.txt
+          mise exec -- .venv-ml/bin/python -m coverage run --source=scripts,ci ci/smoke_ml_example.py
           mise exec -- .venv-ci/bin/python -m coverage combine --append
           mise exec -- .venv-ci/bin/python -m coverage xml -o coverage-python.xml
       - name: Retain Python coverage

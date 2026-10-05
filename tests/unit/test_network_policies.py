@@ -9,7 +9,6 @@ This module validates network policies for:
 """
 
 import re
-from pathlib import Path
 
 import pytest
 import yaml
@@ -54,11 +53,8 @@ class TestNetworkPolicyStructure:
     def test_policies_are_valid_yaml(self, network_policy_files):
         """Verify all network policy files are valid YAML."""
         for file in network_policy_files:
-            try:
-                content = file.read_text()
-                list(yaml.safe_load_all(content))
-            except yaml.YAMLError as e:
-                pytest.fail(f"{file.name}: Invalid YAML - {e}")
+            content = file.read_text()
+            list(yaml.safe_load_all(content))
 
     @pytest.mark.network_policies
     @pytest.mark.yaml_validation
@@ -69,9 +65,7 @@ class TestNetworkPolicyStructure:
         for policy in loaded_policies:
             source = policy.get("_source_file", "unknown")
             for field in required_fields:
-                assert field in policy, (
-                    f"{source}: Missing required field '{field}'"
-                )
+                assert field in policy, f"{source}: Missing required field '{field}'"
 
     @pytest.mark.network_policies
     @pytest.mark.yaml_validation
@@ -79,12 +73,12 @@ class TestNetworkPolicyStructure:
         """Verify policies use CiliumNetworkPolicy kind."""
         for policy in loaded_policies:
             source = policy.get("_source_file", "unknown")
-            assert policy.get("apiVersion") == "cilium.io/v2", (
-                f"{source}: Expected apiVersion 'cilium.io/v2'"
-            )
-            assert policy.get("kind") == "CiliumNetworkPolicy", (
-                f"{source}: Expected kind 'CiliumNetworkPolicy'"
-            )
+            assert (
+                policy.get("apiVersion") == "cilium.io/v2"
+            ), f"{source}: Expected apiVersion 'cilium.io/v2'"
+            assert (
+                policy.get("kind") == "CiliumNetworkPolicy"
+            ), f"{source}: Expected kind 'CiliumNetworkPolicy'"
 
 
 class TestNetworkPolicyMetadata:
@@ -105,9 +99,9 @@ class TestNetworkPolicyMetadata:
         for policy in loaded_policies:
             source = policy.get("_source_file", "unknown")
             metadata = policy.get("metadata", {})
-            assert "namespace" in metadata, (
-                f"{source}: Missing namespace - network policies should be namespace-scoped"
-            )
+            assert (
+                "namespace" in metadata
+            ), f"{source}: Missing namespace - network policies should be namespace-scoped"
 
     @pytest.mark.network_policies
     def test_policies_have_labels(self, loaded_policies):
@@ -125,9 +119,9 @@ class TestNetworkPolicyMetadata:
             source = policy.get("_source_file", "unknown")
             metadata = policy.get("metadata", {})
             labels = metadata.get("labels", {})
-            assert "app.kubernetes.io/part-of" in labels, (
-                f"{source}: Missing 'app.kubernetes.io/part-of' label"
-            )
+            assert (
+                "app.kubernetes.io/part-of" in labels
+            ), f"{source}: Missing 'app.kubernetes.io/part-of' label"
 
 
 class TestNetworkPolicySpec:
@@ -139,9 +133,9 @@ class TestNetworkPolicySpec:
         for policy in loaded_policies:
             source = policy.get("_source_file", "unknown")
             spec = policy.get("spec", {})
-            assert "endpointSelector" in spec, (
-                f"{source}: Missing endpointSelector - required to target pods"
-            )
+            assert (
+                "endpointSelector" in spec
+            ), f"{source}: Missing endpointSelector - required to target pods"
 
     @pytest.mark.network_policies
     def test_policies_have_description(self, loaded_policies):
@@ -150,9 +144,9 @@ class TestNetworkPolicySpec:
             source = policy.get("_source_file", "unknown")
             name = policy.get("metadata", {}).get("name", "unknown")
             spec = policy.get("spec", {})
-            assert "description" in spec, (
-                f"{source}/{name}: Should have description explaining policy purpose"
-            )
+            assert (
+                "description" in spec
+            ), f"{source}/{name}: Should have description explaining policy purpose"
 
     @pytest.mark.network_policies
     @pytest.mark.security
@@ -178,9 +172,9 @@ class TestNetworkPolicySpec:
                             allows_dns = True
                             break
 
-            assert allows_dns, (
-                f"{source}/{name}: Egress policy should allow DNS (port 53) for name resolution"
-            )
+            assert (
+                allows_dns
+            ), f"{source}/{name}: Egress policy should allow DNS (port 53) for name resolution"
 
 
 class TestNetworkPolicyConsistency:
@@ -220,8 +214,7 @@ class TestNetworkPolicyConsistency:
             for key, value in match_labels.items():
                 if invalid_chars.search(str(key)) or invalid_chars.search(str(value)):
                     pytest.fail(
-                        f"{source}/{name}: Invalid characters in label selector "
-                        f"'{key}={value}'"
+                        f"{source}/{name}: Invalid characters in label selector " f"'{key}={value}'"
                     )
 
 
@@ -232,9 +225,7 @@ class TestNetworkPolicyKustomization:
     def test_kustomization_exists(self, network_policies_dir):
         """Verify kustomization.yaml exists."""
         kustomization = network_policies_dir / "kustomization.yaml"
-        assert kustomization.exists(), (
-            "network-policies directory should have kustomization.yaml"
-        )
+        assert kustomization.exists(), "network-policies directory should have kustomization.yaml"
 
     @pytest.mark.network_policies
     def test_kustomization_includes_all_policies(self, network_policies_dir, network_policy_files):
@@ -250,6 +241,6 @@ class TestNetworkPolicyKustomization:
         policy_filenames = {f.name for f in network_policy_files}
 
         for filename in policy_filenames:
-            assert filename in resources, (
-                f"kustomization.yaml should include '{filename}' in resources"
-            )
+            assert (
+                filename in resources
+            ), f"kustomization.yaml should include '{filename}' in resources"

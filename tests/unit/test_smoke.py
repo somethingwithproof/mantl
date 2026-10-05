@@ -11,11 +11,6 @@ import sys
 import pytest
 
 
-def test_pytest_runs() -> None:
-    """Verify pytest is functioning correctly."""
-    assert True
-
-
 def test_python_version() -> None:
     """Verify we're running on the expected Python version."""
     assert sys.version_info >= (3, 11), f"Python 3.11+ required, got {sys.version_info}"

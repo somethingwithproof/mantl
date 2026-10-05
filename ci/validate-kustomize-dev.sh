@@ -26,7 +26,7 @@ kustomize build "$dir" --enable-helm --load-restrictor=LoadRestrictionsNone || t
   fi
 done
 
-if [ "$failed" -eq 0 ]; then
+if [[ "$failed" -eq 0 ]]; then
   echo -e "${GREEN}Dev-scope Kustomize builds valid${NC}"
   exit 0
 else

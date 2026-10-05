@@ -43,3 +43,8 @@ requirement. Read architecture-runtime.md before mounting a separately pinned bu
 Hosted signature/provenance publication is exercised only by an actual release;
 local tests intentionally use snapshot packages. The optional fleet manifest fails
 closed until TLS, database, enrollment, identity and network overlays are supplied.
+
+Release assembly scripts read from their own checkout and constrain all archive
+and identity paths to that checkout's `dist` directory. Source-directory
+overrides must identify that same checkout. Symlinked or noncanonical artifact
+paths are rejected before external publication commands.

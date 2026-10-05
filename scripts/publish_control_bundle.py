@@ -9,9 +9,19 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+try:
+    from scripts import release_paths
+except ModuleNotFoundError as error:
+    if error.name != "scripts":
+        raise
+    import release_paths
+
 
 def publish(repository: str, version: str, archive: Path) -> str:
-    if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?", version):
+    archive = release_paths.artifact_path(archive)
+    if not archive.is_file():
+        raise ValueError("release archive must be a regular file")
+    if not re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?", version, flags=re.ASCII):
         raise ValueError("invalid content version")
     if not re.fullmatch(r"ghcr\.io/[a-z0-9._/-]+", repository):
         raise ValueError("expected a GHCR repository")
@@ -64,7 +74,7 @@ if __name__ == "__main__":
     parser.add_argument("--archive", type=Path, required=True)
     parser.add_argument("--identity", type=Path, required=True)
     args = parser.parse_args()
-    args.identity.write_text(
+    release_paths.artifact_path(args.identity).write_text(
         json.dumps({"ociReference": publish(args.repository, args.version, args.archive.resolve())})
         + "\n"
     )
