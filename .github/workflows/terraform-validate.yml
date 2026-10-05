@@ -111,6 +111,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read
 
     steps:
       - name: Checkout code
@@ -146,7 +147,8 @@ jobs:
         run: |
           if [ "${{ needs.validate-providers.result }}" != "success" ] || \
              [ "${{ needs.validate-modules.result }}" != "success" ] || \
-             [ "${{ needs.tflint.result }}" != "success" ]; then
+             [ "${{ needs.tflint.result }}" != "success" ] || \
+             [ "${{ needs.checkov.result }}" != "success" ]; then
             echo "Some validation checks failed"
             exit 1
           fi
