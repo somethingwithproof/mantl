@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/thomasvincent/mantl/pkg/toolcommand"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -18,10 +19,8 @@ const policyReportSummaryJSONPath = `jsonpath={range .items[*]}{.summary.pass},{
 // namespaced PolicyReports and cluster-scoped ClusterPolicyReports. It is a
 // package var so tests can compute a score without a cluster.
 var kubectlPolicyReportQuery = func(ctx context.Context) ([]byte, error) {
-	if _, err := exec.LookPath("kubectl"); err != nil {
-		return nil, fmt.Errorf("kubectl not found in PATH: %w", err)
-	}
-	out, err := exec.CommandContext(ctx, "kubectl", kubectlArgs("get",
+
+	out, err := toolcommand.Kubectl(ctx, kubectlArgs("get",
 		"policyreports,clusterpolicyreports", "-A", "-o", policyReportSummaryJSONPath)...).Output()
 	if err != nil {
 		var ee *exec.ExitError

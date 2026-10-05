@@ -118,14 +118,7 @@ func Validate(root string) ([]Result, error) {
 			checks["private_api_default"] = d.boolean(b, "private_cluster_enabled", true)
 			checks["workload_identity"] = d.boolean(b, "oidc_issuer_enabled", true) && d.boolean(b, "workload_identity_enabled", true)
 			checks["audit_logging"] = d.block("resource", "azurerm_monitor_diagnostic_setting", "aks_audit") != nil
-			checks["secrets_encryption"] = false // pragma: allowlist secret (boolean validation result)
-			if b != nil {
-				for _, child := range b.Body.Blocks {
-					if child.Type == "key_management_service" {
-						checks["secrets_encryption"] = child.Body.Attributes["key_vault_key_id"] != nil // pragma: allowlist secret (schema field name)
-					}
-				}
-			}
+			checks["secrets_encryption"] = childAttribute(b, "key_management_service", "key_vault_key_id") // pragma: allowlist secret (schema field name)
 			checks["platform_federation"] = d.block("resource", "azurerm_federated_identity_credential", "external_secrets") != nil
 		}
 		results = append(results, Result{name, checks, []string{"Static configuration evidence only; no deployment or recovery evidence", "Evidence storage requires an externally provisioned S3 Object Lock bucket and scoped federation", "Least-privilege identity bindings and observed audit delivery require deployment review"}})
@@ -143,4 +136,17 @@ func Failures(results []Result) []string {
 	}
 	sort.Strings(failures)
 	return failures
+}
+
+func childAttribute(block *hclsyntax.Block, kind, attribute string) bool {
+	present := false
+	if block == nil {
+		return false
+	}
+	for _, child := range block.Body.Blocks {
+		if child.Type == kind {
+			present = child.Body.Attributes[attribute] != nil
+		}
+	}
+	return present
 }

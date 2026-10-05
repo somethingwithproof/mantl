@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	// Register the pgx database/sql driver used by the fleet PostgreSQL adapter.
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/thomasvincent/mantl/pkg/evidence"
 )

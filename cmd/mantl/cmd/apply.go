@@ -52,7 +52,6 @@ var applyCmd = &cobra.Command{
 		// 2. Execution DAG
 		dag := &bootstrap.ExecutionDAG{
 			SpecFile:     specFile,
-			Context:      ctx,
 			KubeContext:  kubeContext,
 			SourceDir:    sourceDir,
 			BuildDir:     buildDir,
@@ -60,26 +59,26 @@ var applyCmd = &cobra.Command{
 		}
 
 		fmt.Println("Step 2/5: Provisioning infrastructure...")
-		if err := dag.ProvisionInfra(cluster.Spec.Provider.Kind, cluster.Name); err != nil {
+		if err := dag.ProvisionInfra(ctx, cluster.Spec.Provider.Kind, cluster.Name); err != nil {
 			fmt.Printf("Infrastructure error: %v\n", err)
 			os.Exit(1)
 		}
 
 		fmt.Println("Step 3/5: Installing GitOps Controller (ArgoCD)...")
-		if err := dag.InstallArgoCD(); err != nil {
+		if err := dag.InstallArgoCD(ctx); err != nil {
 			fmt.Printf("ArgoCD install error: %v\n", err)
 			os.Exit(1)
 		}
 
 		fmt.Println("Step 4/5: Bootstrapping GitOps Applications...")
-		if err := dag.BootstrapGitOps(); err != nil {
+		if err := dag.BootstrapGitOps(ctx); err != nil {
 			fmt.Printf("GitOps bootstrap error: %v\n", err)
 			os.Exit(1)
 		}
 
 		// 5. Verification
 		fmt.Println("Step 5/5: Verifying platform convergence...")
-		if err := dag.VerifyConvergence(); err != nil {
+		if err := dag.VerifyConvergence(ctx); err != nil {
 			fmt.Printf("Verification failed: %v\n", err)
 			os.Exit(1)
 		}

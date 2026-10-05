@@ -33,15 +33,25 @@ func (s *fixtureStore) Get(_ context.Context, ref evidence.ObjectRef) ([]byte, e
 	return b, nil
 }
 
-type fixtureIndex struct{ entries []Entry }
+type fixtureIndex struct {
+	entries   []Entry
+	putError  error
+	listError error
+}
 
 func (i *fixtureIndex) Put(_ context.Context, scope Scope, events []Event, source evidence.ObjectRef) error {
+	if i.putError != nil {
+		return i.putError
+	}
 	for _, e := range events {
 		i.entries = append(i.entries, Entry{scope, e, source})
 	}
 	return nil
 }
 func (i *fixtureIndex) List(_ context.Context, scope Scope, _ int, _ string, _ bool) ([]Entry, error) {
+	if i.listError != nil {
+		return nil, i.listError
+	}
 	var entries []Entry
 	for _, entry := range i.entries {
 		if entry.Scope.Tenant == scope.Tenant && (scope.Cluster == "" || entry.Scope.Cluster == scope.Cluster) {
@@ -49,6 +59,76 @@ func (i *fixtureIndex) List(_ context.Context, scope Scope, _ int, _ string, _ b
 		}
 	}
 	return entries, nil
+}
+
+func TestMetadataListValidatesPaginationAndIndexFailures(t *testing.T) {
+	for _, test := range []struct {
+		path    string
+		failure bool
+		status  int
+	}{
+		{"/v1/events", false, http.StatusOK},
+		{"/v1/state?limit=500", false, http.StatusOK},
+		{"/v1/events?limit=0", false, http.StatusBadRequest},
+		{"/v1/events?limit=501", false, http.StatusBadRequest},
+		{"/v1/events?limit=invalid", false, http.StatusBadRequest},
+		{"/v1/events?after=invalid", false, http.StatusBadRequest},
+		{"/v1/events", true, http.StatusServiceUnavailable},
+	} {
+		t.Run(test.path, func(t *testing.T) {
+			index := &fixtureIndex{}
+			if test.failure {
+				index.listError = fmt.Errorf("fixture unavailable")
+			}
+			server := &Server{Index: index}
+			response := httptest.NewRecorder()
+			server.list(response, httptest.NewRequest(http.MethodGet, test.path, nil), Scope{Tenant: "tenant-a", Role: "viewer"})
+			if response.Code != test.status {
+				t.Fatalf("list status: %d, want %d", response.Code, test.status)
+			}
+			if test.status == http.StatusOK && response.Body.String() != "[]\n" {
+				t.Fatalf("empty results must be an array: %s", response.Body.String())
+			}
+		})
+	}
+}
+
+func TestJournalIngestionRejectsMalformedBodiesAndIndexFailures(t *testing.T) {
+	now := time.Now().UTC()
+	scope := Scope{Tenant: "tenant-a", Cluster: "cluster-a", Role: "collector"}
+	store := &fixtureStore{objects: map[string][]byte{}}
+	event := Event{ID: evidence.Hash([]byte("event")), Kind: "Finding", ResourceUID: "uid", Namespace: "team", Name: "finding", ObservedAt: now}
+	payload, err := Canonical(scope.Cluster, []Event{event})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, err := store.Put(context.Background(), Prefix(scope.Cluster), payload, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := json.Marshal(ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, failure := range []error{ErrConflict, fmt.Errorf("fixture unavailable")} {
+		index := &fixtureIndex{putError: failure}
+		server := &Server{Store: store, Index: index}
+		response := httptest.NewRecorder()
+		server.ingest(response, httptest.NewRequest(http.MethodPost, "/v1/journals", bytes.NewReader(body)), scope)
+		expected := http.StatusServiceUnavailable
+		if failure == ErrConflict {
+			expected = http.StatusConflict
+		}
+		if response.Code != expected || len(index.entries) != 0 {
+			t.Fatalf("index failure was accepted: %d, %v", response.Code, index.entries)
+		}
+	}
+	server := &Server{Store: store, Index: &fixtureIndex{}}
+	response := httptest.NewRecorder()
+	server.ingest(response, httptest.NewRequest(http.MethodPost, "/v1/journals", bytes.NewBufferString("malformed")), scope)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("malformed journal accepted: %d", response.Code)
+	}
 }
 func TestCertificateScopeAndJournalVerification(t *testing.T) {
 	now := time.Now().UTC()
@@ -105,11 +185,11 @@ func TestCertificateScopeAndJournalVerification(t *testing.T) {
 		t.Fatalf("cross-cluster journal accepted: %d", got)
 	}
 	store.objects[ref.URI] = []byte(`{"changed":true}`)
-	if got := invoke(ref, cert).Code; got != http.StatusBadRequest {
+	if invoke(ref, cert).Code != http.StatusBadRequest {
 		t.Fatal("tampered journal accepted")
 	}
 	server.Enrollments[fingerprint] = Scope{Tenant: "tenant-a", Role: "viewer"}
-	if got := invoke(ref, cert).Code; got != http.StatusForbidden {
+	if invoke(ref, cert).Code != http.StatusForbidden {
 		t.Fatal("viewer could ingest")
 	}
 }

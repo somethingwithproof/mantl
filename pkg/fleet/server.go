@@ -48,60 +48,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case r.Method == http.MethodPost && r.URL.Path == "/v1/journals":
-		if scope.Role != "collector" || scope.Cluster == "" {
-			http.Error(w, "collector enrollment required", http.StatusForbidden)
-			return
-		}
-		var ref evidence.ObjectRef
-		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192))
-		decoder.DisallowUnknownFields()
-		if err := decoder.Decode(&ref); err != nil {
-			http.Error(w, "invalid journal reference", http.StatusBadRequest)
-			return
-		}
-		now := time.Now().UTC()
-		if s.Now != nil {
-			now = s.Now().UTC()
-		}
-		events, err := Verify(r.Context(), s.Store, scope, ref, now)
-		if err != nil {
-			http.Error(w, "journal verification failed", http.StatusBadRequest)
-			return
-		}
-		if err = s.Index.Put(r.Context(), scope, events, ref); err != nil {
-			if err == ErrConflict {
-				http.Error(w, "event identity conflict", http.StatusConflict)
-			} else {
-				http.Error(w, "index unavailable", http.StatusServiceUnavailable)
-			}
-			return
-		}
-		w.WriteHeader(http.StatusAccepted)
-		_ = json.NewEncoder(w).Encode(map[string]int{"accepted": len(events)})
+		s.ingest(w, r, scope)
 	case r.Method == http.MethodGet && (r.URL.Path == "/v1/events" || r.URL.Path == "/v1/state"):
-		limit := 100
-		if value := r.URL.Query().Get("limit"); value != "" {
-			n, err := strconv.Atoi(value)
-			if err != nil || n < 1 || n > 500 {
-				http.Error(w, "invalid page size", http.StatusBadRequest)
-				return
-			}
-			limit = n
-		}
-		after := r.URL.Query().Get("after")
-		if after != "" && !digestPattern.MatchString(after) {
-			http.Error(w, "invalid cursor", http.StatusBadRequest)
-			return
-		}
-		entries, err := s.Index.List(r.Context(), scope, limit, after, r.URL.Path == "/v1/state")
-		if err != nil {
-			http.Error(w, "index unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		if entries == nil {
-			entries = []Entry{}
-		}
-		_ = json.NewEncoder(w).Encode(entries)
+		s.list(w, r, scope)
 	default:
 		http.NotFound(w, r)
 	}
@@ -123,4 +72,64 @@ func ValidateEnrollments(enrollments map[string]Scope) error {
 		}
 	}
 	return nil
+}
+
+func (s *Server) ingest(w http.ResponseWriter, r *http.Request, scope Scope) {
+	if scope.Role != "collector" || scope.Cluster == "" {
+		http.Error(w, "collector enrollment required", http.StatusForbidden)
+		return
+	}
+	var ref evidence.ObjectRef
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&ref); err != nil {
+		http.Error(w, "invalid journal reference", http.StatusBadRequest)
+		return
+	}
+	now := time.Now().UTC()
+	if s.Now != nil {
+		now = s.Now().UTC()
+	}
+	events, err := Verify(r.Context(), s.Store, scope, ref, now)
+	if err != nil {
+		http.Error(w, "journal verification failed", http.StatusBadRequest)
+		return
+	}
+	if err = s.Index.Put(r.Context(), scope, events, ref); err != nil {
+		if err == ErrConflict {
+			http.Error(w, "event identity conflict", http.StatusConflict)
+		} else {
+			http.Error(w, "index unavailable", http.StatusServiceUnavailable)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+	_ = json.NewEncoder(w).Encode(map[string]int{"accepted": len(events)})
+}
+
+func (s *Server) list(w http.ResponseWriter, r *http.Request, scope Scope) {
+
+	limit := 100
+	if value := r.URL.Query().Get("limit"); value != "" {
+		n, err := strconv.Atoi(value)
+		if err != nil || n < 1 || n > 500 {
+			http.Error(w, "invalid page size", http.StatusBadRequest)
+			return
+		}
+		limit = n
+	}
+	after := r.URL.Query().Get("after")
+	if after != "" && !digestPattern.MatchString(after) {
+		http.Error(w, "invalid cursor", http.StatusBadRequest)
+		return
+	}
+	entries, err := s.Index.List(r.Context(), scope, limit, after, r.URL.Path == "/v1/state")
+	if err != nil {
+		http.Error(w, "index unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if entries == nil {
+		entries = []Entry{}
+	}
+	_ = json.NewEncoder(w).Encode(entries)
 }

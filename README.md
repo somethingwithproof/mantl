@@ -58,6 +58,11 @@ commit hooks. Cloud credentials remain host-mounted; setup does not create a
 cluster. Optional kind setup requires a pinned kind installation through mise
 and an explicit `CREATE_KIND_CLUSTER=true`.
 
+Kubectl invocations use fixed installation directories, without searching `PATH`.
+For a mise-managed binary, set `MANTL_KUBECTL_PATH="$(mise which kubectl)"` before
+using cluster-facing CLI commands. The override must be an absolute path to a
+regular executable without group or world write permission.
+
 The supported entrypoint is the Go CLI. `bin/mantl` and wizard/Make installers are
 legacy paths and do not define the current operator contract.
 

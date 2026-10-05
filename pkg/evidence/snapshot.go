@@ -6,8 +6,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/thomasvincent/mantl/pkg/toolcommand"
 	"log/slog"
-	"os/exec"
 	"regexp"
 	"strings"
 	"time"
@@ -115,7 +115,7 @@ func CaptureResourceWithContext(ctx context.Context, kind, name, namespace strin
 
 	slog.Info("capturing resource evidence", "kind", kind, "name", name, "namespace", namespace)
 
-	cmd := exec.CommandContext(ctx, "kubectl", args...)
+	cmd := toolcommand.Kubectl(ctx, args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	output, err := cmd.Output()

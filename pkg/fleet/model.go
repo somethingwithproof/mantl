@@ -79,24 +79,32 @@ func Verify(ctx context.Context, store evidence.Store, scope Scope, ref evidence
 	}
 	seen := map[string]bool{}
 	for _, e := range journal.Events {
-		if ref.RetainUntil == nil || ref.RetainUntil.Before(e.ObservedAt.AddDate(0, 0, evidence.MinimumRetentionDays)) {
-			return nil, fmt.Errorf("fleet journal retention is shorter than the event minimum")
+		if err := validateEvent(e, seen, ref, now); err != nil {
+			return nil, err
 		}
-		if !digestPattern.MatchString(e.ID) || seen[e.ID] || !scopePattern.MatchString(e.ResourceUID) || len(e.Name) == 0 || len(e.Name) > 253 || !scopePattern.MatchString(e.Namespace) || len(e.Profile) > 253 || len(e.Control) > 253 || len(e.Result) > 32 || len(e.Coverage) > 32 || len(e.Freshness) > 32 || e.ObservedAt.IsZero() || e.ObservedAt.After(now.Add(5*time.Minute)) {
-			return nil, fmt.Errorf("invalid fleet event identity or time")
-		}
-		seen[e.ID] = true
-		switch e.Kind {
-		case "Finding", "ControlEvaluation", "AuditRun":
-		default:
-			return nil, fmt.Errorf("unsupported fleet metadata kind")
-		}
-		if e.EvidenceURI != "" {
-			u, err := url.Parse(e.EvidenceURI)
-			if err != nil || u.Scheme != "s3" || u.User != nil || u.Host == "" || u.Fragment != "" || len(e.EvidenceURI) > 4096 || len(u.Query()) > 1 || u.RawQuery != "" && u.Query().Get("versionId") == "" {
-				return nil, fmt.Errorf("invalid evidence metadata reference")
-			}
-		}
+
 	}
 	return journal.Events, nil
+}
+
+func validateEvent(e Event, seen map[string]bool, ref evidence.ObjectRef, now time.Time) error {
+	if ref.RetainUntil == nil || ref.RetainUntil.Before(e.ObservedAt.AddDate(0, 0, evidence.MinimumRetentionDays)) {
+		return fmt.Errorf("fleet journal retention is shorter than the event minimum")
+	}
+	if !digestPattern.MatchString(e.ID) || seen[e.ID] || !scopePattern.MatchString(e.ResourceUID) || len(e.Name) == 0 || len(e.Name) > 253 || !scopePattern.MatchString(e.Namespace) || len(e.Profile) > 253 || len(e.Control) > 253 || len(e.Result) > 32 || len(e.Coverage) > 32 || len(e.Freshness) > 32 || e.ObservedAt.IsZero() || e.ObservedAt.After(now.Add(5*time.Minute)) {
+		return fmt.Errorf("invalid fleet event identity or time")
+	}
+	seen[e.ID] = true
+	switch e.Kind {
+	case "Finding", "ControlEvaluation", "AuditRun":
+	default:
+		return fmt.Errorf("unsupported fleet metadata kind")
+	}
+	if e.EvidenceURI != "" {
+		u, err := url.Parse(e.EvidenceURI)
+		if err != nil || u.Scheme != "s3" || u.User != nil || u.Host == "" || u.Fragment != "" || len(e.EvidenceURI) > 4096 || len(u.Query()) > 1 || u.RawQuery != "" && u.Query().Get("versionId") == "" {
+			return fmt.Errorf("invalid evidence metadata reference")
+		}
+	}
+	return nil
 }

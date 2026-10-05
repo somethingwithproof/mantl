@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	api "github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
+	"github.com/thomasvincent/mantl/pkg/toolcommand"
+	authenticationv1 "k8s.io/api/authentication/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os/exec"
 	"time"
 )
 
@@ -27,17 +28,11 @@ func init() {
 		if exception.Spec.Owner == "" || exception.Spec.Justification == "" || !exception.Spec.ExpiresAt.After(time.Now().UTC()) {
 			return fmt.Errorf("exception requires owner, justification and future expiry")
 		}
-		identity, err := exec.CommandContext(ctx, "kubectl", kubectlArgs("auth", "whoami", "-o", "json")...).Output()
+		identity, err := toolcommand.Kubectl(ctx, kubectlArgs("auth", "whoami", "-o", "json")...).Output()
 		if err != nil {
 			return fmt.Errorf("resolve authenticated approver: %w", err)
 		}
-		var subject struct {
-			Status struct {
-				UserInfo struct {
-					Username string `json:"username"`
-				} `json:"userInfo"`
-			} `json:"status"`
-		}
+		var subject authenticationv1.SelfSubjectReview
 		if err = json.Unmarshal(identity, &subject); err != nil {
 			return err
 		}
@@ -51,7 +46,7 @@ func init() {
 		if err != nil {
 			return err
 		}
-		output, err := exec.CommandContext(ctx, "kubectl", kubectlArgs("patch", "complianceexception", exception.Name, "-n", complianceNamespace, "--subresource=status", "--type=json", "-p", string(patch), "-o", "json")...).Output()
+		output, err := toolcommand.Kubectl(ctx, kubectlArgs("patch", "complianceexception", exception.Name, "-n", complianceNamespace, "--subresource=status", "--type=json", "-p", string(patch), "-o", "json")...).Output()
 		if err != nil {
 			return fmt.Errorf("approve authorized exception revision: %w", err)
 		}
