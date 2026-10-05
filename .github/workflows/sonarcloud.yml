@@ -53,12 +53,12 @@ jobs:
         run: mise exec -- python scripts/verify_sonar_project.py
       - name: Download Go coverage
         if: inputs.coverage-artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: go-coverage
       - name: Download Python coverage
         if: inputs.coverage-artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: python-coverage
       - name: Generate first-party Go coverage
