@@ -68,3 +68,26 @@ func TestCommandUsesExplicitBinaryAndPreservesArguments(t *testing.T) {
 		t.Fatal("invalid binary configuration started a process")
 	}
 }
+
+func TestResolutionSkipsFilesNotExecutableByOwner(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses owner execute permission")
+	}
+	first, second := t.TempDir(), t.TempDir()
+	for _, dir := range []string{first, second} {
+		if err := os.WriteFile(filepath.Join(dir, "kubectl"), []byte("fixture"), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Chmod(filepath.Join(first, "kubectl"), 0641); err != nil {
+		t.Fatal(err)
+	}
+	path, err := resolveKubectl("", []string{first, second})
+	expected, _ := filepath.EvalSymlinks(filepath.Join(second, "kubectl"))
+	if err != nil || path != expected {
+		t.Fatalf("unexecutable candidate selected: %q %v", path, err)
+	}
+	if _, err := resolveKubectl(filepath.Join(first, "kubectl"), []string{second}); err == nil {
+		t.Fatal("invalid override fell back")
+	}
+}

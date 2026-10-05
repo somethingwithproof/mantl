@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"golang.org/x/sys/unix"
 )
 
 var kubectlDirectories = []string{"/usr/local/bin", "/usr/bin", "/opt/homebrew/bin"}
@@ -49,6 +51,9 @@ func executable(path string) (string, error) {
 	}
 	if !info.Mode().IsRegular() || info.Mode().Perm()&0111 == 0 || info.Mode().Perm()&0022 != 0 {
 		return "", fmt.Errorf("kubectl binary must be a regular executable without group or world write permission")
+	}
+	if err := unix.Faccessat(unix.AT_FDCWD, resolved, unix.X_OK, unix.AT_EACCESS); err != nil {
+		return "", fmt.Errorf("kubectl binary is not executable by the current process: %w", err)
 	}
 	return resolved, nil
 }

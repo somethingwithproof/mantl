@@ -111,7 +111,7 @@ func verifyCheck(ctx context.Context, store evidence.Store, record Record, check
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
 	if err = decoder.Decode(&receipt); err != nil {
-		return false, err
+		return false, fmt.Errorf("decode %s receipt: %w", check, err)
 	}
 	if err = validateReceipt(record, check, receipt); err != nil {
 		return false, err
@@ -144,7 +144,7 @@ func verifyArtifacts(ctx context.Context, store evidence.Store, receipt Receipt)
 		artifact.RetainUntil = &retained
 		data, err := store.Get(ctx, artifact)
 		if err != nil {
-			return err
+			return fmt.Errorf("verify %s artifact %s: %w", receipt.Check, artifact.URI, err)
 		}
 		if evidence.Hash(data) != artifact.Hash {
 			return fmt.Errorf("acceptance artifact hash mismatch")
