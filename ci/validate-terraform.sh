@@ -15,7 +15,7 @@ failed=0
 total=0
 
 for dir in infra/terraform/blueprints/*/ infra/terraform/modules/*/; do
-    if [ ! -f "$dir/main.tf" ]; then
+    if [[ ! -f "$dir/main.tf" ]]; then
         continue
     fi
 
@@ -32,10 +32,10 @@ for dir in infra/terraform/blueprints/*/ infra/terraform/modules/*/; do
 done
 
 echo ""
-if [ "$total" -eq 0 ]; then
+if [[ "$total" -eq 0 ]]; then
     echo "No first-party Terraform modules found" >&2
     exit 1
-elif [ $failed -eq 0 ]; then
+elif [[ $failed -eq 0 ]]; then
     echo -e "${GREEN}All Terraform configurations valid${NC}"
     exit 0
 else

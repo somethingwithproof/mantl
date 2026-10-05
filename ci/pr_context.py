@@ -27,7 +27,7 @@ def main():
     number = os.environ.get("PR_NUMBER", "")
     if not number:
         return 0
-    if not re.fullmatch(r"[1-9][0-9]*", number):
+    if not re.fullmatch(r"[1-9]\d*", number, flags=re.ASCII):
         print("::error::Invalid pull request number", file=sys.stderr)
         return 1
     repository = os.environ["GITHUB_REPOSITORY"]

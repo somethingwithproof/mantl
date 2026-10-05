@@ -58,8 +58,9 @@ def test_non_pr_ci_does_not_contact_github(module, monkeypatch):
     assert module.main() == 0
 
 
-def test_invalid_number_does_not_contact_github(module, monkeypatch):
-    monkeypatch.setenv("PR_NUMBER", "../other")
+@pytest.mark.parametrize("number", ["../other", "4٢", "0", "42\n"])
+def test_invalid_number_does_not_contact_github(module, monkeypatch, number):
+    monkeypatch.setenv("PR_NUMBER", number)
     monkeypatch.setattr(module.subprocess, "run", lambda *_a, **_k: pytest.fail("request"))
     assert module.main() == 1
 

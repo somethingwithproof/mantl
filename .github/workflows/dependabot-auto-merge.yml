@@ -12,15 +12,17 @@ name: Dependabot Auto-Merge
     - cron: 17 * * * *
   workflow_dispatch: null
 permissions:
-  contents: write
-  pull-requests: write
-  checks: read
+  contents: read
 concurrency:
   group: dependabot-auto-merge
   cancel-in-progress: false
 jobs:
   merge:
-    if: github.event_name != 'pull_request_target' || github.actor == 'dependabot[bot]'
+    # Dependabot's immutable GitHub account ID.
+    if: github.event_name != 'pull_request_target' || github.actor_id == '49699333'
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - name: Enable protected Dependabot auto-merge
