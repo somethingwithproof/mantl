@@ -1,5 +1,5 @@
 # Multi-stage build for static website
-FROM nginx:1.25-alpine
+FROM nginx:1.31-alpine
 
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf && \
