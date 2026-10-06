@@ -4,6 +4,32 @@ The runtime is beta. Terraform validation is static evidence; deployment,
 identity federation, restore, and cloud audit delivery require environment-specific
 acceptance. SOC2 policy coverage is not SOC2 certification.
 
+## Reading compliance results
+
+A **control** is a catalog requirement. A **profile** selects controls and namespace
+scope; reviewed mappings bind those controls to policies/rules and collectors.
+The operator evaluates that configured scope, not every requirement of an external
+framework or every workload in your organization.
+
+- **Coverage** records available mappings, policy/rule observations, and collector
+  support. Missing mappings/reports, denied reads, unsupported collectors, and
+  upload failures are gaps. Configured coverage is not proof of complete inventory coverage.
+- **Findings** record observed violations and their lifecycle. Losing a source
+  report makes its prior finding unknown; it does not resolve the violation.
+- **Freshness** records whether observations/evidence meet their age requirements.
+  Missing timestamps and stale evidence cannot establish a current passing result.
+- **Exceptions** need owner, justification, scope, expiry, and separate approval
+  of the current spec generation. They annotate a failure without converting it
+  to pass; whole-control exceptions currently drive evaluation annotation.
+- **Evidence** is a retained point-in-time snapshot with exact version/hash
+  references. It supports review of what was captured, not certification or proof
+  that unobserved controls are satisfied.
+
+`ControlEvaluation` keeps result, coverage, freshness, evidence, and exceptions
+separate. Inspect all dimensions rather than treating a single score as compliance.
+`mantl status` observes Application health and report counts; its health gate is
+not a compliance gate. See [the lifecycle diagram](architecture-diagram.md#evidence-lifecycle).
+
 ## Install
 
 Install a verified CLI release archive or Linux deb/rpm package; see
@@ -12,12 +38,17 @@ then `mise exec -- go install ./cmd/mantl`. The shell
 `bin/mantl` is a legacy installer; the supported Go entrypoint provides `plan`,
 `apply`, `status`, `validate-clouds`, and `compliance` commands.
 
-Build `Dockerfile.compliance-operator` and push the image to your registry. Record
-its digest. Create an operator overlay that includes `deploy/operator/base`, sets
-that digest, and generates the `evidence-storage` ConfigMap with `bucket` and
-`kms-key` literals. Neither value is an API credential. Configure workload identity
+For v0.4.0, use the verified `operator-install.yaml` and image digest recorded in
+`release-identity.json`, together with your environment configuration. For source
+customization, build `Dockerfile.compliance-operator` and record your own image digest.
+Create a reviewed overlay including `deploy/operator/base`, setting that digest,
+and generating the `evidence-storage` ConfigMap with `bucket` and `kms-key` literals.
+Neither value is an API credential. Configure workload identity
 for the operator ServiceAccount; do not put access keys in manifests.
 
+The implemented backend uses the AWS S3 SDK and S3 Object Lock for **all cluster
+providers**. No native GCS or Azure immutable-storage adapter is implemented.
+You provision the bucket and runtime identity; bootstrap does not create them.
 The bucket must have versioning and Object Lock enabled. Uploads explicitly use
 COMPLIANCE retention for at least 2557 days and encryption. Optional KMS requires
 scoped GenerateDataKey/Decrypt permissions. The operator requires bucket
@@ -73,6 +104,21 @@ Configure its ServiceMonitor selector in your Prometheus deployment. Alerts cove
 missing/stale evidence, coverage gaps, failed audits, and metadata inspection errors.
 The evidence-age threshold is a default to tune for your collector schedules.
 
+## Evidence retention and recovery
+
+Retention is write-once, read-many (WORM): every uploaded version receives
+COMPLIANCE retention for at least 2557 days, independently of Kubernetes object
+lifetime. The current operator does not expose a MantlCluster retention setting.
+Account for storage costs and legal requirements before enabling collection;
+deleting a schedule or uninstalling Mantl does not remove retained objects.
+There is no automatic evidence-retirement workflow. Back up version/reference
+inventories and metadata so exports/history remain discoverable after recovery.
+
+Hashes detect changed bytes, not whether a control assessment was complete or
+correct. Export validates the stored manifest and referenced versions; preserve
+source image/content identities and the approved scope alongside the archive.
+Keep archives access-controlled because resource/RBAC snapshots can be sensitive.
+
 ## Recovery checks
 
 - An unavailable object store leaves the audit Running and retryable, with no new
@@ -120,8 +166,8 @@ The local implementation review checked that GitOps remains the policy owner,
 Secret/ConfigMap collection is denied, workload payloads omit credential-bearing
 pod templates and annotations, cluster evidence requires an opt-in, retention is
 verified after upload, exports verify hashes, and report loss is unknown rather
-than passing. The new release path is documented in releases.md; local validation does not
-claim that hosted signing or publication has completed.
+than passing. The published release path and verification requirements are documented in
+[releases.md](releases.md); a snapshot build does not establish hosted signing or publication.
 
 Cloud identity and encryption edits still require the repository's pre-merge
 security review. Static validation cannot establish actual role propagation,

@@ -1,20 +1,22 @@
-# Required checks (GitHub)
+# Required GitHub checks
 
-We recommend marking the following workflows as required in your branch protection rules (contexts include the workflow name "CI"):
-- CI / policy-tests (strict on main/tags)
-- CI / platform-health
-- CI / kyverno-validate
-- CI / kind-smoke
-- CI / e2e-hello
-- CI / gateway-smoke
-- CI / external-dns-rfc2136-e2e
+Main currently requires these exact check contexts:
 
-Using GitHub UI:
-1. Settings -> Branches -> Branch protection rules -> Edit main
-2. Enable "Require status checks to pass before merging" and select the workflows above.
+- `DCO`: contributor sign-off.
+- `CI`: the final result of the Mantl CI workflow.
+- `SonarCloud / SonarCloud quality gate`: the reusable SonarCloud server gate.
 
-Using GitHub CLI (script):
-```
-# Requires gh auth and admin rights
-scripts/set-required-checks.sh main
-```
+Branch protection requires an up-to-date branch and applies to administrators.
+These contexts were verified against repository settings on 2026-10-06. Settings
+can change; compare actual PR checks and branch protection before changing them.
+
+[Core CI](../.github/workflows/ci.yml) requires Go, Python, repository checks, and
+Sonar success, plus selected component checks. Component selection keeps optional
+jobs from becoming required contexts that are absent on documentation-only PRs.
+[The workflow inventory](../.github/workflows/README.md) describes selection and
+permissions; [SonarCloud setup](sonarcloud.md) explains project and token scope.
+
+Do not bypass required checks to merge. Release Please PRs created/updated by
+GITHUB_TOKEN can require approval of their PR workflows; dispatched preflight
+checks alone do not replace required pull-request checks. Follow the existing
+workflow guidance rather than the historical list of removed kind/E2E job names.
