@@ -68,6 +68,39 @@ Hosted signature/provenance publication is exercised only by an actual release;
 local tests intentionally use snapshot packages. The optional fleet manifest fails
 closed until TLS, database, enrollment, identity and network overlays are supplied.
 
+## Prepare an unsigned release candidate locally
+
+Current source includes `ci.verify_release_candidate`; v0.4.0 does not. Install the
+contributor Python dependencies (including PyYAML) and the mise-pinned toolchain.
+Use a dedicated output directory and explicit prerelease version:
+
+```sh
+mkdir -p dist
+mise exec -- .venv/bin/python - <<'PY'
+from pathlib import Path
+import yaml
+config = yaml.safe_load(Path('.goreleaser.yaml').read_text())
+config['snapshot'] = {'version_template': '0.5.0-rc.1'}
+config['dist'] = 'dist/candidate-0.5.0-rc.1'
+Path('dist/candidate-config.yaml').write_text(yaml.safe_dump(config, sort_keys=False))
+PY
+mise exec -- goreleaser release --snapshot --config dist/candidate-config.yaml --clean
+mise exec -- .venv/bin/python -m ci.verify_release_candidate 0.5.0-rc.1 \
+  --directory dist/candidate-0.5.0-rc.1 --native-packages
+```
+
+Docker is required for `--native-packages`; omit that flag for archive/CLI checks
+only. The verifier requires all eight CLI archives/packages and their matching
+checksums, checks archive documentation assets, runs the native CLI, and exercises
+saved-plan generation, unchanged comparison and rejection of changed input. Native
+DEB/RPM checks cover installation, reinstallation and removal in isolated containers.
+
+`candidate-verification.json` records the checked version, CLI schema, local source
+diff hash, dirty-worktree status and which checks ran. It is an unsigned local test
+report, not provenance. This command neither creates a Git tag nor publishes a
+release. Hosted signing, provenance, operator/content assets and cloud acceptance
+remain separate checks; a successful local CLI report does not establish them.
+
 ## Local package lifecycle checks
 
 After building a snapshot, run `ci/verify-cli-packages.sh dist`. The check uses
