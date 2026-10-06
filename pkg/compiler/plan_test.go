@@ -41,19 +41,7 @@ func TestCompileMatchesWrittenArtifacts(t *testing.T) {
 	if err := RenderGitOps(cluster, dir); err != nil {
 		t.Fatal(err)
 	}
-	for i, artifact := range plan.Artifacts {
-		data, err := os.ReadFile(filepath.Join(dir, artifact.Path))
-		if err != nil || !bytes.Equal(data, artifact.Content) {
-			t.Fatalf("preview differs from written %s: %v", artifact.Path, err)
-		}
-		hash := sha256.Sum256(data)
-		if artifact.SHA256 != hex.EncodeToString(hash[:]) || artifact.Size != len(data) {
-			t.Fatalf("incorrect identity for %s", artifact.Path)
-		}
-		if i > 0 && plan.Artifacts[i-1].Path >= artifact.Path {
-			t.Fatal("artifact paths are not unique and sorted")
-		}
-	}
+	verifyPlanArtifacts(t, plan, dir)
 	raw, err := json.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)
@@ -92,6 +80,23 @@ func TestCompileEmptyTenantIndexAndDefaults(t *testing.T) {
 	for _, artifact := range plan.Artifacts {
 		if artifact.Path == "tenants/kustomization.yaml" && !bytes.Contains(artifact.Content, []byte("resources: []")) {
 			t.Fatal("empty tenant index is not explicit")
+		}
+	}
+}
+
+func verifyPlanArtifacts(t *testing.T, plan Plan, dir string) {
+	t.Helper()
+	for i, artifact := range plan.Artifacts {
+		data, err := os.ReadFile(filepath.Join(dir, artifact.Path))
+		if err != nil || !bytes.Equal(data, artifact.Content) {
+			t.Fatalf("preview differs from written %s: %v", artifact.Path, err)
+		}
+		hash := sha256.Sum256(data)
+		if artifact.SHA256 != hex.EncodeToString(hash[:]) || artifact.Size != len(data) {
+			t.Fatalf("incorrect identity for %s", artifact.Path)
+		}
+		if i > 0 && plan.Artifacts[i-1].Path >= artifact.Path {
+			t.Fatal("artifact paths are not unique and sorted")
 		}
 	}
 }
