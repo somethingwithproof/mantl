@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: stig-restrict-privileged-host-ports
+  annotations:
+    pod-policies.kyverno.io/autogen-controllers: none
+    policies.kyverno.io/category: DISA Kubernetes STIG
+    policies.kyverno.io/severity: medium
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+    - name: stig-restrict-privileged-host-ports
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      validate:
+        message: Use non-privileged host ports (1024 or greater), or omit hostPort.
+        foreach:
+          - list: request.object.spec.[containers, initContainers, ephemeralContainers][]
+            deny:
+              conditions:
+                any:
+                  - key: '{{ length(element.ports[?hostPort > `0` && hostPort < `1024`] || `[]`)
+                      }}'
+                    operator: GreaterThan
+                    value: 0

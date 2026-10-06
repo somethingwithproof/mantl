@@ -120,7 +120,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup
         with:
-          tools: python terraform kubectl kustomize uv
+          tools: python terraform kubectl kustomize uv aqua:kyverno/kyverno
       - name: Verify Python dependency locks
         run: mise exec -- python -m ci.lock_python_dependencies --check
       - name: Test infrastructure contracts and release tools
