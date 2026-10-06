@@ -45,8 +45,6 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_external_network_name"></a> [external\_network\_name](#input\_external\_network\_name) | Name of the external network for floating IPs | `string` | n/a | yes |
-| <a name="input_ssh_keypair_name"></a> [ssh\_keypair\_name](#input\_ssh\_keypair\_name) | Name of OpenStack SSH keypair for node access | `string` | n/a | yes |
 | <a name="input_allowed_ssh_cidrs"></a> [allowed\_ssh\_cidrs](#input\_allowed\_ssh\_cidrs) | CIDR blocks allowed to SSH to nodes | `list(string)` | `[]` | no |
 | <a name="input_api_server_access_cidr"></a> [api\_server\_access\_cidr](#input\_api\_server\_access\_cidr) | CIDR block allowed to access Kubernetes API server | `string` | `"0.0.0.0/0"` | no |
 | <a name="input_cluster_cidr"></a> [cluster\_cidr](#input\_cluster\_cidr) | CIDR block for cluster network | `string` | `"10.0.0.0/24"` | no |
@@ -62,6 +60,7 @@ No modules.
 | <a name="input_enable_registry"></a> [enable\_registry](#input\_enable\_registry) | Enable integrated Docker registry | `bool` | `false` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name (e.g., production, staging, development) | `string` | `"production"` | no |
 | <a name="input_existing_template_name"></a> [existing\_template\_name](#input\_existing\_template\_name) | Name of existing cluster template (if use\_existing\_template is true) | `string` | `""` | no |
+| <a name="input_external_network_name"></a> [external\_network\_name](#input\_external\_network\_name) | Name of the external network for floating IPs | `string` | n/a | yes |
 | <a name="input_http_proxy"></a> [http\_proxy](#input\_http\_proxy) | HTTP proxy URL (optional) | `string` | `""` | no |
 | <a name="input_https_proxy"></a> [https\_proxy](#input\_https\_proxy) | HTTPS proxy URL (optional) | `string` | `""` | no |
 | <a name="input_initial_node_count"></a> [initial\_node\_count](#input\_initial\_node\_count) | Initial number of worker nodes | `number` | `3` | no |
@@ -73,6 +72,7 @@ No modules.
 | <a name="input_network_driver"></a> [network\_driver](#input\_network\_driver) | Network driver for Kubernetes (flannel or calico) | `string` | `"flannel"` | no |
 | <a name="input_no_proxy"></a> [no\_proxy](#input\_no\_proxy) | No proxy list (comma-separated, optional) | `string` | `""` | no |
 | <a name="input_node_image_name"></a> [node\_image\_name](#input\_node\_image\_name) | Name of the Glance image for Kubernetes nodes (Fedora CoreOS recommended) | `string` | `"fedora-coreos-latest"` | no |
+| <a name="input_ssh_keypair_name"></a> [ssh\_keypair\_name](#input\_ssh\_keypair\_name) | Name of OpenStack SSH keypair for node access | `string` | n/a | yes |
 | <a name="input_template_labels"></a> [template\_labels](#input\_template\_labels) | Additional labels for cluster template | `map(string)` | `{}` | no |
 | <a name="input_use_existing_template"></a> [use\_existing\_template](#input\_use\_existing\_template) | Use an existing cluster template instead of creating new one | `bool` | `false` | no |
 | <a name="input_worker_flavor"></a> [worker\_flavor](#input\_worker\_flavor) | OpenStack flavor for worker nodes | `string` | `"m1.large"` | no |
