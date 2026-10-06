@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 
 	"github.com/thomasvincent/mantl/apis/platform/v1alpha1"
@@ -30,15 +29,6 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 	if cluster == nil {
 		return fmt.Errorf("cluster must not be nil")
 	}
-	repository := cluster.Spec.GitOps.Repository
-	if repository == "" {
-		repository = "https://github.com/somethingwithproof/mantl.git"
-	}
-	revision := cluster.Spec.GitOps.Revision
-	if revision == "" {
-		revision = "main"
-	}
-	render := func(dir, name, path string) error { return renderAppSource(dir, name, path, repository, revision) }
 	gitopsDir := filepath.Join(outputDir, "gitops")
 	if err := os.MkdirAll(gitopsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create gitops directory: %w", err)
@@ -51,75 +41,78 @@ func RenderGitOps(cluster *v1alpha1.MantlCluster, outputDir string) error {
 		}
 	}
 
-	// 1. Generate the Root Application (App-of-Apps)
-	if err := render(gitopsDir, rootPlatformApp, "deploy/gitops/core"); err != nil {
-		return err
-	}
-
-	if err := renderSelectedAddons(cluster, gitopsDir, render); err != nil {
-		return err
-	}
-	return renderTenantTopology(cluster, outputDir, gitopsDir, render)
-}
-
-func renderSelectedAddons(cluster *v1alpha1.MantlCluster, gitopsDir string, render func(string, string, string) error) error {
-	// 2. Dynamically generate Addon Applications based on features using reflection
-	features := cluster.Spec.Features
-	featuresValue := reflect.ValueOf(features)
-	featuresType := featuresValue.Type()
-
-	for i := 0; i < featuresValue.NumField(); i++ {
-		fieldName := featuresType.Field(i).Name
-		isEnabled := featuresValue.Field(i).Bool()
-
-		if isEnabled {
-			if path, exists := featureAppMap[fieldName]; exists {
-				if fieldName == "Compliance" && cluster.Spec.GitOps.OperatorPath != "" {
-					path = cluster.Spec.GitOps.OperatorPath
-				}
-				appName := fmt.Sprintf("addon-%s", strings.ToLower(fieldName))
-				if err := render(gitopsDir, appName, path); err != nil {
-					return err
-				}
-			}
+	for _, app := range GitOpsApplications(cluster) {
+		if err := renderAppSource(gitopsDir, app.Name, app.Path, app.Repository, app.Revision); err != nil {
+			return err
 		}
 	}
-
-	return nil
+	return renderTenantTopology(cluster, outputDir)
 }
 
-func renderTenantTopology(cluster *v1alpha1.MantlCluster, outputDir, gitopsDir string, render func(string, string, string) error) error {
+// GitOpsApplication describes one application generated directly from a Mantl spec.
+// Nested applications and tenant workloads have their own lifecycle and are not
+// included in this top-level topology.
+type GitOpsApplication struct {
+	Name       string
+	Path       string
+	Repository string
+	Revision   string
+}
+
+// GitOpsApplications is the shared desired topology for rendering and observation.
+func GitOpsApplications(cluster *v1alpha1.MantlCluster) []GitOpsApplication {
+	if cluster == nil {
+		return nil
+	}
+	repository, revision := cluster.Spec.GitOps.Repository, cluster.Spec.GitOps.Revision
+	if repository == "" {
+		repository = "https://github.com/somethingwithproof/mantl.git"
+	}
+	if revision == "" {
+		revision = "main"
+	}
+	apps := []GitOpsApplication{{Name: rootPlatformApp, Path: "deploy/gitops/core", Repository: repository, Revision: revision}}
+	add := func(name, path string, enabled bool) {
+		if enabled {
+			apps = append(apps, GitOpsApplication{Name: name, Path: path, Repository: repository, Revision: revision})
+		}
+	}
+	features := cluster.Spec.Features
+	add("addon-observability", featureAppMap["Observability"], features.Observability)
+	add("addon-security", featureAppMap["Security"], features.Security)
+	add("addon-secrets", featureAppMap["Secrets"], features.Secrets)
+	operatorPath := cluster.Spec.GitOps.OperatorPath
+	if operatorPath == "" {
+		operatorPath = featureAppMap["Compliance"]
+	}
+	add("addon-compliance", operatorPath, features.Compliance)
+	add("addon-progressivedelivery", featureAppMap["ProgressiveDelivery"], features.ProgressiveDelivery)
+	add("platform-tenants", cluster.Spec.GitOps.TenantPath, len(cluster.Spec.Tenants) > 0 || cluster.Spec.GitOps.TenantPath != "")
+	return apps
+}
+
+func renderTenantTopology(cluster *v1alpha1.MantlCluster, outputDir string) error {
 	// Keep an empty tenant application when its source is configured so ArgoCD can
 	// reconcile removals. Never discover desired tenants from stale output files.
-	if len(cluster.Spec.Tenants) > 0 || cluster.Spec.GitOps.TenantPath != "" {
-		tenantsDir := filepath.Join(outputDir, "tenants")
-		if err := os.MkdirAll(tenantsDir, 0755); err != nil {
-			return err
-		}
-
-		names := []string{}
-		for _, tenant := range cluster.Spec.Tenants {
-			environment := tenantEnvironment(cluster)
-			if err := renderTenant(tenantsDir, tenant, environment); err != nil {
-				return err
-			}
-			names = append(names, tenant.Name+".yaml")
-		}
-		kustomization, err := yaml.Marshal(map[string]interface{}{"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": names})
-		if err != nil {
-			return err
-		}
-		if err := os.WriteFile(filepath.Join(tenantsDir, "kustomization.yaml"), kustomization, 0600); err != nil {
-			return err
-		}
-
-		// Create an ArgoCD application to manage all tenants
-		if err := render(gitopsDir, "platform-tenants", cluster.Spec.GitOps.TenantPath); err != nil {
-			return err
-		}
+	if len(cluster.Spec.Tenants) == 0 && cluster.Spec.GitOps.TenantPath == "" {
+		return nil
 	}
-
-	return nil
+	tenantsDir := filepath.Join(outputDir, "tenants")
+	if err := os.MkdirAll(tenantsDir, 0755); err != nil {
+		return err
+	}
+	names := []string{}
+	for _, tenant := range cluster.Spec.Tenants {
+		if err := renderTenant(tenantsDir, tenant, tenantEnvironment(cluster)); err != nil {
+			return err
+		}
+		names = append(names, tenant.Name+".yaml")
+	}
+	kustomization, err := yaml.Marshal(map[string]interface{}{"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": names})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(tenantsDir, "kustomization.yaml"), kustomization, 0600)
 }
 
 // renderTenant generates Namespace and RBAC RoleBindings for a tenant.

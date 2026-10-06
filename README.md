@@ -76,3 +76,6 @@ legacy paths and do not define the current operator contract.
 [Runtime architecture and migration](docs/architecture-runtime.md) describes the
 new beta adapters and their operational prerequisites. Do not infer production readiness from
 a chart being present or a Terraform configuration passing static validation.
+
+The beta CLI also provides [scoped platform status](docs/platform-status.md) with
+JSON output and an explicit application health gate for CI.

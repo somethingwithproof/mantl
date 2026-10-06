@@ -1,117 +1,122 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/thomasvincent/mantl/pkg/toolcommand"
-	"os"
-	"os/exec"
-	"strings"
+	"io"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/thomasvincent/mantl/pkg/compiler"
+	"github.com/thomasvincent/mantl/pkg/platformstatus"
+	"github.com/thomasvincent/mantl/pkg/toolcommand"
 )
 
-// statusCheckTimeout bounds the cluster query so status stays fast and never
-// blocks on the bootstrap-oriented convergence wait.
 const statusCheckTimeout = 5 * time.Second
+const maxStatusOutput = 8 << 20
 
-// healthJSONPath emits one "sync,health" line per ArgoCD application. Pairing the
-// two fields per item (rather than two independent ranges) keeps sync and health
-// correlated, so a missing health field cannot be silently dropped.
-const healthJSONPath = `jsonpath={range .items[*]}{.status.sync.status},{.status.health.status}{"\n"}{end}`
+// statusQuery is injected for command tests; production uses read-only kubectl.
+type statusQuery func(context.Context, ...string) ([]byte, error)
 
-// kubectlHealthQuery returns the raw ArgoCD application status (stdout only). It
-// is a package var so tests can exercise platformHealth without a live cluster.
-var kubectlHealthQuery = func(ctx context.Context) ([]byte, error) {
+var statusCmd = newStatusCommand(queryStatus, time.Now)
 
-	// Output (not CombinedOutput) so kubectl warnings on stderr never reach the
-	// parser; stderr is surfaced via ExitError on failure instead.
-	out, err := toolcommand.Kubectl(ctx, kubectlArgs("get", "applications", "-n", "argocd", "-o", healthJSONPath)...).Output()
-	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) && len(ee.Stderr) > 0 {
-			return nil, fmt.Errorf("%w: %s", err, strings.TrimSpace(string(ee.Stderr)))
-		}
+func newStatusCommand(query statusQuery, now func() time.Time) *cobra.Command {
+	var format string
+	var requireHealthy bool
+	var timeout time.Duration
+	command := &cobra.Command{
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Use:           "status [spec-file]",
+		Short:         "Observe generated applications and policy report counts",
+		Args:          cobra.ExactArgs(1),
+		RunE: func(command *cobra.Command, args []string) error {
+			if format != "text" && format != "json" {
+				return fmt.Errorf("status format must be text or json")
+			}
+			if timeout <= 0 || timeout > time.Minute {
+				return fmt.Errorf("status timeout must be positive and at most 1m")
+			}
+			cluster, err := compiler.ParseSpec(args[0])
+			if err != nil {
+				return fmt.Errorf("read status spec: %w", err)
+			}
+			if err := command.Context().Err(); err != nil {
+				return err
+			}
+			ctx, cancel := context.WithTimeout(command.Context(), timeout)
+			defer cancel()
+			apps, appErr := query(ctx, kubectlArgs("get", "applications.argoproj.io", "-n", "argocd", "-o", "json")...)
+			policies, policyErr := query(ctx, kubectlArgs("get", "policyreports,clusterpolicyreports", "-A", "-o", "json")...)
+			report := platformstatus.Report{
+				SchemaVersion: "mantl.io/status/v1alpha1", ObservedAt: now().UTC(), Platform: cluster.Name, Context: kubeContext,
+				Applications: platformstatus.InterpretApplications(compiler.GitOpsApplications(cluster), apps),
+				Policies:     platformstatus.InterpretPolicies(policies),
+			}
+			// External stderr may contain credential-plugin output. Publish only a stable
+			// query failure reason, never raw command errors or application source specs.
+			if appErr != nil {
+				report.Applications.State = platformstatus.Unknown
+				report.Applications.Reason = "application query failed"
+			}
+			if policyErr != nil {
+				report.Policies = platformstatus.Policies{Scope: "all-readable-policy-reports", State: platformstatus.Unknown, Reason: "policy query failed"}
+			}
+			if err := writeStatus(command.OutOrStdout(), format, report); err != nil {
+				return fmt.Errorf("write status: %w", err)
+			}
+			if err := command.Context().Err(); err != nil {
+				return err
+			}
+			if requireHealthy && report.Applications.State != platformstatus.Healthy {
+				return errors.New("generated applications are not healthy")
+			}
+			return nil
+		},
+	}
+	command.Flags().StringVar(&format, "format", "text", "Output format: text or json")
+	command.Flags().BoolVar(&requireHealthy, "require-healthy", false, "Exit unsuccessfully unless all generated applications are synced and healthy")
+	command.Flags().DurationVar(&timeout, "timeout", statusCheckTimeout, "Total cluster query deadline (maximum 1m)")
+	return command
+}
+
+func writeStatus(writer io.Writer, format string, report platformstatus.Report) error {
+	if format == "json" {
+		encoder := json.NewEncoder(writer)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(report)
+	}
+	_, err := io.WriteString(writer, report.Text())
+	return err
+}
+
+type boundedStatusOutput struct{ buffer bytes.Buffer }
+
+func (output *boundedStatusOutput) Write(data []byte) (int, error) {
+	if len(data) > maxStatusOutput-output.buffer.Len() {
+		return 0, errors.New("status response exceeds size limit")
+	}
+	return output.buffer.Write(data)
+}
+
+func queryStatus(ctx context.Context, args ...string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return out, nil
+	command := toolcommand.Kubectl(ctx, args...)
+	// Bound inherited pipes from authentication plugins as well as the direct
+	// process. Stderr is discarded so plugin credentials cannot enter reports.
+	command.WaitDelay = time.Second
+	var output boundedStatusOutput
+	command.Stdout = &output
+	command.Stderr = io.Discard
+	if err := command.Run(); err != nil {
+		return nil, fmt.Errorf("query platform status: %w", err)
+	}
+	return output.buffer.Bytes(), nil
 }
 
-var statusCmd = &cobra.Command{
-	Use:   "status [spec-file]",
-	Short: "Show the live status of the Mantl platform",
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		cluster, err := compiler.ParseSpec(args[0])
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Printf("Fetching status for Mantl platform: %s\n", cluster.Name)
-		fmt.Println("-------------------------------------------")
-		fmt.Printf("Platform Status: %s\n", platformHealth())
-
-		fmt.Println("\nEnabled Features:")
-		fmt.Printf("  Observability: %v\n", cluster.Spec.Features.Observability)
-		fmt.Printf("  Security:      %v\n", cluster.Spec.Features.Security)
-		fmt.Printf("  Compliance:    %v\n", cluster.Spec.Features.Compliance)
-
-		fmt.Printf("\nCompliance Score: %s\n", complianceScore())
-	},
-}
-
-// platformHealth returns a one-shot view of ArgoCD application convergence.
-// Unlike bootstrap's VerifyConvergence, it does not wait: a status command must
-// return promptly whether or not the platform has converged.
-func platformHealth() string {
-	ctx, cancel := context.WithTimeout(context.Background(), statusCheckTimeout)
-	defer cancel()
-
-	out, err := kubectlHealthQuery(ctx)
-	if err != nil {
-		return fmt.Sprintf("UNKNOWN (cluster unreachable: %v)", err)
-	}
-	return evaluateHealth(string(out))
-}
-
-// evaluateHealth maps the per-application "sync,health" lines to a status string.
-// It fails closed: any application whose sync or health is missing or not in the
-// expected state yields UNKNOWN or DEGRADED, never HEALTHY. HEALTHY requires every
-// application to report both Synced and Healthy.
-func evaluateHealth(raw string) string {
-	var apps [][2]string
-	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		sync, health, ok := strings.Cut(line, ",")
-		if !ok || strings.TrimSpace(sync) == "" || strings.TrimSpace(health) == "" {
-			return "UNKNOWN (incomplete application status)"
-		}
-		apps = append(apps, [2]string{strings.TrimSpace(sync), strings.TrimSpace(health)})
-	}
-
-	if len(apps) == 0 {
-		return "UNKNOWN (no ArgoCD applications found)"
-	}
-	for _, app := range apps {
-		if app[0] != "Synced" {
-			return "DEGRADED (applications not synced)"
-		}
-	}
-	for _, app := range apps {
-		if app[1] != "Healthy" {
-			return "DEGRADED (applications not healthy)"
-		}
-	}
-	return "HEALTHY"
-}
-
-func init() {
-	rootCmd.AddCommand(statusCmd)
-}
+func init() { rootCmd.AddCommand(statusCmd) }
