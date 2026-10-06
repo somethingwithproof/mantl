@@ -137,13 +137,13 @@ kubectl apply -f clusters/production/platform-apps.yaml
 | Name | Version |
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
-| <a name="requirement_oci"></a> [oci](#requirement\_oci) | 5.0.0 |
+| <a name="requirement_oci"></a> [oci](#requirement\_oci) | 9.8.0 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_oci"></a> [oci](#provider\_oci) | 5.0.0 |
+| <a name="provider_oci"></a> [oci](#provider\_oci) | 9.8.0 |
 
 ## Modules
 
@@ -153,42 +153,45 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
-| [oci_containerengine_cluster.oke_cluster](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/containerengine_cluster) | resource |
-| [oci_containerengine_node_pool.system_pool](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/containerengine_node_pool) | resource |
-| [oci_containerengine_node_pool.workload_pool](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/containerengine_node_pool) | resource |
-| [oci_core_internet_gateway.oke_igw](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_internet_gateway) | resource |
-| [oci_core_nat_gateway.oke_nat](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_nat_gateway) | resource |
-| [oci_core_route_table.private_route_table](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_route_table) | resource |
-| [oci_core_route_table.public_route_table](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_route_table) | resource |
-| [oci_core_security_list.api_endpoint_seclist](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_security_list) | resource |
-| [oci_core_security_list.lb_seclist](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_security_list) | resource |
-| [oci_core_security_list.node_seclist](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_security_list) | resource |
-| [oci_core_service_gateway.oke_sg](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_service_gateway) | resource |
-| [oci_core_subnet.api_endpoint_subnet](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_subnet) | resource |
-| [oci_core_subnet.lb_subnet](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_subnet) | resource |
-| [oci_core_subnet.node_subnet](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_subnet) | resource |
-| [oci_core_vcn.oke_vcn](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_vcn) | resource |
-| [oci_kms_key.oke_encryption_key](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/kms_key) | resource |
-| [oci_kms_vault.oke_vault](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/kms_vault) | resource |
-| [oci_logging_log.cluster_audit_log](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/logging_log) | resource |
-| [oci_logging_log.vcn_flow_log](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/logging_log) | resource |
-| [oci_logging_log_group.vcn_flow_logs](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/logging_log_group) | resource |
-| [oci_objectstorage_bucket.backups](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/objectstorage_bucket) | resource |
-| [oci_core_images.node_image](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/data-sources/core_images) | data source |
-| [oci_core_services.all_services](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/data-sources/core_services) | data source |
-| [oci_identity_availability_domains.ads](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/data-sources/identity_availability_domains) | data source |
-| [oci_objectstorage_namespace.ns](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/data-sources/objectstorage_namespace) | data source |
+| [oci_containerengine_cluster.oke_cluster](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/containerengine_cluster) | resource |
+| [oci_containerengine_node_pool.system_pool](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/containerengine_node_pool) | resource |
+| [oci_containerengine_node_pool.workload_pool](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/containerengine_node_pool) | resource |
+| [oci_core_internet_gateway.oke_igw](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_internet_gateway) | resource |
+| [oci_core_nat_gateway.oke_nat](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_nat_gateway) | resource |
+| [oci_core_route_table.private_route_table](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_route_table) | resource |
+| [oci_core_route_table.public_route_table](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_route_table) | resource |
+| [oci_core_security_list.api_endpoint_seclist](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_security_list) | resource |
+| [oci_core_security_list.lb_seclist](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_security_list) | resource |
+| [oci_core_security_list.node_seclist](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_security_list) | resource |
+| [oci_core_service_gateway.oke_sg](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_service_gateway) | resource |
+| [oci_core_subnet.api_endpoint_subnet](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_subnet) | resource |
+| [oci_core_subnet.lb_subnet](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_subnet) | resource |
+| [oci_core_subnet.node_subnet](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_subnet) | resource |
+| [oci_core_vcn.oke_vcn](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_vcn) | resource |
+| [oci_kms_key.oke_encryption_key](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/kms_key) | resource |
+| [oci_kms_vault.oke_vault](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/kms_vault) | resource |
+| [oci_logging_log.cluster_audit_log](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/logging_log) | resource |
+| [oci_logging_log.vcn_flow_log](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/logging_log) | resource |
+| [oci_logging_log_group.vcn_flow_logs](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/logging_log_group) | resource |
+| [oci_objectstorage_bucket.backups](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/objectstorage_bucket) | resource |
+| [oci_core_images.node_image](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/data-sources/core_images) | data source |
+| [oci_core_services.all_services](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/data-sources/core_services) | data source |
+| [oci_identity_availability_domains.ads](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/data-sources/identity_availability_domains) | data source |
+| [oci_objectstorage_namespace.ns](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/data-sources/objectstorage_namespace) | data source |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
+| <a name="input_compartment_id"></a> [compartment\_id](#input\_compartment\_id) | OCI compartment OCID for resources | `string` | n/a | yes |
+| <a name="input_fingerprint"></a> [fingerprint](#input\_fingerprint) | OCI API key fingerprint | `string` | n/a | yes |
+| <a name="input_tenancy_ocid"></a> [tenancy\_ocid](#input\_tenancy\_ocid) | OCI tenancy OCID | `string` | n/a | yes |
+| <a name="input_user_ocid"></a> [user\_ocid](#input\_user\_ocid) | OCI user OCID | `string` | n/a | yes |
 | <a name="input_allowed_ssh_cidrs"></a> [allowed\_ssh\_cidrs](#input\_allowed\_ssh\_cidrs) | CIDR blocks allowed to SSH to nodes (empty list = no SSH access) | `list(string)` | `[]` | no |
 | <a name="input_audit_log_retention_days"></a> [audit\_log\_retention\_days](#input\_audit\_log\_retention\_days) | Number of days to retain audit logs | `number` | `90` | no |
 | <a name="input_backup_retention_days"></a> [backup\_retention\_days](#input\_backup\_retention\_days) | Number of days to retain backups | `number` | `30` | no |
 | <a name="input_backup_retention_lock_time"></a> [backup\_retention\_lock\_time](#input\_backup\_retention\_lock\_time) | Optional stable RFC3339 timestamp after which the backup retention rule becomes immutable | `string` | `null` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Name of the OKE cluster | `string` | `"mantl-oke"` | no |
-| <a name="input_compartment_id"></a> [compartment\_id](#input\_compartment\_id) | OCI compartment OCID for resources | `string` | n/a | yes |
 | <a name="input_enable_audit_logs"></a> [enable\_audit\_logs](#input\_enable\_audit\_logs) | Enable OKE cluster audit logs | `bool` | `true` | no |
 | <a name="input_enable_backup_bucket"></a> [enable\_backup\_bucket](#input\_enable\_backup\_bucket) | Create Object Storage bucket for backups | `bool` | `true` | no |
 | <a name="input_enable_flow_logs"></a> [enable\_flow\_logs](#input\_enable\_flow\_logs) | Enable VCN Flow Logs for security monitoring | `bool` | `true` | no |
@@ -197,7 +200,6 @@ No modules.
 | <a name="input_enable_private_endpoint"></a> [enable\_private\_endpoint](#input\_enable\_private\_endpoint) | Make API endpoint private (accessible only within VCN) | `bool` | `true` | no |
 | <a name="input_enable_vault"></a> [enable\_vault](#input\_enable\_vault) | Enable OCI Vault for secrets encryption | `bool` | `true` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name (e.g., production, staging, development) | `string` | `"production"` | no |
-| <a name="input_fingerprint"></a> [fingerprint](#input\_fingerprint) | OCI API key fingerprint | `string` | n/a | yes |
 | <a name="input_flow_logs_retention_days"></a> [flow\_logs\_retention\_days](#input\_flow\_logs\_retention\_days) | Number of days to retain flow logs | `number` | `90` | no |
 | <a name="input_kubernetes_version"></a> [kubernetes\_version](#input\_kubernetes\_version) | Kubernetes version for OKE cluster | `string` | `"v1.31.1"` | no |
 | <a name="input_node_image_id"></a> [node\_image\_id](#input\_node\_image\_id) | OCID of the node image (Oracle Linux 8 recommended). Leave empty to use latest. | `string` | `""` | no |
@@ -210,9 +212,7 @@ No modules.
 | <a name="input_system_node_ocpus"></a> [system\_node\_ocpus](#input\_system\_node\_ocpus) | Number of OCPUs per system node (for Flex shapes) | `number` | `4` | no |
 | <a name="input_system_node_shape"></a> [system\_node\_shape](#input\_system\_node\_shape) | OCI compute shape for system nodes (e.g., VM.Standard.E4.Flex) | `string` | `"VM.Standard.E4.Flex"` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Additional tags for all resources | `map(string)` | `{}` | no |
-| <a name="input_tenancy_ocid"></a> [tenancy\_ocid](#input\_tenancy\_ocid) | OCI tenancy OCID | `string` | n/a | yes |
 | <a name="input_use_flannel_cni"></a> [use\_flannel\_cni](#input\_use\_flannel\_cni) | Use Flannel CNI (overlay) instead of OCI VCN-native pod networking | `bool` | `false` | no |
-| <a name="input_user_ocid"></a> [user\_ocid](#input\_user\_ocid) | OCI user OCID | `string` | n/a | yes |
 | <a name="input_vcn_cidr"></a> [vcn\_cidr](#input\_vcn\_cidr) | CIDR block for the VCN | `string` | `"10.0.0.0/16"` | no |
 | <a name="input_workload_initial_node_count"></a> [workload\_initial\_node\_count](#input\_workload\_initial\_node\_count) | Initial number of workload nodes (across all availability domains) | `number` | `3` | no |
 | <a name="input_workload_node_memory_gb"></a> [workload\_node\_memory\_gb](#input\_workload\_node\_memory\_gb) | Memory in GB per workload node (for Flex shapes) | `number` | `16` | no |
