@@ -44,6 +44,26 @@ Hosted signature/provenance publication is exercised only by an actual release;
 local tests intentionally use snapshot packages. The optional fleet manifest fails
 closed until TLS, database, enrollment, identity and network overlays are supplied.
 
+## Local package lifecycle checks
+
+After building a snapshot, run `ci/verify-cli-packages.sh dist`. The check uses
+the Docker engine's native architecture and digest-pinned Ubuntu/Rocky images.
+It checks matching release versions in filenames, CLI output and package metadata,
+installs and reinstalls both packages, verifies the CLI, license and release
+instructions against the matching archive, exercises CLI help, then uninstalls
+and checks that package-owned files and registration are gone. Containers have
+no network or host credentials; artifacts are mounted read-only. Capabilities are
+dropped, with only `DAC_OVERRIDE` retained for RPM to write its image's system
+directories. Image pulls happen before the isolated checks.
+
+An optional second argument selects `amd64` or `arm64`, for example
+`ci/verify-cli-packages.sh /path/to/downloads arm64`. Cross-architecture execution
+requires an existing compatible Docker emulation setup; the check does not install
+emulators. Supply exactly one archive, DEB and RPM per selected architecture.
+CI checks native snapshot packages and the release workflow checks native release
+packages before uploading CLI artifacts. These checks establish package behavior,
+not a deployed platform, cloud acceptance or successful version-to-version upgrades.
+
 Release assembly scripts read from their own checkout and constrain all archive
 and identity paths to that checkout's `dist` directory. Source-directory
 overrides must identify that same checkout. Symlinked or noncanonical artifact

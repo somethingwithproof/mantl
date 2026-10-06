@@ -102,6 +102,8 @@ jobs:
           mise exec -- go run ./cmd/mantl bundle unpack dist/controls.tar.gz dist/control-content
           kubectl kustomize dist/control-content > dist/control-install.yaml
           mise exec -- kubeconform -strict -ignore-missing-schemas -kubernetes-version 1.35.0 -summary dist/release/operator-install.yaml
+      - name: Verify native DEB and RPM package lifecycles
+        run: ci/verify-cli-packages.sh dist
       - name: Retain package validation artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

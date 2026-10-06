@@ -89,6 +89,7 @@ def selector(project_root):
         ("requirements-test.in", {"developer_image"}),
         (".devcontainer/post-create.sh", {"developer_image"}),
         ("scripts/release_paths.py", {"runtime"}),
+        ("ci/verify-cli-packages.sh", {"runtime"}),
         ("examples/ml-inference-service/src/requirements.txt", {"ml_example"}),
         ("examples/ml-inference-service/src/Dockerfile", {"ml_example"}),
         ("ci/smoke_ml_example.py", {"ml_example"}),

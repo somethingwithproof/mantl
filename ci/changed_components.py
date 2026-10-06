@@ -32,6 +32,7 @@ def select(paths):
             "scripts/package_release.py",
             "scripts/publish_control_bundle.py",
             "scripts/release_paths.py",
+            "ci/verify-cli-packages.sh",
         ),
         "frontend": ("examples/ecommerce-microservices/src/frontend/",),
         "ml_example": ("examples/ml-inference-service/src/", "ci/smoke_ml_example.py"),
