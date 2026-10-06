@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl Modernization Roadmap (2026)
 
 Status: approved design, phased delivery

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
@@ -50,7 +51,7 @@ spec:
     storageClass: standard
     pvcTemplate:
       accessModes:
-      - ReadWriteOnce
+        - ReadWriteOnce
       resources:
         requests:
           storage: 20Gi
@@ -62,7 +63,7 @@ spec:
     storageClass: standard
     pvcTemplate:
       accessModes:
-      - ReadWriteOnce
+        - ReadWriteOnce
       resources:
         requests:
           storage: 10Gi
@@ -123,16 +124,16 @@ spec:
     topologyKey: kubernetes.io/hostname
     podAntiAffinityType: preferred
 
-  # Node selector (optional)
-  # nodeSelector:
-  #   workload-type: database
+# Node selector (optional)
+# nodeSelector:
+#   workload-type: database
 
-  # Tolerations (optional)
-  # tolerations:
-  # - key: "database"
-  #   operator: "Equal"
-  #   value: "true"
-  #   effect: "NoSchedule"
+# Tolerations (optional)
+# tolerations:
+# - key: "database"
+#   operator: "Equal"
+#   value: "true"
+#   effect: "NoSchedule"
 ---
 apiVersion: v1
 kind: Secret

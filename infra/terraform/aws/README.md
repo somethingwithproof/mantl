@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # AWS Terraform (mantl/terraform/aws)
 
 This module has been partially modernized for Terraform 1.x. Changes include:

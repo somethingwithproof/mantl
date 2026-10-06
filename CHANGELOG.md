@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Changelog
 
 ## Unreleased (2025-12-27)

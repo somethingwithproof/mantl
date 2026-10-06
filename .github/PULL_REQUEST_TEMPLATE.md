@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 <!--
 Keep it terse. Small fixes do not need every section; delete the ones that do not apply.
 One concern per PR.

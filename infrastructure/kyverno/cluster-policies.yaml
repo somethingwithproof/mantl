@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Kyverno Cluster Policies for Zero-Trust Security
 # Kubernetes-native policy management for security enforcement
 # https://kyverno.io/

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Kyverno Helm Values
 # Production-ready configuration with high availability
 # https://kyverno.io/docs/installation/

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 # yamllint disable rule:line-length
 name: Mantl CI
@@ -28,9 +29,11 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    runs-on: ${{ vars.DO_RUNNERS_ENABLED == 'true' && (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted","Linux","X64","mantl-do"]') || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
+      python_examples: ${{ steps.paths.outputs.python_examples }}
+      example_matrix: ${{ steps.paths.outputs.example_matrix }}
       infrastructure: ${{ steps.paths.outputs.infrastructure }}
       charts: ${{ steps.paths.outputs.charts }}
       runtime: ${{ steps.paths.outputs.runtime }}
@@ -62,6 +65,7 @@ jobs:
         env:
           BASE: ${{ steps.pr.outputs.base_sha || github.event.before }}
           HEAD: ${{ github.sha }}
+          FULL_EXAMPLES: ${{ github.event_name != 'pull_request' && steps.pr.outputs.pull_request == '' }}
         run: |
           set -euo pipefail
           if [ -z "$BASE" ] || [[ "$BASE" =~ ^0+$ ]]; then
@@ -140,23 +144,15 @@ jobs:
           if-no-files-found: error
           retention-days: 7
   python_examples:
+    needs: changes
+    if: needs.changes.outputs.python_examples == 'true'
     name: Python example (${{ matrix.example.name }})
     runs-on: ${{ vars.DO_RUNNERS_ENABLED == 'true' && (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted","Linux","X64","mantl-do"]') || 'ubuntu-latest' }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        example:
-          - name: publisher
-            source: examples/event-driven-arch/publisher
-          - name: subscriber
-            source: examples/event-driven-arch/subscriber
-          - name: products
-            source: examples/ecommerce-microservices/src/products-api
-          - name: batch
-            source: examples/batch-processing-job/src
-          - name: ml
-            source: examples/ml-inference-service/src
+        example: ${{ fromJSON(needs.changes.outputs.example_matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -187,6 +183,7 @@ jobs:
     with:
       base-ref: ${{ needs.changes.outputs.base_sha || github.event.before }}
   sonar:
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.go.result == 'success' && needs.python.result == 'success' && (needs.python_examples.result == 'success' || (needs.changes.outputs.python_examples == 'false' && needs.python_examples.result == 'skipped')) }}
     name: SonarCloud
     needs:
       - changes
@@ -196,6 +193,7 @@ jobs:
     uses: ./.github/workflows/sonarcloud.yml
     with:
       coverage-artifacts: true
+      example-coverage-artifacts: ${{ needs.changes.outputs.python_examples == 'true' }}
       pull-request: ${{ needs.changes.outputs.pull_request }}
       head-branch: ${{ needs.changes.outputs.head_branch }}
       base-branch: ${{ needs.changes.outputs.base_branch }}
@@ -244,7 +242,7 @@ jobs:
       - developer_image
       - repository
     if: always()
-    runs-on: ${{ vars.DO_RUNNERS_ENABLED == 'true' && (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted","Linux","X64","mantl-do"]') || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require successful selected checks
@@ -252,6 +250,7 @@ jobs:
           CHANGES_RESULT: ${{ needs.changes.result }}
           GO_RESULT: ${{ needs.go.result }}
           PYTHON_RESULT: ${{ needs.python.result }}
+          PYTHON_EXAMPLES_SELECTED: ${{ needs.changes.outputs.python_examples }}
           PYTHON_EXAMPLES_RESULT: ${{ needs.python_examples.result }}
           SONAR_RESULT: ${{ needs.sonar.result }}
           INFRASTRUCTURE_SELECTED: ${{ needs.changes.outputs.infrastructure }}
@@ -267,7 +266,7 @@ jobs:
           REPOSITORY_RESULT: ${{ needs.repository.result }}
         run: |
           set -euo pipefail
-          for result in "$CHANGES_RESULT" "$GO_RESULT" "$PYTHON_RESULT" "$PYTHON_EXAMPLES_RESULT" "$SONAR_RESULT" "$REPOSITORY_RESULT"; do
+          for result in "$CHANGES_RESULT" "$GO_RESULT" "$PYTHON_RESULT" "$SONAR_RESULT" "$REPOSITORY_RESULT"; do
             if [ "$result" != success ]; then
               echo "::error::A required CI prerequisite failed: $result"
               exit 1
@@ -279,6 +278,7 @@ jobs:
               *) echo "::error::Selected component check did not succeed: $3 ($1:$2)"; exit 1 ;;
             esac
           }
+          require_selected "$PYTHON_EXAMPLES_SELECTED" "$PYTHON_EXAMPLES_RESULT" python_examples
           require_selected "$INFRASTRUCTURE_SELECTED" "$INFRASTRUCTURE_RESULT" infrastructure
           require_selected "$CHARTS_SELECTED" "$CHARTS_RESULT" charts
           require_selected "$RUNTIME_SELECTED" "$RUNTIME_RESULT" runtime

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Package auditplan computes deterministic collection scopes and schedules.
 package auditplan
 

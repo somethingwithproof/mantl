@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Architecture and responsibility boundaries
 
 These diagrams show implemented ownership boundaries in the beta runtime.

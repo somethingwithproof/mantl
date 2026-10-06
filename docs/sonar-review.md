@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Sonar review decisions
 
 Fix reported defects before classifying an exception. Keep the new-code quality

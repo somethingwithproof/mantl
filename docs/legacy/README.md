@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Legacy artifacts
 
 This directory preserves code from earlier Mantl iterations that is not part of

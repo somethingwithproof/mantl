@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Placeholder: verify upstream chart details and pin versions before enabling
 apiVersion: argoproj.io/v1alpha1
 kind: Application

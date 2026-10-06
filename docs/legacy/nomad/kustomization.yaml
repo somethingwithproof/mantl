@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # HashiCorp Nomad Infrastructure Kustomization
 # Alternative orchestrator for Mantl platform
 # https://developer.hashicorp.com/nomad

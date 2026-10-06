@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl 2026: CNCF Graduated Projects Analysis
 
 **Analysis Date**: December 27, 2025

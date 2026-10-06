@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Maintained provider rulesets for the supported cloud parity targets.
 plugin "aws" {
   enabled = true

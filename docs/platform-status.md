@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Platform status (beta)
 
 `mantl status` observes the ArgoCD applications generated from a supplied spec and

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Inputs for the experimental standalone VM module. No cluster bootstrap is performed.
 variable "long_name" {
   type = string

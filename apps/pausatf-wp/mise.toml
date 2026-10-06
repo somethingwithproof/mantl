@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 [tools]
 "vfox:jdx/vfox-php" = "8.4.26"
 "github:composer/composer" = "2.10.3"

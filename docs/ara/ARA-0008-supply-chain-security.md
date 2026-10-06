@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ARA-0008 Supply-chain security
 Status: Accepted
 Date: 2025-12-27

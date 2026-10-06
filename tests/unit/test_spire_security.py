@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Keep node attestation privileges scoped and kubelet identity verified."""
 
 import yaml

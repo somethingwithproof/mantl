@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR 004: Go Test Scope Excludes Vendored Charts
 
 ## Status

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Package platformstatus interprets bounded, read-only platform observations.
 // Application convergence and policy result counts are separate from certification.
 package platformstatus

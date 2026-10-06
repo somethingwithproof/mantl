@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 package framework
 
 // Framework mirrors the on-disk compliance framework YAML

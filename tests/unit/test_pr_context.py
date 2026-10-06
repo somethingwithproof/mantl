@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Dispatched CI must analyze the current, approved repository branch."""
 
 import importlib.util

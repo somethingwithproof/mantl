@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:

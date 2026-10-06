@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Release assets must exclude workstation state and preserve immutable identity."""
 
 import importlib.util

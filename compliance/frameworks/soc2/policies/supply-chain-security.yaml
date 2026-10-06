@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Kyverno Policy Pack: Supply Chain and Image Security
 # Implements: SOC2-CC7.1, CC8.1, SLSA, Sigstore
 ---

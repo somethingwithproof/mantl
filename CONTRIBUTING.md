@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Contributing to Mantl
 
 Read [AGENTS.md](AGENTS.md) before making changes. It records ownership boundaries,
@@ -102,6 +103,13 @@ working cloud platform.
 
 Tests can select a kubectl fixture through `MANTL_KUBECTL_PATH`; production use should
 resolve a trusted kubectl binary. Keep fixtures isolated from live credentials.
+
+## License headers
+
+Add an SPDX license declaration to new files using the format in
+[the license guide](docs/licensing.md). Preserve existing copyright and component
+licenses; use companion metadata for formats that cannot carry comments. Run
+`mise exec -- python -m ci.check_license_headers` before opening a PR.
 
 ## Pull requests
 

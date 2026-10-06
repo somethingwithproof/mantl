@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 ## Mantl kops Community Code of Conduct
 
 Mantl kops project follows the [CNCF Code of Conduct](https://github.com/cncf/foundation/blob/master/code-of-conduct.md).
@@ -54,4 +55,3 @@ team reserves the right to deny entrance and/or eject from an event (without ref
 be engaging in discriminatory or offensive speech or actions.
 
 Please bring any concerns to to the immediate attention of Mantl event staff
-

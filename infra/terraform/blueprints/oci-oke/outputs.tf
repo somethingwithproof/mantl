@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Cluster identity and VCN outputs are defined in main.tf. This file holds
 # only the remaining, non-duplicate outputs.
 

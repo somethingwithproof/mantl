@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR 003: Compliance Evidence Storage Contract
 
 ## Status
@@ -35,3 +36,13 @@ the current bootstrap does not provision it through Crossplane.
 See [compliance operations](../compliance-operations.md) for the implemented
 contract, permissions, retention costs, and export verification. This clarification
 does not add a storage adapter or establish provider/cloud acceptance.
+
+
+## Finding-history object path compatibility
+
+The concrete S3 writer stores finding history at
+`audits/findings/CLUSTER/NAMESPACE/FINDING_UID/EVENT_ID/CONTENT_HASH.json`.
+Readers accept that exact hash-named leaf and the older six-segment event-key
+reference. Both forms must retain the same namespace/finding-UID scope, version,
+payload hash, and verified chain identities. Allowing the writer's hash leaf does
+not permit an arbitrary extra path or weaken object-version/retention verification.

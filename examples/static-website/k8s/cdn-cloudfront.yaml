@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # CloudFront CDN Configuration (AWS)
 # This is a reference configuration for setting up CloudFront CDN
 # Apply using AWS CLI or Terraform

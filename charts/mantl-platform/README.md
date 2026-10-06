@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # mantl Platform Helm Chart
 
 Complete platform stack for production Kubernetes with monitoring, backup, security, cost management, and progressive delivery.

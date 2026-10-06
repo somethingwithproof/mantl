@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 //go:build integration
 
 package controlapi
@@ -10,9 +12,11 @@ import (
 	"github.com/thomasvincent/mantl/pkg/evidence"
 	batch "k8s.io/api/batch/v1"
 	core "k8s.io/api/core/v1"
+	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -67,8 +71,13 @@ func (unusedStore) Get(context.Context, evidence.ObjectRef) ([]byte, error) {
 }
 
 func testControlAPI(t *testing.T) (client.Client, context.Context) {
+	c, _, ctx := testControlAPIConfig(t, nil)
+	return c, ctx
+}
+
+func testControlAPIConfig(t *testing.T, crds []*apiext.CustomResourceDefinition) (client.Client, *rest.Config, context.Context) {
 	t.Helper()
-	environment := &envtest.Environment{CRDDirectoryPaths: []string{filepath.Join("..", "..", "config", "crd", "bases")}, ErrorIfCRDPathMissing: true}
+	environment := &envtest.Environment{CRDDirectoryPaths: []string{filepath.Join("..", "..", "config", "crd", "bases")}, ErrorIfCRDPathMissing: true, CRDs: crds}
 	cfg, err := environment.Start()
 	if err != nil {
 		t.Fatal("start explicitly configured API fixture", err)
@@ -94,5 +103,5 @@ func testControlAPI(t *testing.T) (client.Client, context.Context) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	t.Cleanup(cancel)
-	return c, ctx
+	return c, cfg, ctx
 }

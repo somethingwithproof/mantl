@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR 011: Reviewed platform plans and bootstrap inputs
 
 Status: Accepted for implementation; cloud deployment acceptance remains pending.

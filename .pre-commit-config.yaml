@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 # Vendored Helm charts, terraform provider caches, generated code, legacy
 # artifacts, and example-app sources are not first-party and must not be linted
@@ -18,6 +19,12 @@ repos:
   # Local hooks
   - repo: local
     hooks:
+      - id: spdx-license-declarations
+        name: spdx-license-declarations
+        entry: python3 -m ci.check_license_headers
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: kyverno-no-placeholders
         name: kyverno-no-placeholders
         entry: ci/check-placeholders.sh
@@ -35,6 +42,8 @@ repos:
     rev: v1.5.0
     hooks:
       - id: detect-secrets
+        # All batches share one baseline; serialize updates to avoid lost line numbers.
+        require_serial: true
         args: ['--baseline', '.secrets.baseline']
         exclude: package-lock\.json|go\.sum
 

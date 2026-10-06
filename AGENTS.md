@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl agent instructions
 
 Shared repository guidance for Codex (`AGENTS.md`) and Claude (`CLAUDE.md`).
@@ -108,7 +109,7 @@ experimental. Local tests cannot establish cloud parity or production readiness.
   Preserve the chain with `%w` so callers can match with `errors.Is`/`errors.As`.
 - CRD types carry kubebuilder markers in `apis/*/v1alpha1/types.go`. After changing
   a type, regenerate `zz_generated.deepcopy.go` with `controller-gen`
-  (`controller-gen object paths=./apis/...`) and regenerate CRD manifests for any
+  (`make generate`, which supplies the SPDX boilerplate) and regenerate CRD manifests for any
   schema change. Do not hand-edit generated files.
 - Never commit compiled binaries. The CLI and operator build to local paths that
   belong in `.gitignore`, not in version control.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 package evidence
 
 import (
@@ -167,6 +169,29 @@ func TestFindingHistoryRejectsNoncanonicalPathsBeforeRead(t *testing.T) {
 		}
 		if len(store.reads) != 0 {
 			t.Fatalf("invalid path read storage: %s", uri)
+		}
+	}
+}
+
+func TestFindingHistoryAcceptsWriterContentPathOnly(t *testing.T) {
+	finding, store := historyFixture(t)
+	head := finding.Status.HistoryHead
+	oldURI := head.URI
+	payload := store.data[oldURI]
+	head.URI = oldURI + "/" + head.SHA256 + ".json"
+	store.data[head.URI] = payload
+	records, err := ReadFindingHistory(context.Background(), store, finding)
+	if err != nil || len(records) != 2 {
+		t.Fatalf("writer-compatible history unreadable: %v", err)
+	}
+	for _, suffix := range []string{"other.json", head.SHA256 + ".json/extra", ""} {
+		head.URI = oldURI + "/" + suffix
+		store.reads = nil
+		if _, err := ReadFindingHistory(context.Background(), store, finding); err == nil {
+			t.Fatal("unbound history leaf accepted")
+		}
+		if len(store.reads) != 0 {
+			t.Fatal("invalid leaf reached storage")
 		}
 	}
 }

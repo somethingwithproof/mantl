@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Kyverno Security Policies Kustomization
 # Kubernetes-native policy management
 # https://kyverno.io/

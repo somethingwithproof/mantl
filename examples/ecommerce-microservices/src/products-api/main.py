@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Products API - E-Commerce Microservices Example
 Fast API service for product catalog management

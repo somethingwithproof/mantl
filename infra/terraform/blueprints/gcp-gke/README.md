@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # gcp-gke
 
 <!-- BEGIN_TF_DOCS -->

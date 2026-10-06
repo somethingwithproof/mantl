@@ -1,7 +1,4 @@
-# Cilium Network Policies for Zero-Trust Networking
-# Implements default-deny, microsegmentation, and L7 HTTP protection
-# https://docs.cilium.io/en/stable/security/policy/
----
+# SPDX-License-Identifier: Apache-2.0
 # Namespace for Cilium policies and resources
 apiVersion: v1
 kind: Namespace
@@ -13,11 +10,7 @@ metadata:
     pod-security.kubernetes.io/enforce: restricted
     pod-security.kubernetes.io/audit: restricted
     pod-security.kubernetes.io/warn: restricted
----
-# =============================================================================
-# DEFAULT-DENY POLICIES
-# Zero-trust foundation: deny all traffic by default
-# =============================================================================
+--- null
 ---
 # Default deny all ingress traffic cluster-wide
 apiVersion: cilium.io/v2
@@ -60,11 +53,7 @@ spec:
   egressDeny:
     - toEntities:
         - all
----
-# =============================================================================
-# SYSTEM NAMESPACE EXCEPTIONS
-# Allow essential cluster services to function
-# =============================================================================
+--- null
 ---
 # Allow kube-system namespace essential communications
 apiVersion: cilium.io/v2
@@ -164,11 +153,7 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
----
-# =============================================================================
-# MICROSEGMENTATION POLICIES
-# Fine-grained access control between services
-# =============================================================================
+--- null
 ---
 # Frontend tier - can only receive external traffic and talk to backend
 apiVersion: cilium.io/v2
@@ -373,11 +358,7 @@ spec:
               protocol: TCP
             - port: "3306"
               protocol: TCP
----
-# =============================================================================
-# L7 HTTP POLICIES
-# Application-layer protection for API endpoints
-# =============================================================================
+--- null
 ---
 # L7 API Gateway protection
 apiVersion: cilium.io/v2
@@ -588,13 +569,9 @@ spec:
                 headers:
                   - "Authorization"
                   - "X-Admin-Token"
-              # Block sensitive endpoints completely
-              # These would be handled by separate, more restrictive policies
----
-# =============================================================================
-# OBSERVABILITY NAMESPACE POLICIES
-# Allow monitoring and logging communications
-# =============================================================================
+# Block sensitive endpoints completely
+# These would be handled by separate, more restrictive policies
+--- null
 ---
 # Prometheus can scrape metrics from all namespaces
 apiVersion: cilium.io/v2
@@ -669,11 +646,7 @@ spec:
             # Zipkin
             - port: "9411"
               protocol: TCP
----
-# =============================================================================
-# EGRESS POLICIES
-# Control outbound traffic
-# =============================================================================
+--- null
 ---
 # Allow egress to external services (controlled)
 apiVersion: cilium.io/v2
@@ -734,11 +707,7 @@ spec:
         - ports:
             - port: "80"
               protocol: TCP
----
-# =============================================================================
-# NAMESPACE ISOLATION TEMPLATE
-# Template for namespace-level zero-trust
-# =============================================================================
+--- null
 ---
 # Template: Namespace isolation policy
 # Copy and customize for each application namespace

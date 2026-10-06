@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 package evidence
 
 import (
@@ -76,7 +78,12 @@ func findingHistoryScope(head *api.HistoryReference, finding api.Finding) error 
 		return fmt.Errorf("finding history scope mismatch")
 	}
 	parts := strings.Split(strings.TrimPrefix(uri.Path, "/"), "/")
-	if len(parts) != 6 || parts[0] != "audits" || parts[1] != "findings" || parts[2] == "" || parts[3] != finding.Namespace || parts[4] != string(finding.UID) || parts[5] == "" {
+	if (len(parts) != 6 && len(parts) != 7) || parts[0] != "audits" || parts[1] != "findings" || parts[2] == "" || parts[3] != finding.Namespace || parts[4] != string(finding.UID) || parts[5] == "" {
+		return fmt.Errorf("finding history scope mismatch")
+	}
+	// S3Store adds a content-addressed filename to the supplied event prefix.
+	// Retain older event-key references, but permit no arbitrary extra suffix.
+	if len(parts) == 7 && (!hashPattern.MatchString(head.SHA256) || parts[6] != head.SHA256+".json") {
 		return fmt.Errorf("finding history scope mismatch")
 	}
 	return nil

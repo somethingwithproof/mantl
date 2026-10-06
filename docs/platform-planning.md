@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Platform specification and offline planning
 
 `mantl plan` validates a MantlCluster specification and compiles Terraform variables,

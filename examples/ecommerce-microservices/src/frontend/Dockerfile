@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Multi-stage build for React application
 FROM node:26.10.0-alpine AS builder
 

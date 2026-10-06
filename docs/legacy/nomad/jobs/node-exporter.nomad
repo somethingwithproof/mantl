@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Node Exporter System Job for Nomad
 # Runs on every node for metrics collection
 # https://developer.hashicorp.com/nomad/docs/job-specification

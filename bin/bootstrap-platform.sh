@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # Bootstrap Mantl Platform
 # Usage: ./bootstrap-platform.sh [OPTIONS]
 set -euo pipefail

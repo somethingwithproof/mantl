@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR 009: GitHub Actions validation ownership
 
 Status: Accepted
@@ -43,3 +44,21 @@ through the external controller, capped independently of workflow concurrency. T
 manual orphan-runner cleanup remains available for legacy tagged CI droplets.
 Fork pull requests still require a reviewed same-repository branch for Sonar
 authentication. Optional example applications retain separate validation scope.
+
+
+## PR selection and scheduling refinement
+
+Keep path selection and the final aggregate check on GitHub-hosted runners so
+control jobs do not wait for or consume ephemeral DigitalOcean capacity. Runtime
+and application work retains the existing trusted-event routing and capacity cap.
+Do not change the controller or cancel other runs to prioritize a PR.
+
+Go/Python core coverage and Sonar remain mandatory. PRs test affected Python
+examples; shared fixtures, dependencies, runtime pins, and core workflow changes
+select every example. Main pushes and standalone validation run all examples so
+main's coverage remains complete. PR Sonar input contains coverage only for the
+examples tested by that PR; a documentation-only PR has no example artifact.
+Sonar and the final CI check must explicitly accept only an intentionally
+unselected/skipped example matrix, and reject selected skipped, failed, or cancelled
+jobs. Markdown/RST reference edits do not select runtime/package checks, except
+framework and template content whose bytes are part of a delivered bundle.
