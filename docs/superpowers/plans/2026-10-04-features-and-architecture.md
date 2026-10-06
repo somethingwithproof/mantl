@@ -31,8 +31,9 @@ are conditional exceptions governed by
 
 The published baseline is now [v0.4.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.4.0),
 including scoped JSON application status and a health gate. The next release adds
-an offline compiler preview, configurable output directories and a versioned JSON
-artifact inventory with SHA256 hashes. See [platform planning](../../platform-planning.md).
+an offline compiler preview, configurable output directories, saved-plan apply
+verification, artifact comparisons and a versioned inventory with spec/artifact hashes.
+Bootstrap now uses the same desired Application identity checks as scoped status. See [platform planning](../../platform-planning.md).
 Preview/render parity, invalid-input behavior, cancellation and file preservation
 are validated locally; these capabilities do not establish cloud acceptance.
 

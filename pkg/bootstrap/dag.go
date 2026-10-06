@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"github.com/thomasvincent/mantl/pkg/compiler"
 	"github.com/thomasvincent/mantl/pkg/toolcommand"
 	"log/slog"
 	"os"
@@ -22,6 +23,7 @@ type ExecutionDAG struct {
 	Distribution string
 	KubeContext  string
 	SourceDir    string
+	Applications []compiler.GitOpsApplication
 }
 
 var validKindClusterNameRe = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
@@ -47,13 +49,9 @@ func (d *ExecutionDAG) ProvisionInfra(ctx context.Context, provider, clusterName
 		return fmt.Errorf("terraform blueprint %q not found at %s", blueprintName, blueprintPath)
 	}
 
-	// 2. Find terraform binary (prefer tofu, fall back to terraform)
-	tfPath, err := exec.LookPath("tofu")
+	tfPath, err := terraformExecutable()
 	if err != nil {
-		tfPath, err = exec.LookPath("terraform")
-		if err != nil {
-			return fmt.Errorf("neither tofu nor terraform binary found in PATH: %w", err)
-		}
+		return err
 	}
 
 	tf, err := tfexec.NewTerraform(blueprintPath, tfPath)
@@ -71,7 +69,10 @@ func (d *ExecutionDAG) ProvisionInfra(ctx context.Context, provider, clusterName
 	}
 
 	// 4. Apply
-	absBuildDir, _ := filepath.Abs(d.BuildDir)
+	absBuildDir, err := filepath.Abs(d.BuildDir)
+	if err != nil {
+		return fmt.Errorf("resolve build directory: %w", err)
+	}
 	tfVarsPath := filepath.Join(absBuildDir, "terraform.tfvars.json")
 
 	slog.Info("applying infrastructure configuration", "variablesFile", tfVarsPath)
@@ -148,12 +149,10 @@ func (d *ExecutionDAG) InstallArgoCD(ctx context.Context) error {
 func (d *ExecutionDAG) BootstrapGitOps(ctx context.Context) error {
 	slog.Info("bootstrapping GitOps applications")
 
-	gitopsDir := filepath.Join(d.BuildDir, "gitops")
-	files, err := filepath.Glob(filepath.Join(gitopsDir, "*.yaml"))
+	files, err := d.bootstrapFiles()
 	if err != nil {
 		return err
 	}
-
 	for _, file := range files {
 		slog.Info("applying GitOps manifest", "file", filepath.Base(file))
 		cmd := d.command(ctx, "kubectl", "apply", "-f", file)
@@ -167,46 +166,18 @@ func (d *ExecutionDAG) BootstrapGitOps(ctx context.Context) error {
 	return nil
 }
 
-// VerifyConvergence polls the cluster until the platform is healthy.
-func (d *ExecutionDAG) VerifyConvergence(ctx context.Context) error {
-	slog.Info("checking platform convergence")
-
-	timeout := time.After(10 * time.Minute)
-	ticker := time.NewTicker(15 * time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-timeout:
-			return fmt.Errorf("timeout waiting for platform convergence")
-		case <-ticker.C:
-			cmd := d.command(ctx, "kubectl", "get", "applications", "-n", "argocd",
-				"-o", `jsonpath={range .items[*]}{.status.sync.status},{.status.health.status}{"\n"}{end}`)
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				slog.Info("waiting for ArgoCD API", "error", err)
-				continue
-			}
-
-			if ApplicationsHealthy(string(output)) {
-				return nil
-			}
-
-			slog.Info("waiting for application health and synchronization")
-		}
-	}
-}
-
 func (d *ExecutionDAG) command(ctx context.Context, name string, args ...string) *exec.Cmd {
 	if name == "kubectl" {
 		if d.KubeContext != "" {
 			args = append([]string{"--context", d.KubeContext}, args...)
 		}
-		return toolcommand.Kubectl(ctx, args...)
+		command := toolcommand.Kubectl(ctx, args...)
+		command.WaitDelay = time.Second
+		return command
 	}
-	return exec.CommandContext(ctx, name, args...)
+	command := exec.CommandContext(ctx, name, args...)
+	command.WaitDelay = time.Second
+	return command
 }
 
 // ApplicationsHealthy requires a complete pair for every reported application.
@@ -223,4 +194,26 @@ func ApplicationsHealthy(raw string) bool {
 		rows++
 	}
 	return rows > 0
+}
+
+func (d *ExecutionDAG) bootstrapFiles() ([]string, error) {
+	if len(d.Applications) == 0 {
+		return nil, fmt.Errorf("desired application topology is required for bootstrap")
+	}
+	files := []string{}
+	for _, application := range d.Applications {
+		if !validKindClusterNameRe.MatchString(application.Name) || len(application.Name) > 63 {
+			return nil, fmt.Errorf("invalid desired application name")
+		}
+		file := filepath.Join(d.BuildDir, "gitops", application.Name+".yaml")
+		info, err := os.Lstat(file)
+		if err != nil {
+			return nil, fmt.Errorf("inspect desired application manifest: %w", err)
+		}
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("desired application manifest must be a regular file")
+		}
+		files = append(files, file)
+	}
+	return files, nil
 }
