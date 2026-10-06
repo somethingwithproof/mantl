@@ -13,9 +13,7 @@ from pathlib import Path
 from scripts import release_paths
 
 ROOT = Path(__file__).resolve().parents[1]
-RC_VERSION = re.compile(
-    r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)-rc\.[1-9][0-9]*", re.ASCII
-)
+RC_VERSION = re.compile(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-rc\.[1-9]\d*", re.ASCII)
 ARCHIVE_FILES = {
     "mantl",
     "LICENSE",
@@ -153,6 +151,7 @@ def verify_native_cli(directory, version):
 
 def verify(version, directory, native_packages=False):
     directory = release_paths.artifact_path(directory)
+    report_path = release_paths.artifact_path(directory / "candidate-verification.json")
     artifacts = verify_checksums(directory, version)
     for name in artifacts:
         if name.endswith(".tar.gz"):
@@ -177,7 +176,7 @@ def verify(version, directory, native_packages=False):
             ["bash", str(ROOT / "ci/verify-cli-packages.sh"), str(directory)], cwd=ROOT, check=True
         )
         report["nativePackages"] = "passed"
-    (directory / "candidate-verification.json").write_text(json.dumps(report, indent=2) + "\n")
+    report_path.write_text(json.dumps(report, indent=2) + "\n")
     return report
 
 

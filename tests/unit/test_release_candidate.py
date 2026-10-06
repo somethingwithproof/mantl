@@ -176,3 +176,18 @@ def test_native_cli_requires_supported_host(tmp_path, monkeypatch, system, machi
     monkeypatch.setattr(candidate.platform, "machine", lambda: machine)
     with pytest.raises(ValueError, match="supported native host"):
         candidate.verify_native_cli(tmp_path, "0.5.0-rc.1")
+
+
+def test_verifier_rejects_symlinked_report_before_running_cli(tmp_path, monkeypatch):
+    directory = complete_candidate(tmp_path, monkeypatch)
+    outside = tmp_path / "untouched.json"
+    outside.write_text("fixture must stay unchanged")
+    (directory / "candidate-verification.json").symlink_to(outside)
+    monkeypatch.setattr(
+        candidate,
+        "verify_native_cli",
+        lambda *args: pytest.fail("CLI ran before output validation"),
+    )
+    with pytest.raises(ValueError, match="symlinks"):
+        candidate.verify("0.5.0-rc.1", directory)
+    assert outside.read_text() == "fixture must stay unchanged"
