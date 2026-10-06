@@ -17,6 +17,13 @@ spec:
           - resources:
               kinds:
                 - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-node-lease
+                - kube-public
       validate:
         message: Use non-privileged host ports (1024 or greater), or omit hostPort.
         foreach:

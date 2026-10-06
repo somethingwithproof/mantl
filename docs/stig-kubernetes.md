@@ -12,7 +12,7 @@ to operate. This content is available from source; it is not in release v0.4.0.
 
 | Requirement | Implemented observation | Remaining responsibility |
 | --- | --- | --- |
-| V-242414 / CNTR-K8-000960 | Audit Pod hostPort values below 1024 across regular, init, and ephemeral containers | Review host networking, actual listeners, system workloads, and complete inventory |
+| V-242414 / CNTR-K8-000960 | Audit Pod hostPort values below 1024 across regular, init, and ephemeral containers in user namespaces | Review host networking, actual listeners, system workloads, and complete inventory |
 | V-242415 / CNTR-K8-001160 | Audit secretKeyRef and envFrom.secretRef across those container types; collect scoped Pod snapshots | Review literal/application-supplied secrets, image configuration, runtime environment, and complete inventory |
 | Other 89 requirements | Catalog entries with explicit manual-review mappings | Operator review of node/OS, control-plane, TLS, audit delivery, RBAC, patching, and other requirements |
 
@@ -60,7 +60,10 @@ Do not select the new framework until the mounted content includes it.
 
 Add `policies/kyverno/stig-kubernetes` to a reviewed ArgoCD policy
 overlay. The policies use **Audit** mode, do not change the built-in policy
-topology, and do not exclude any namespaces. Review the impact before selecting
+topology. The host-port policy excludes `kube-system`, `kube-node-lease`, and
+`kube-public`, matching the STIG check's system namespace boundary; it still
+checks `default`. The Secret environment policy has no namespace exclusions.
+Review the impact before selecting
 Enforce mode; rejecting Secret environment references can interrupt workloads.
 ArgoCD owns policy deployment; selecting a profile does not install policies.
 

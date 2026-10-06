@@ -55,13 +55,47 @@ POLICIES = Path(__file__).resolve().parents[2] / "policies/kyverno/stig-kubernet
     ],
 )
 def test_stig_workload_policy(tmp_path, container_kind, policy, field, allowed):
+    output = apply_policy(tmp_path, container_kind, policy, field, "team-a")
+    assert ("pass: 1" if allowed else "warn: 1") in output, output
+
+
+@pytest.mark.parametrize("container_kind", ["containers", "initContainers", "ephemeralContainers"])
+@pytest.mark.parametrize(
+    "namespace", ["kube-system", "kube-node-lease", "kube-public", "default", "team-a"]
+)
+def test_host_port_policy_stig_namespace_scope(tmp_path, container_kind, namespace):
+    output = apply_policy(
+        tmp_path,
+        container_kind,
+        "stig-restrict-privileged-host-ports",
+        {"ports": [{"containerPort": 80, "hostPort": 80}]},
+        namespace,
+    )
+    expected = "pass: 0, fail: 0, warn: 0, error: 0" if namespace.startswith("kube-") else "warn: 1"
+    assert expected in output, output
+
+
+@pytest.mark.parametrize("container_kind", ["containers", "initContainers", "ephemeralContainers"])
+@pytest.mark.parametrize("namespace", ["kube-system", "kube-node-lease", "kube-public"])
+def test_secret_env_policy_still_audits_system_namespaces(tmp_path, container_kind, namespace):
+    output = apply_policy(
+        tmp_path,
+        container_kind,
+        "stig-disallow-secret-env",
+        {"envFrom": [{"secretRef": {"name": "db"}}]},
+        namespace,
+    )
+    assert "warn: 1" in output, output
+
+
+def apply_policy(tmp_path, container_kind, policy, field, namespace):
     executable = shutil.which("kyverno")
     if executable is None:
         pytest.skip("Kyverno CLI required for offline policy execution")
     pod = {
         "apiVersion": "v1",
         "kind": "Pod",
-        "metadata": {"name": "app", "namespace": "team-a"},
+        "metadata": {"name": "app", "namespace": namespace},
         "spec": {"containers": [{"name": "app", "image": "example/app:1"}]},
     }
     container = {"name": "subject", "image": "example/app:1", **copy.deepcopy(field)}
@@ -84,4 +118,4 @@ def test_stig_workload_policy(tmp_path, container_kind, policy, field, allowed):
     )
     output = result.stdout + result.stderr
     assert result.returncode in (0, 2), output
-    assert ("pass: 1" if allowed else "warn: 1") in output, output
+    return output
