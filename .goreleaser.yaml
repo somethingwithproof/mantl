@@ -16,7 +16,7 @@ archives:
     ids: [mantl]
     formats: [tar.gz]
     name_template: 'mantl_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
-    files: [LICENSE, README.md, docs/compliance-operations.md, docs/releases.md]
+    files: [LICENSE, README.md, docs/compliance-operations.md, docs/releases.md, docs/quickstart-platform.md, docs/_static/mantl-mark.svg]
 nfpms:
   - id: linux
     ids: [mantl]
