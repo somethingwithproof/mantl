@@ -6,7 +6,7 @@ import subprocess
 import pytest
 
 
-@pytest.mark.parametrize("problem", ["missing", "duplicate", "symlink", "architecture"])
+@pytest.mark.parametrize("problem", ["missing", "duplicate", "symlink", "architecture", "version"])
 def test_invalid_package_inputs_do_not_start_containers(project_root, tmp_path, problem):
     artifacts = tmp_path / "artifacts with spaces"
     artifacts.mkdir()
@@ -22,6 +22,10 @@ def test_invalid_package_inputs_do_not_start_containers(project_root, tmp_path, 
         outside = tmp_path / "outside.tar.gz"
         outside.write_bytes(b"unused")
         archive.symlink_to(outside)
+    elif problem == "version":
+        (artifacts / "mantl_0.3.1_linux_arm64.deb").rename(
+            artifacts / "mantl_0.3.2_linux_arm64.deb"
+        )
     docker_called = tmp_path / "docker-called"
     tools = tmp_path / "tools"
     tools.mkdir()

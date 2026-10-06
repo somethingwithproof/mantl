@@ -48,7 +48,8 @@ closed until TLS, database, enrollment, identity and network overlays are suppli
 
 After building a snapshot, run `ci/verify-cli-packages.sh dist`. The check uses
 the Docker engine's native architecture and digest-pinned Ubuntu/Rocky images.
-It installs and reinstalls both packages, verifies the CLI, license and release
+It checks matching release versions in filenames, CLI output and package metadata,
+installs and reinstalls both packages, verifies the CLI, license and release
 instructions against the matching archive, exercises CLI help, then uninstalls
 and checks that package-owned files and registration are gone. Containers have
 no network or host credentials; artifacts are mounted read-only. Capabilities are

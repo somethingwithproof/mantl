@@ -36,6 +36,26 @@ for file in "${archives[0]}" "${debs[0]}" "${rpms[0]}"; do
     exit 2
   fi
 done
+archive_name=$(basename "${archives[0]}")
+artifact_version=${archive_name#mantl_}
+artifact_version=${artifact_version%_linux_"$architecture".tar.gz}
+for package in "${debs[0]}" "${rpms[0]}"; do
+  package_name=$(basename "$package")
+  if [[ "$package_name" != "mantl_${artifact_version}_linux_${architecture}."* ]]; then
+    echo "Archive and package release versions must match" >&2
+    exit 2
+  fi
+done
+# nFPM separates SemVer prerelease with '~' and preserves build metadata. RPM
+# replaces hyphens inside the prerelease with underscores.
+version_core=${artifact_version%%+*}
+version_metadata=""
+if [[ "$artifact_version" == *+* ]]; then
+  version_metadata="+${artifact_version#*+}"
+fi
+debian_version="${version_core/-/\~}${version_metadata}"
+rpm_version=${version_core/-/\~}
+rpm_version="${rpm_version//-/_}${version_metadata}"
 
 for kind in deb rpm; do
   capabilities=(--cap-drop ALL)
@@ -64,6 +84,8 @@ for kind in deb rpm; do
     --mount "type=bind,source=$artifact_dir,target=/artifacts,readonly" \
     --env "PACKAGE_KIND=$kind" --env "PACKAGE_FILE=$(basename "$package")" \
     --env "ARCHIVE_FILE=$(basename "${archives[0]}")" --env "PACKAGE_ARCH=$architecture" \
+    --env "ARTIFACT_VERSION=$artifact_version" --env "DEBIAN_VERSION=$debian_version" \
+    --env "RPM_VERSION=$rpm_version" \
     "$image" bash -euo pipefail -s <<'CONTAINER'
 if command -v mantl; then
   echo "Validation image already contains Mantl" >&2
@@ -76,14 +98,25 @@ case "$expected_version" in
   'mantl version '*) ;;
   *) echo "Unexpected CLI version output" >&2; exit 1 ;;
 esac
+cli_identity=${expected_version#mantl version }
+require_metadata() {
+  if [[ "$1" != "$2" ]]; then
+    printf 'Unexpected %s metadata\n' "$3" >&2
+    exit 1
+  fi
+}
+require_metadata "${cli_identity%% *}" "$ARTIFACT_VERSION" 'CLI version'
 if [[ "$PACKAGE_KIND" == deb ]]; then
-  test "$(dpkg-deb --field "/artifacts/$PACKAGE_FILE" Package)" = mantl
-  test "$(dpkg-deb --field "/artifacts/$PACKAGE_FILE" Architecture)" = "$PACKAGE_ARCH"
+  require_metadata "$(dpkg-deb --field "/artifacts/$PACKAGE_FILE" Package)" mantl 'DEB name'
+  require_metadata "$(dpkg-deb --field "/artifacts/$PACKAGE_FILE" Architecture)" "$PACKAGE_ARCH" 'DEB architecture'
+  require_metadata "$(dpkg-deb --field "/artifacts/$PACKAGE_FILE" Version)" "$DEBIAN_VERSION" 'DEB version'
 else
   rpm_arch=x86_64
   if [[ "$PACKAGE_ARCH" == arm64 ]]; then rpm_arch=aarch64; fi
-  test "$(rpm -qp --queryformat '%{NAME}' "/artifacts/$PACKAGE_FILE")" = mantl
-  test "$(rpm -qp --queryformat '%{ARCH}' "/artifacts/$PACKAGE_FILE")" = "$rpm_arch"
+  require_metadata "$(rpm -qp --queryformat '%{NAME}' "/artifacts/$PACKAGE_FILE")" mantl 'RPM name'
+  require_metadata "$(rpm -qp --queryformat '%{ARCH}' "/artifacts/$PACKAGE_FILE")" "$rpm_arch" 'RPM architecture'
+  require_metadata "$(rpm -qp --queryformat '%{VERSION}' "/artifacts/$PACKAGE_FILE")" "$RPM_VERSION" 'RPM version'
+  require_metadata "$(rpm -qp --queryformat '%{RELEASE}' "/artifacts/$PACKAGE_FILE")" 1 'RPM release'
 fi
 install_package() {
   if [[ "$PACKAGE_KIND" == deb ]]; then
