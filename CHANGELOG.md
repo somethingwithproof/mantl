@@ -19,6 +19,18 @@ Terraform modernization and hardening across cloud modules:
   - Add modern worker and edge VM resources under the same flag; reminder to set legacy counts to 0 when enabling.
 
 See PRs: #31, #32, #33, #34, #35, #36, #37.
+## [0.4.0](https://github.com/somethingwithproof/mantl/compare/v0.3.1...v0.4.0) (2026-10-06)
+
+
+### Features
+
+* add scoped JSON platform status and health gate ([#335](https://github.com/somethingwithproof/mantl/issues/335)) ([92de791](https://github.com/somethingwithproof/mantl/commit/92de791e23c2e1b36b323c23154f6632a25b57d3))
+
+
+### Bug Fixes
+
+* reject unsupported package verifier branches ([#337](https://github.com/somethingwithproof/mantl/issues/337)) ([f163d73](https://github.com/somethingwithproof/mantl/commit/f163d73e82d77b4d4a74546c7f21829caf911834))
+
 ## [0.3.1](https://github.com/somethingwithproof/mantl/compare/v0.3.0...v0.3.1) (2026-10-05)
 
 
