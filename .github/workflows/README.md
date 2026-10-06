@@ -44,6 +44,19 @@ Fork/metadata events and the legacy reaper retain GitHub-hosted routing; the
 external provenance generator owns its runner selection. See
 [the rollout and rollback contract](../../docs/digitalocean-runners.md).
 
+The component selector and final CI result always use GitHub-hosted runners.
+They coordinate checks without occupying the dedicated pool. Python example
+application tests run only for the changed examples on pull requests; shared
+fixtures, dependency locks or CI configuration select the full example matrix.
+Main pushes and standalone runs test all five Python examples. Documentation-only
+changes keep Go, Python, repository checks and Sonar mandatory, while skipping
+unaffected examples and component/package jobs. Markdown under templates or
+framework data remains a delivered-content change rather than documentation-only.
+
+Sonar consumes example coverage only when those jobs were selected. Unselected
+examples contribute no replacement coverage; a selected example failure still
+fails the aggregate CI check.
+
 Core runtimes and validation tools are pinned in mise.toml; the shared setup action
 installs only the tools a job uses. The example frontend has its own mise
 configuration. WordPress checks use mise-pinned PHP 8.4.26 and Composer 2.10.3,

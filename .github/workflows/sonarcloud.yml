@@ -7,6 +7,9 @@ name: SonarCloud
       coverage-artifacts:
         type: boolean
         default: true
+      example-coverage-artifacts:
+        type: boolean
+        default: true
       pull-request:
         type: string
         default: ''
@@ -62,7 +65,7 @@ jobs:
         with:
           name: python-coverage
       - name: Download isolated Python example coverage
-        if: inputs.coverage-artifacts
+        if: inputs.coverage-artifacts && inputs.example-coverage-artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           pattern: python-example-*-coverage
