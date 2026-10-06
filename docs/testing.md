@@ -15,6 +15,8 @@ Do not run `go test ./...`. `make go-coverage` measures the same first-party sco
 coverage percentages do not establish complete framework/control coverage.
 Python tests exercise auxiliary scripts and contracts; the Go operator is the
 runtime source of truth. Example application jobs have separate locked dependencies.
+PR example coverage is scoped to selected examples; main runs the complete Python
+example matrix. See the workflow inventory for selection and shared-fixture rules.
 
 ## Offline compiler and contracts
 
