@@ -2,6 +2,9 @@
 
 import hashlib
 import io
+import json
+import subprocess
+import sys
 import tarfile
 
 import pytest
@@ -57,3 +60,119 @@ def test_candidate_archive_needs_working_quickstart_and_logo(tmp_path):
 def test_candidate_version_is_explicit_prerelease(version):
     with pytest.raises(ValueError, match="SemVer"):
         candidate.expected_artifacts(version)
+
+
+def complete_candidate(
+    tmp_path, monkeypatch, *, identity=None, schema="mantl.io/plan/v1alpha2", accept_change=False
+):
+    directory = candidate_directory(tmp_path, monkeypatch)
+    monkeypatch.setattr(candidate.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(candidate.platform, "machine", lambda: "aarch64")
+    version = "0.5.0-rc.1"
+    commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=candidate.ROOT, text=True
+    ).strip()
+    identity = identity or f"mantl version {version} ({commit})"
+    binary = (
+        f"#!{sys.executable}\n"
+        "import json, sys\nfrom pathlib import Path\n"
+        f"if '--version' in sys.argv:\n    print({identity!r})\n    sys.exit(0)\n"
+        "if '--save-plan' in sys.argv:\n"
+        "    target = Path(sys.argv[sys.argv.index('--save-plan') + 1])\n"
+        f"    target.write_text(json.dumps({{'schemaVersion': {schema!r}, 'artifacts': []}}))\n"
+        "    sys.exit(0)\n"
+        "if Path(sys.argv[2]).name == 'changed.yaml':\n"
+        "    print('fixture comparison: input changed')\n"
+        f"    sys.exit({0 if accept_change else 1})\n"
+        "sys.exit(0)\n"
+    ).encode()
+    checksums = []
+    for name in sorted(candidate.expected_artifacts(version)):
+        file = directory / name
+        if name.endswith(".tar.gz"):
+            with tarfile.open(file, "w:gz") as archive:
+                for entry in sorted(candidate.ARCHIVE_FILES):
+                    payload = binary if entry == "mantl" else b"fixture documentation"
+                    info = tarfile.TarInfo(entry)
+                    info.size = len(payload)
+                    archive.addfile(info, io.BytesIO(payload))
+        else:
+            file.write_bytes(b"fixture package")
+        checksums.append(f"{hashlib.sha256(file.read_bytes()).hexdigest()}  {name}\n")
+    (directory / "cli-checksums.txt").write_text("".join(checksums))
+    return directory
+
+
+def test_verifier_runs_cli_and_records_explicit_unsigned_scope(tmp_path, monkeypatch):
+    directory = complete_candidate(tmp_path, monkeypatch)
+    report = candidate.verify("0.5.0-rc.1", directory)
+    assert report["scope"] == "local-unsigned-snapshot"
+    assert report["cli"]["unchangedComparison"] == "passed"
+    assert report["cli"]["changedInputGate"] == "passed"
+    assert report["signatureVerification"] == "requires-hosted-release"
+    assert report["provenanceVerification"] == "requires-hosted-release"
+    assert report["cloudAcceptance"] == "not-run"
+    assert report["nativePackages"] == "not-run"
+    assert json.loads((directory / "candidate-verification.json").read_text()) == report
+
+
+@pytest.mark.parametrize(
+    "identity", ["mantl version 0.4.0 (wrong)", "mantl version 0.5.0-rc.1 (wrong)"]
+)
+def test_verifier_rejects_wrong_cli_identity(tmp_path, monkeypatch, identity):
+    directory = complete_candidate(tmp_path, monkeypatch, identity=identity)
+    with pytest.raises(ValueError, match="identity"):
+        candidate.verify("0.5.0-rc.1", directory)
+    assert not (directory / "candidate-verification.json").exists()
+
+
+def test_verifier_rejects_cli_that_accepts_changed_input(tmp_path, monkeypatch):
+    directory = complete_candidate(tmp_path, monkeypatch, accept_change=True)
+    with pytest.raises(ValueError, match="change gate"):
+        candidate.verify("0.5.0-rc.1", directory)
+    assert not (directory / "candidate-verification.json").exists()
+
+
+def test_verifier_rejects_old_plan_schema(tmp_path, monkeypatch):
+    directory = complete_candidate(tmp_path, monkeypatch, schema="mantl.io/plan/v1alpha1")
+    with pytest.raises(ValueError, match="schema"):
+        candidate.verify("0.5.0-rc.1", directory)
+
+
+@pytest.mark.parametrize("succeeds", [True, False])
+def test_native_package_failure_cannot_record_success(tmp_path, monkeypatch, succeeds):
+    directory = complete_candidate(tmp_path, monkeypatch)
+    original_run = subprocess.run
+    calls = []
+
+    def run(args, **kwargs):
+        if args[0] != "bash":
+            return original_run(args, **kwargs)
+        calls.append((args, kwargs))
+        if not succeeds:
+            raise subprocess.CalledProcessError(1, args)
+        return subprocess.CompletedProcess(args, 0)
+
+    monkeypatch.setattr(candidate.subprocess, "run", run)
+    if succeeds:
+        report = candidate.verify("0.5.0-rc.1", directory, native_packages=True)
+        assert report["nativePackages"] == "passed"
+    else:
+        with pytest.raises(subprocess.CalledProcessError):
+            candidate.verify("0.5.0-rc.1", directory, native_packages=True)
+        assert not (directory / "candidate-verification.json").exists()
+    assert len(calls) == 1
+    assert calls[0][0] == [
+        "bash",
+        str(candidate.ROOT / "ci/verify-cli-packages.sh"),
+        str(directory),
+    ]
+    assert calls[0][1]["check"] is True
+
+
+@pytest.mark.parametrize(("system", "machine"), [("Windows", "AMD64"), ("Linux", "i386")])
+def test_native_cli_requires_supported_host(tmp_path, monkeypatch, system, machine):
+    monkeypatch.setattr(candidate.platform, "system", lambda: system)
+    monkeypatch.setattr(candidate.platform, "machine", lambda: machine)
+    with pytest.raises(ValueError, match="supported native host"):
+        candidate.verify_native_cli(tmp_path, "0.5.0-rc.1")
