@@ -64,6 +64,7 @@ for kind in deb rpm; do
       case "$architecture" in
         amd64) image=ubuntu:24.04@sha256:f610ab94648195aa356059f5b41d6085c9d4d903c072430cdd1af7bdb646106b ;;
         arm64) image=ubuntu:24.04@sha256:08571ca13e00ca07a2a84eab83a959b4242e22cceb16486a11bef1428c9e93a7 ;;
+        *) echo "Unsupported DEB package architecture: $architecture" >&2; exit 2 ;;
       esac
       package=${debs[0]}
       ;;
@@ -71,12 +72,14 @@ for kind in deb rpm; do
       case "$architecture" in
         amd64) image=rockylinux:9@sha256:d644d203142cd5b54ad2a83a203e1dee68af2229f8fe32f52a30c6e1d3c3a9e0 ;;
         arm64) image=rockylinux:9@sha256:370b6bd1851d5023c5c673535c85cdc5c1d8a59416ad83380a8db7ce3691bd45 ;;
+        *) echo "Unsupported RPM package architecture: $architecture" >&2; exit 2 ;;
       esac
       package=${rpms[0]}
       # Rocky's system directories are mode 0555; RPM needs this filesystem
       # capability to install there. Keep all other capabilities dropped.
       capabilities+=(--cap-add DAC_OVERRIDE)
       ;;
+    *) echo "Unsupported package format: $kind" >&2; exit 2 ;;
   esac
   docker pull --platform "linux/$architecture" "$image"
   docker run --rm -i --platform "linux/$architecture" --network none \
