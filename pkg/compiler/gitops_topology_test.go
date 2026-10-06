@@ -41,31 +41,42 @@ func TestDesiredTopologyMatchesRenderedApplications(t *testing.T) {
 			t.Fatal("topology differs from rendered inventory")
 		}
 		for _, desired := range expected {
-			raw, err := os.ReadFile(filepath.Join(directory, "gitops", desired.Name+".yaml"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			var app struct {
-				Metadata struct {
-					Name string `json:"name"`
-				} `json:"metadata"`
-				Spec struct {
-					Source struct {
-						Repository string `json:"repoURL"`
-						Revision   string `json:"targetRevision"`
-						Path       string `json:"path"`
-					} `json:"source"`
-				} `json:"spec"`
-			}
-			if err := yaml.Unmarshal(raw, &app); err != nil {
-				t.Fatal(err)
-			}
-			if app.Metadata.Name != desired.Name || app.Spec.Source.Repository != desired.Repository || app.Spec.Source.Revision != desired.Revision || app.Spec.Source.Path != desired.Path {
-				t.Fatalf("rendered identity differs for %s: %+v", desired.Name, app)
-			}
+			verifyRenderedTopologyApplication(t, directory, desired)
 		}
 	}
 	if GitOpsApplications(nil) != nil {
 		t.Fatal("nil cluster has a desired topology")
 	}
+}
+
+// Read the actual manifest bytes independently from the topology descriptors.
+func verifyRenderedTopologyApplication(t *testing.T, directory string, desired GitOpsApplication) {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(directory, "gitops", desired.Name+".yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var app topologyApplication
+	if err := yaml.Unmarshal(raw, &app); err != nil {
+		t.Fatal(err)
+	}
+	if app.Metadata.Name != desired.Name || app.Spec.Source.Repository != desired.Repository || app.Spec.Source.Revision != desired.Revision || app.Spec.Source.Path != desired.Path {
+		t.Fatalf("rendered identity differs for %s: %+v", desired.Name, app)
+	}
+}
+
+type topologyMetadata struct {
+	Name string `json:"name"`
+}
+type topologySource struct {
+	Repository string `json:"repoURL"`
+	Revision   string `json:"targetRevision"`
+	Path       string `json:"path"`
+}
+type topologySpec struct {
+	Source topologySource `json:"source"`
+}
+type topologyApplication struct {
+	Metadata topologyMetadata `json:"metadata"`
+	Spec     topologySpec     `json:"spec"`
 }

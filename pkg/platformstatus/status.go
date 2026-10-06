@@ -55,35 +55,43 @@ type destination struct {
 	Namespace string `json:"namespace"`
 }
 
+type applicationMetadata struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+}
+
+type applicationIdentity struct {
+	Source      source      `json:"source"`
+	Sources     []source    `json:"sources"`
+	Destination destination `json:"destination"`
+}
+
+type syncObservation struct {
+	Status     string              `json:"status"`
+	ComparedTo applicationIdentity `json:"comparedTo"`
+}
+
+type healthObservation struct {
+	Status string `json:"status"`
+}
+type applicationCondition struct {
+	Type string `json:"type"`
+}
+type operationObservation struct {
+	Phase string `json:"phase"`
+}
+
+type applicationStatus struct {
+	Sync           syncObservation        `json:"sync"`
+	Health         healthObservation      `json:"health"`
+	Conditions     []applicationCondition `json:"conditions"`
+	OperationState operationObservation   `json:"operationState"`
+}
+
 type observation struct {
-	Metadata struct {
-		Name      string `json:"name"`
-		Namespace string `json:"namespace"`
-	} `json:"metadata"`
-	Spec struct {
-		Source      source      `json:"source"`
-		Sources     []source    `json:"sources"`
-		Destination destination `json:"destination"`
-	} `json:"spec"`
-	Status struct {
-		Sync struct {
-			Status     string `json:"status"`
-			ComparedTo struct {
-				Source      source      `json:"source"`
-				Sources     []source    `json:"sources"`
-				Destination destination `json:"destination"`
-			} `json:"comparedTo"`
-		} `json:"sync"`
-		Health struct {
-			Status string `json:"status"`
-		} `json:"health"`
-		Conditions []struct {
-			Type string `json:"type"`
-		} `json:"conditions"`
-		OperationState struct {
-			Phase string `json:"phase"`
-		} `json:"operationState"`
-	} `json:"status"`
+	Metadata applicationMetadata `json:"metadata"`
+	Spec     applicationIdentity `json:"spec"`
+	Status   applicationStatus   `json:"status"`
 }
 
 // InterpretApplications requires every generated application, its configured and

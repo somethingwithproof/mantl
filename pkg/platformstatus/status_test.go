@@ -58,9 +58,7 @@ func TestApplicationScopeAndIdentity(t *testing.T) {
 		{"out of sync", Degraded, func(a *observation) { a.Status.Sync.Status = "OutOfSync" }},
 		{"unhealthy", Degraded, func(a *observation) { a.Status.Health.Status = "Progressing" }},
 		{"error condition", Degraded, func(a *observation) {
-			a.Status.Conditions = append(a.Status.Conditions, struct {
-				Type string `json:"type"`
-			}{Type: "ComparisonError"})
+			a.Status.Conditions = append(a.Status.Conditions, applicationCondition{Type: "ComparisonError"})
 		}},
 		{"successful operation", Healthy, func(a *observation) { a.Status.OperationState.Phase = "Succeeded" }},
 		{"unknown health", Unknown, func(a *observation) { a.Status.Health.Status = Unknown }},
