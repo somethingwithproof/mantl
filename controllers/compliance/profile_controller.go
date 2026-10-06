@@ -5,8 +5,6 @@ package compliance
 import (
 	"context"
 
-	"path/filepath"
-
 	"github.com/thomasvincent/mantl/apis/compliance/v1alpha1"
 	"github.com/thomasvincent/mantl/pkg/framework"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -70,10 +68,7 @@ func (r *ComplianceProfileReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 	}
 
-	index, err := buildPolicyIndex([]string{
-		filepath.Join(r.FrameworkDir, "..", "policies", "runtime"),
-		filepath.Join(r.FrameworkDir, profile.Spec.Framework, "policies"),
-	})
+	index, err := frameworkPolicyIndex(r.FrameworkDir, profile.Spec.Framework)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

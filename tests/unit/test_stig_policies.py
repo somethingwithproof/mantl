@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-POLICIES = Path(__file__).resolve().parents[2] / "compliance/frameworks/stig-kubernetes/policies"
+POLICIES = Path(__file__).resolve().parents[2] / "policies/kyverno/stig-kubernetes"
 
 
 @pytest.mark.parametrize("container_kind", ["containers", "initContainers", "ephemeralContainers"])

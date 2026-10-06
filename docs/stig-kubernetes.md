@@ -40,12 +40,12 @@ Obtain the source tree containing this guide and run its pinned toolchain:
 mise install
 mise exec -- go run ./cmd/mantl bundle build --version 0.5.0-stig.1 --output /tmp/mantl-stig-controls.tar.gz
 mise exec -- go run ./cmd/mantl bundle unpack /tmp/mantl-stig-controls.tar.gz /tmp/mantl-stig-content
-mise exec -- kustomize build compliance/frameworks/stig-kubernetes/policies
+mise exec -- kustomize build policies/kyverno/stig-kubernetes
 ```
 
 The example version identifies your local content bundle; it is not a published
-release. Use a fresh unpack directory. The bundle contains the catalog and
-opt-in policies under `frameworks/stig-kubernetes/`, with a verified manifest.
+release. Use a fresh unpack directory. The bundle contains the catalog under `frameworks/stig-kubernetes/` and
+opt-in policies under `policies/stig-kubernetes/`, with a verified manifest.
 Record its digest and mount verified content into the operator following
 [content pinning](architecture-runtime.md#content-and-evaluations).
 Building a bundle does not deploy it or enable STIG policies in its root
@@ -58,7 +58,7 @@ using [compliance operations](compliance-operations.md). A source-built operator
 image includes this catalog automatically; the published v0.4.0 image does not.
 Do not select the new framework until the mounted content includes it.
 
-Add `compliance/frameworks/stig-kubernetes/policies` to a reviewed ArgoCD policy
+Add `policies/kyverno/stig-kubernetes` to a reviewed ArgoCD policy
 overlay. The policies use **Audit** mode, do not change the built-in policy
 topology, and do not exclude any namespaces. Review the impact before selecting
 Enforce mode; rejecting Secret environment references can interrupt workloads.

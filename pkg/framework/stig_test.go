@@ -46,7 +46,7 @@ func TestSTIGCatalogSurvivesVerifiedBundle(t *testing.T) {
 	}
 	index := map[string]string{}
 	for _, name := range []string{"stig-disallow-secret-env", "stig-restrict-privileged-host-ports"} {
-		index[name] = filepath.Join(dest, "frameworks", "stig-kubernetes", "policies", name+".yaml")
+		index[name] = filepath.Join(dest, "policies", "stig-kubernetes", name+".yaml")
 	}
 	mapped := 0
 	for _, control := range fw.Controls {
