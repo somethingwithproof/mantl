@@ -56,6 +56,8 @@ jobs:
         run: |
           mise exec -- make go-test
           mise exec -- goreleaser release --clean
+      - name: Verify native DEB and RPM package lifecycles
+        run: ci/verify-cli-packages.sh dist
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: cli-release

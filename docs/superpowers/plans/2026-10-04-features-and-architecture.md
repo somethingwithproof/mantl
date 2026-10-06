@@ -1,8 +1,31 @@
 # Mantl features and architecture plan
 
 Date: 2026-10-04
-Status: phases 1, 2, 4, and 5 authorized; release phase 3 deferred
+Status: implementation delivered; local validation continues; production acceptance pending
 Baseline: `d83e2d28265ccdd0dd9e289f9867d326fd9de32b` on `somethingwithproof/mantl` main
+
+## Implementation checkpoint (2026-10-06)
+
+The inventory and ordered work below preserve the original planning baseline;
+they are not a current list of missing features. Subsequent authorization included
+the release phase and the 2026–2027 architecture in ADR 008.
+
+| Phase | Delivered implementation and local verification | Remaining acceptance |
+| --- | --- | --- |
+| 1: Installation | Strict compiler contracts, packaged frameworks, CRDs/RBAC and an injected evidence reader; compiler, framework and disposable API fixtures | Environment-specific installation, identity and upgrade evidence |
+| 2: Compliance/evidence | Immutable AuditRuns, isolated collectors, evaluations, retained evidence receipts, finding history and export verification; controller and storage failure-path tests | End-to-end enforcement, retained storage, recovery and operational acceptance in target clusters |
+| 3: Release | [v0.3.1](https://github.com/somethingwithproof/mantl/releases/tag/v0.3.1) published CLI archives, DEB/RPM, manifests, OCI assets, checksums, SBOMs and provenance; signatures and all CLI provenance verified independently | Native package lifecycle checks now exercise installation, reinstallation and removal; version-to-version upgrade acceptance remains separate |
+| 4: Operations | AWS/GCP/Azure static contracts, observability and recovery runbooks; no cloud parity inferred from static checks | Recorded deployment, audit delivery, private administration, upgrade and recovery evidence per provider |
+| 5: Features | Machine-readable compliance/evidence commands, reviewed GitOps remediation suggestions, Falco ingestion, tenant-isolated fleet metadata and Backstage PR scaffolding | Fleet deployment, native non-S3 WORM storage, and separate framework/control acceptance; no portal or fleet UI claimed |
+
+Use [compliance operations](../../compliance-operations.md),
+[runtime architecture](../../architecture-runtime.md) and
+[release verification](../../releases.md) for current behavior and commands.
+The runtime and fleet adapters remain beta. Local tests and package execution do
+not establish cloud deployment safety, certification or an independently assessed
+SLSA level. The remaining SPIRE privileges and undeployed Nomad archive limits
+are conditional exceptions governed by
+[ADR 010](../../adr/010-security-exception-boundaries.md).
 
 ## Product direction
 
