@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Reject invalid SonarCloud access without disclosing credentials."""
 
 import io

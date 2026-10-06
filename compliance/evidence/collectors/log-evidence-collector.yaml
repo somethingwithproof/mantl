@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Evidence Collector: Log-based Evidence
 # Queries Loki for security-relevant logs
 apiVersion: batch/v1
@@ -57,7 +58,7 @@ data:
       - name: access-changes
         controlId: CC6.3
         query: |
-          {namespace="kube-system"} 
+          {namespace="kube-system"}
           |= "rolebinding" or |= "clusterrolebinding"
           |= "delete" or |= "create" or |= "update"
         description: "Role binding changes indicating access modifications"

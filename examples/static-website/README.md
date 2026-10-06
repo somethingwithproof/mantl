@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Static Website Example
 
 Production-ready static website hosting on Kubernetes demonstrating:

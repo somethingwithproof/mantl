@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl documentation
 
 The current navigation page is [docs/README.md](README.md).

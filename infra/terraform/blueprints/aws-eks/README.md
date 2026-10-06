@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl AWS EKS Blueprint
 
 Beta Amazon EKS blueprint with IRSA roles for Mantl platform components. Static validation does not establish production readiness; deployment requires cloud acceptance evidence.

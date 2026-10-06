@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Compliance content and runtime
 
 Mantl's beta compliance operator reconciles configured control mappings,

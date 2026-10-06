@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Assemble release installation assets without machine-specific state."""
 
 import argparse

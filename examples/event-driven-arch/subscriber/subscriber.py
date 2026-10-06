@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Event Subscriber - Consumes events from NATS message broker
 

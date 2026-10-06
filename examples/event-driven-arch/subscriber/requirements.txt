@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Generated from requirements.in with mise and uv; edit the input and regenerate.
 nats-py==2.16.0 \
     --hash=sha256:1d137ed7afc9b59033b3199324c6237df2016a5091935871344a787eba6b72fc \

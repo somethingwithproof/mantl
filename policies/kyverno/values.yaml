@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Kyverno Helm values
 # CNCF Graduated Policy Engine
 # https://kyverno.io/docs/installation/
@@ -5,7 +6,7 @@
 # Admission controller
 admissionController:
   replicas: 3
-  
+
   resources:
     requests:
       cpu: 100m
@@ -13,7 +14,7 @@ admissionController:
     limits:
       cpu: 500m
       memory: 512Mi
-  
+
   # Pod disruption budget
   podDisruptionBudget:
     enabled: true
@@ -22,7 +23,7 @@ admissionController:
 # Background controller
 backgroundController:
   replicas: 2
-  
+
   resources:
     requests:
       cpu: 100m
@@ -34,7 +35,7 @@ backgroundController:
 # Cleanup controller
 cleanupController:
   replicas: 2
-  
+
   resources:
     requests:
       cpu: 50m
@@ -46,7 +47,7 @@ cleanupController:
 # Reports controller
 reportsController:
   replicas: 2
-  
+
   resources:
     requests:
       cpu: 50m

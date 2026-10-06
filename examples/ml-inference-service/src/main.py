@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 ML Inference Service - Serves machine learning model predictions via REST API
 

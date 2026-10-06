@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # OCI Provider Configuration
 variable "tenancy_ocid" {
   description = "OCI tenancy OCID"

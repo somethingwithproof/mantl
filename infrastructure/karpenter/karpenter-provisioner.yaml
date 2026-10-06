@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Karpenter Node Provisioner Configuration
 # Just-in-time node provisioning for Kubernetes
 # https://karpenter.sh/

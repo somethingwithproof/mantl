@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR 008: Compliance platform architecture and release boundary
 
 Status: Accepted for implementation; deployment acceptance remains pending.

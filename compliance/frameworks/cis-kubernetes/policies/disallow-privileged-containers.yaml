@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # CIS Kubernetes 5.2.1 - Disallow Privileged Containers
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -33,7 +34,7 @@ spec:
         message: |
           CIS 5.2.1 Violation: Privileged containers are not allowed.
           Remove securityContext.privileged or set it to false.
-          
+
           Resource: {{request.object.metadata.namespace}}/{{request.object.metadata.name}}
           Documentation: https://mantl.io/docs/compliance/cis/5.2.1
         pattern:

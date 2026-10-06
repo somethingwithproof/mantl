@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Package oscal translates control catalogs without inventing policy mappings.
 package oscal
 

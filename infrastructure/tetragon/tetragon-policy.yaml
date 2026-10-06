@@ -1,8 +1,4 @@
-# Cilium Tetragon Runtime Security Policies
-# eBPF-based security observability and enforcement
-# https://tetragon.io/
-
----
+# SPDX-License-Identifier: Apache-2.0
 # Namespace for Tetragon policies
 apiVersion: v1
 kind: Namespace
@@ -281,8 +277,8 @@ spec:
               rateLimit: "1m"
               rateLimitScope: process
 
-    # Monitor DNS queries for suspicious domains would require
-    # additional network policy integration
+# Monitor DNS queries for suspicious domains would require
+# additional network policy integration
 ---
 # TracingPolicy: File integrity monitoring
 apiVersion: cilium.io/v1alpha1
@@ -378,7 +374,7 @@ spec:
               rateLimit: "1m"
               rateLimitScope: process
 
-    # Monitor kubectl and similar tool execution
+  # Monitor kubectl and similar tool execution
   tracepoints:
     - subsystem: "sched"
       event: "sched_process_exec"

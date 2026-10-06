@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Issue Template
 
 Please use this template when creating issues to help us address your concerns effectively.
@@ -16,12 +17,12 @@ Please use this template when creating issues to help us address your concerns e
 
 ## Steps to Reproduce
 <\!-- For bugs, please provide detailed steps to reproduce the issue -->
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Environment Information
-- Mantl Version: 
+- Mantl Version:
 - Operating System:
 - Deployment Type (Vagrant, AWS, OpenStack, etc.):
 - Component Versions (if known):

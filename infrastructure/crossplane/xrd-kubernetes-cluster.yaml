@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Crossplane Composite Resource Definition (XRD) for Kubernetes Clusters
 # Provides a cloud-agnostic interface for managed Kubernetes provisioning
 # https://docs.crossplane.io/latest/concepts/composite-resource-definitions/

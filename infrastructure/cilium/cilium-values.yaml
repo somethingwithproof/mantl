@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Cilium Helm Values for Zero-Trust Networking
 # Production-ready configuration with security hardening
 # https://docs.cilium.io/en/stable/helm-reference/

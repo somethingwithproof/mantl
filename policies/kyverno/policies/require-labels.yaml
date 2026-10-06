@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Require standard labels on all resources
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy

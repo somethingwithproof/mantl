@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Multi-stage build for static website
 # Official nginx:1.31-alpine image, pinned to its multi-platform digest.
 FROM nginx@sha256:abe47724e466aeab9a345d8e46a221c2fa8953c7848bb4a3bd9976a7199f8cf2

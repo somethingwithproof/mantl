@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl agent instructions
 
 Shared repository guidance for Codex (`AGENTS.md`) and Claude (`CLAUDE.md`).

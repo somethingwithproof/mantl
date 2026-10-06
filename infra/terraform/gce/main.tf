@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Mantl GCE instances using the modern google_compute_instance schema:
 # shielded VMs, optional CMEK boot disks, and private-only network interfaces.
 

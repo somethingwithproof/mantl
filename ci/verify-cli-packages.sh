@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # Exercise native package installation, reinstallation and removal in disposable containers.
 set -euo pipefail
 

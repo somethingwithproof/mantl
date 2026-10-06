@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Kyverno Policy Pack: Container Security
 # Implements: SOC2-CC6.1, HIPAA-164.312(a)(1), PCI-DSS-2.2.4, CIS-K8S-5.2.x
 ---

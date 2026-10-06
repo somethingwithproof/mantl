@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Verification record: Mantl v0.3.1
 
 Verified on 2026-10-06 from the assets attached to

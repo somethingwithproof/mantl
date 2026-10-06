@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Getting started with Mantl
 
 Start by generating reviewable configuration offline. The commands below target

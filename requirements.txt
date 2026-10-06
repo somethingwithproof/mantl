@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Generated from requirements.in with mise and uv; edit the input and regenerate.
 alabaster==1.0.0 \
     --hash=sha256:c00dca57bca26fa62a6d7d0a9fcce65f3e026e9bfe33e9c538fd3fbb2144fd9e \

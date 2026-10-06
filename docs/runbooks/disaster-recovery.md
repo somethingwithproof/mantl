@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Disaster Recovery Runbook
 
 > Historical component-stack procedure examples. These commands and objectives

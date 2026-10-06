@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Kyverno policy examples (templates)
 
 These are template policies that require user-specific values (cosign public

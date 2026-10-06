@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 provider "openstack" {
   # Credentials are typically provided via OS_* environment variables
   # or clouds.yaml configuration file

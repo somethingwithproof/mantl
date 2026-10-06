@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Karpenter Infrastructure Resources Kustomization
 # Apply after Karpenter controller is installed
 # https://karpenter.sh/

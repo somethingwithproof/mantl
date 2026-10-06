@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Crossplane Composite Resource Definition for Talos Kubernetes Clusters
 # Enables GitOps-driven Talos cluster provisioning
 # https://www.talos.dev/ + https://crossplane.io/

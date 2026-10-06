@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 ################################################################################
 # Platform Security Module
 # Adds security features to providers without native equivalents

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl documentation
 
 <img src="_static/mantl-mark.svg" alt="Mantl" width="240" />
@@ -31,6 +32,7 @@ proof of deployed capabilities.
 - [Troubleshooting](troubleshooting.md): generation, GitOps, findings, storage, and diagnostic boundaries.
 - [Contributing](../CONTRIBUTING.md) and [testing](testing.md): pinned toolchain, scoped checks, locks, devcontainers, and disposable integration fixtures.
 - [GitHub Actions inventory](../.github/workflows/README.md), [required checks](ci-required-checks.md), and [SonarCloud](sonarcloud.md).
+- [License declarations and maintenance](licensing.md): SPDX headers, generated files and upstream exceptions.
 - [Security reporting](../SECURITY.md), [architecture decisions](adr), and [roadmap/design specs](superpowers/specs).
 
 ## Additional assets and documentation gaps

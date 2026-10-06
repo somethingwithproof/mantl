@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl development
 
 The maintained developer guide is [CONTRIBUTING.md](CONTRIBUTING.md).

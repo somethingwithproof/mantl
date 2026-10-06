@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # azure-aks
 
 This blueprint is beta. Static validation does not establish cloud readiness.

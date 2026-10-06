@@ -2,6 +2,7 @@
 name: mantl-terraform
 description: Load when writing or modifying Terraform under infra/terraform, whether cluster blueprints, modules, or examples. Covers blueprint layout conventions, the AWS-GA / GCP-Azure-beta cloud-parity scope (ADR 005), the common hardening baseline, and provider pinning.
 ---
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 
 # mantl terraform skill
 

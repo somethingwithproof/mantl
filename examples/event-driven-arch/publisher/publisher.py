@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Event Publisher - Publishes events to NATS message broker
 

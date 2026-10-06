@@ -1,4 +1,5 @@
 <?php
+// SPDX-License-Identifier: MIT
 
 use function Env\env;
 

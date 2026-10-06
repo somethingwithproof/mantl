@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl Compliance CLI
 
 Command-line interface for managing compliance in Mantl clusters.
@@ -167,16 +168,16 @@ mantl compliance frameworks update soc2 --version 2023
 defaults:
   framework: soc2
   output: table
-  
+
 evidence:
   bucket: s3://my-compliance-evidence
   region: us-east-1
-  
+
 notifications:
   slack:
     webhook: $SLACK_WEBHOOK_URL
     channel: "#compliance"
-    
+
 reporting:
   schedule: "0 9 * * 1"  # Weekly Monday 9am
   recipients:

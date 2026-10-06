@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 resource "google_compute_disk" "mi-control-lvm" {
   count = var.use_modern_gce_schema ? var.control_count : 0
   name  = "${var.short_name}-control-data-${count.index + 1}"

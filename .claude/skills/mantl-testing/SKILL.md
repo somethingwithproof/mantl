@@ -2,6 +2,7 @@
 name: mantl-testing
 description: Load when writing or running tests in the mantl repo. Covers the canonical make go-test target and why it excludes vendored platform/ (ADR 004), controller test structure, the rule that no test may depend on a live cluster or kubectl, and table-driven Go test style.
 ---
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 
 # mantl testing skill
 

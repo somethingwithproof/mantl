@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 includes:
   - vendor/szepeviktor/phpstan-wordpress/extension.neon
   - vendor/szepeviktor/phpstan-wordpress/rules.neon

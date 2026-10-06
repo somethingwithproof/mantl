@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Select optional CI checks from NUL-delimited changed paths."""
 
 import json

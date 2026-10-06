@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Falco Rules for Compliance Evidence Collection
 # These rules generate evidence for various compliance controls
 apiVersion: v1
@@ -14,12 +15,12 @@ data:
     - rule: Unauthorized Network Connection
       desc: Detect connections to unexpected destinations (SOC2 CC6.1)
       condition: >
-        outbound and 
+        outbound and
         not (fd.sip in (allowed_outbound_destinations)) and
         container
       output: >
-        Unauthorized outbound connection 
-        (user=%user.name command=%proc.cmdline connection=%fd.name 
+        Unauthorized outbound connection
+        (user=%user.name command=%proc.cmdline connection=%fd.name
         container_id=%container.id image=%container.image.repository)
       priority: WARNING
       tags: [compliance, soc2, cc6.1, network]
@@ -29,7 +30,7 @@ data:
     - rule: Suspicious Process Execution
       desc: Detect execution of suspicious binaries (SOC2 CC6.8)
       condition: >
-        spawned_process and 
+        spawned_process and
         container and
         (proc.name in (suspicious_binaries) or
          proc.cmdline contains "curl" and proc.cmdline contains "|"))
@@ -45,14 +46,14 @@ data:
     - rule: Sensitive File Access
       desc: Detect access to sensitive files (SOC2 CC7.1)
       condition: >
-        open_read and 
+        open_read and
         container and
         (fd.name startswith /etc/shadow or
          fd.name startswith /etc/passwd or
          fd.name startswith /etc/kubernetes/pki)
       output: >
         Sensitive file access detected
-        (user=%user.name file=%fd.name command=%proc.cmdline 
+        (user=%user.name file=%fd.name command=%proc.cmdline
         container=%container.name)
       priority: WARNING
       tags: [compliance, soc2, cc7.1, file-access]
@@ -64,7 +65,7 @@ data:
       condition: >
         container_started and container.privileged=true
       output: >
-        Privileged container started 
+        Privileged container started
         (container_id=%container.id image=%container.image.repository)
       priority: CRITICAL
       tags: [compliance, cis, 5.2.1, privileged]
@@ -77,7 +78,7 @@ data:
         container_started and user.uid=0
       output: >
         Container running as root
-        (container_id=%container.id image=%container.image.repository 
+        (container_id=%container.id image=%container.image.repository
         user=%user.name)
       priority: WARNING
       tags: [compliance, cis, 5.2.3, root]
@@ -87,12 +88,12 @@ data:
     - rule: Secret Access Detected
       desc: Detect access to Kubernetes secrets (SOC2 C1.1)
       condition: >
-        ka.verb in (get, list) and 
+        ka.verb in (get, list) and
         ka.target.resource=secrets and
         not ka.user.name in (allowed_secret_accessors)
       output: >
         Secret access detected
-        (user=%ka.user.name secret=%ka.target.name 
+        (user=%ka.user.name secret=%ka.target.name
         namespace=%ka.target.namespace)
       priority: NOTICE
       tags: [compliance, soc2, c1.1, secrets]

@@ -2,6 +2,7 @@
 name: mantl-core
 description: Load when starting work anywhere in the mantl repo. Establishes the architecture (Kubernetes operator + Terraform platform), the boundary between CRDs/controllers, pkg logic, and frameworks-as-data, the module map, and which specialized skill to load next.
 ---
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 
 # mantl core skill
 

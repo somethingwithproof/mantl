@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 output "cilium_enabled" {
   description = "Whether Cilium is enabled"
   value       = var.enable_cilium

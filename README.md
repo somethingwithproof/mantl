@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 <img src="docs/_static/mantl-mark.svg" alt="Mantl — connected platform layers" width="360" />
 
 # Mantl

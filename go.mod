@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 module github.com/thomasvincent/mantl
 
 go 1.26.1

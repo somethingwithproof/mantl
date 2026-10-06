@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # HashiCorp Nomad Cluster Infrastructure
 # OpenTofu configuration for AWS deployment
 # https://developer.hashicorp.com/nomad/tutorials/enterprise/production-reference-architecture-vm-with-consul

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Cilium Zero-Trust Security Kustomization
 # Network policies, mTLS, and microsegmentation
 # https://docs.cilium.io/

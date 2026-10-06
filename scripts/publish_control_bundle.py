@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
 """Publish content versions once; reject changed bytes at an existing tag."""
 
 import argparse

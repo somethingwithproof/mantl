@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 provider "oci" {
   tenancy_ocid     = var.tenancy_ocid
   user_ocid        = var.user_ocid

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Checkov configuration
 # Docs: https://www.checkov.io/3.Walkthrough/2.Scanning/CLI.html#configuration-file
 quiet: true

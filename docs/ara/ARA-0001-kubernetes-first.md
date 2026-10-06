@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ARA-0001 Kubernetes-first platform
 Status: Accepted
 Date: 2025-12-27
