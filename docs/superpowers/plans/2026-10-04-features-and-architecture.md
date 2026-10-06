@@ -27,6 +27,15 @@ SLSA level. The remaining SPIRE privileges and undeployed Nomad archive limits
 are conditional exceptions governed by
 [ADR 010](../../adr/010-security-exception-boundaries.md).
 
+## Core feature checkpoint (next CLI release)
+
+The published baseline is now [v0.4.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.4.0),
+including scoped JSON application status and a health gate. The next release adds
+an offline compiler preview, configurable output directories and a versioned JSON
+artifact inventory with SHA256 hashes. See [platform planning](../../platform-planning.md).
+Preview/render parity, invalid-input behavior, cancellation and file preservation
+are validated locally; these capabilities do not establish cloud acceptance.
+
 ## Product direction
 
 Make Mantl an adoptable Kubernetes platform with a verifiable compliance workflow.

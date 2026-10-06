@@ -14,8 +14,28 @@ type TFVars map[string]interface{}
 
 // RenderTerraform generates the terraform.tfvars.json file for the given spec.
 func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
+	data, err := terraformManifest(cluster)
+	if err != nil {
+		return err
+	}
+
+	// 4. Ensure output directory exists
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// 5. Write to file
+	outputPath := filepath.Join(outputDir, "terraform.tfvars.json")
+	if err := os.WriteFile(outputPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write terraform variables file: %w", err)
+	}
+
+	return nil
+}
+
+func terraformManifest(cluster *v1alpha1.MantlCluster) ([]byte, error) {
 	if cluster == nil {
-		return fmt.Errorf("cluster must not be nil")
+		return nil, fmt.Errorf("cluster must not be nil")
 	}
 
 	// 1. Prepare variables based on the spec
@@ -27,7 +47,7 @@ func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
 	}
 	environment := envMap[cluster.Spec.Profile.Size]
 	if environment == "" {
-		return fmt.Errorf("unsupported profile size %q: expected one of small, medium, full", cluster.Spec.Profile.Size)
+		return nil, fmt.Errorf("unsupported profile size %q: expected one of small, medium, full", cluster.Spec.Profile.Size)
 	}
 
 	if cluster.Spec.Environment != "" {
@@ -37,7 +57,7 @@ func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
 		case "production":
 			environment = "prod"
 		default:
-			return fmt.Errorf("unsupported environment %q", cluster.Spec.Environment)
+			return nil, fmt.Errorf("unsupported environment %q", cluster.Spec.Environment)
 		}
 	}
 	vars := TFVars{"cluster_name": cluster.Name, "kubernetes_version": cluster.Spec.Kubernetes.Version, "environment": environment}
@@ -55,19 +75,8 @@ func RenderTerraform(cluster *v1alpha1.MantlCluster, outputDir string) error {
 	// 3. Serialize to JSON
 	data, err := json.MarshalIndent(vars, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal terraform variables: %w", err)
+		return nil, fmt.Errorf("failed to marshal terraform variables: %w", err)
 	}
 
-	// 4. Ensure output directory exists
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
-	}
-
-	// 5. Write to file
-	outputPath := filepath.Join(outputDir, "terraform.tfvars.json")
-	if err := os.WriteFile(outputPath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write terraform variables file: %w", err)
-	}
-
-	return nil
+	return data, nil
 }
