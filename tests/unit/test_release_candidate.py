@@ -247,3 +247,49 @@ def test_verifier_rejects_untrusted_artifact_directory_before_execution(
     with pytest.raises(ValueError, match="release paths|release artifacts"):
         candidate.verify("0.5.0-rc.1", directory)
     assert not (outside / "candidate-verification.json").exists()
+
+
+def test_report_destination_substitution_cannot_overwrite_outside_file(tmp_path, monkeypatch):
+    directory = complete_candidate(tmp_path, monkeypatch)
+    outside = tmp_path / "untouched.json"
+    outside.write_text("fixture must stay unchanged")
+    original = candidate.verify_native_cli
+
+    def substitute(*args):
+        result = original(*args)
+        (directory / "candidate-verification.json").symlink_to(outside)
+        return result
+
+    monkeypatch.setattr(candidate, "verify_native_cli", substitute)
+    with pytest.raises(ValueError, match="regular file"):
+        candidate.verify("0.5.0-rc.1", directory)
+    assert outside.read_text() == "fixture must stay unchanged"
+    assert not list(directory.glob(".candidate-report-*.tmp"))
+
+
+def test_report_directory_substitution_does_not_redirect_output(tmp_path, monkeypatch):
+    directory = complete_candidate(tmp_path, monkeypatch)
+    relocated = directory.with_name("original-candidate")
+    substitute = tmp_path / "substitute"
+    substitute.mkdir()
+    original = candidate.inspect_candidate
+
+    def replace_directory(*args):
+        report = original(*args)
+        directory.rename(relocated)
+        directory.symlink_to(substitute, target_is_directory=True)
+        return report
+
+    monkeypatch.setattr(candidate, "inspect_candidate", replace_directory)
+    candidate.verify("0.5.0-rc.1", directory)
+    assert (relocated / "candidate-verification.json").is_file()
+    assert not list(substitute.iterdir())
+
+
+def test_successful_verification_replaces_existing_regular_report(tmp_path, monkeypatch):
+    directory = complete_candidate(tmp_path, monkeypatch)
+    target = directory / "candidate-verification.json"
+    target.write_text("old report")
+    report = candidate.verify("0.5.0-rc.1", directory)
+    assert json.loads(target.read_text()) == report
+    assert not list(directory.glob(".candidate-report-*.tmp"))

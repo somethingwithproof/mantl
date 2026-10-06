@@ -2,13 +2,17 @@
 """Verify local RC packages and reviewed-plan behavior without publishing."""
 
 import argparse
+import contextlib
 import hashlib
 import json
+import os
 import platform
 import re
+import stat
 import subprocess
 import tarfile
 import tempfile
+import uuid
 from pathlib import Path
 
 from scripts import release_paths
@@ -172,9 +176,7 @@ def verify_native_cli(directory, version):
         }
 
 
-def verify(version, directory, native_packages=False):
-    directory = release_paths.artifact_path(directory)
-    report_path = release_paths.artifact_path(directory / "candidate-verification.json")
+def inspect_candidate(version, directory, native_packages=False):
     artifacts = verify_checksums(directory, version)
     for name in artifacts:
         if name.endswith(".tar.gz"):
@@ -202,8 +204,49 @@ def verify(version, directory, native_packages=False):
             timeout=PACKAGE_TIMEOUT_SECONDS,
         )
         report["nativePackages"] = "passed"
-    report_path.write_text(json.dumps(report, indent=2) + "\n")
     return report
+
+
+def write_report(directory_fd, report):
+    """Publish JSON atomically without following a substituted destination symlink."""
+    destination = "candidate-verification.json"
+    try:
+        existing = os.stat(destination, dir_fd=directory_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        existing = None
+    if existing is not None and not stat.S_ISREG(existing.st_mode):
+        raise ValueError("candidate report must be a regular file, not a symlink")
+    temporary = f".candidate-report-{uuid.uuid4().hex}.tmp"
+    descriptor = os.open(
+        temporary,
+        os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
+        0o600,
+        dir_fd=directory_fd,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump(report, stream, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, destination, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)
+    finally:
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(temporary, dir_fd=directory_fd)
+
+
+def verify(version, directory, native_packages=False):
+    directory = release_paths.artifact_path(directory)
+    release_paths.artifact_path(directory / "candidate-verification.json")
+    # Pin the directory before running the candidate: path replacement during its
+    # smoke checks must never redirect report output into another directory.
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        report = inspect_candidate(version, directory, native_packages)
+        write_report(descriptor, report)
+        return report
+    finally:
+        os.close(descriptor)
 
 
 def main():
