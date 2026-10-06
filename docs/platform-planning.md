@@ -93,7 +93,8 @@ cluster identity independently. Local bootstrap derives `kind-PLATFORM_NAME`
 and rejects a conflicting explicit context without changing global CLI state.
 The total deadline is configurable from a positive duration up to two hours;
 convergence also retains its ten-minute stage limit. Each failed or cancelled
-stage stops subsequent stages and preserves its underlying error. Partial changes
+stage stops subsequent stages and preserves its underlying error. Ctrl+C and
+SIGTERM cancel the CLI context, stop managed child commands and run snapshot cleanup. Partial changes
 remain available for diagnosis and recovery; rollback is an operator decision.
 
 Apply without `--plan` generates fresh inputs after preflight and uses the same

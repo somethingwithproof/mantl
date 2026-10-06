@@ -75,6 +75,9 @@ func executeApply(command *cobra.Command, specFile string, options applyOptions,
 	dag := &bootstrap.ExecutionDAG{SpecFile: specFile, KubeContext: target, SourceDir: sourceDir, Distribution: plan.Distribution, Applications: compiler.GitOpsApplications(cluster)}
 	executor := factory(dag)
 	if err := executor.Preflight(ctx, plan.Provider, plan.Platform); err != nil {
+		if ctx.Err() != nil {
+			err = ctx.Err()
+		}
 		return fmt.Errorf("apply preflight: %w", err)
 	}
 	if err := ctx.Err(); err != nil {
@@ -146,6 +149,9 @@ func runApplySteps(ctx context.Context, executor applyExecutor, plan compiler.Pl
 			return fmt.Errorf("write apply progress: %w", err)
 		}
 		if err := step.run(ctx); err != nil {
+			if ctx.Err() != nil {
+				err = ctx.Err()
+			}
 			return fmt.Errorf("%s: %w", step.name, err)
 		}
 	}
