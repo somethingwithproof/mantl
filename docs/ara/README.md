@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Architecture Rationale and Alternatives (ARA)
 
 These records describe platform design intentions and component choices. For current

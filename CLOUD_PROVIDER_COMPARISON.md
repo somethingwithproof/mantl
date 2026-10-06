@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Cloud Provider Feature Parity Comparison
 
 ## Overview

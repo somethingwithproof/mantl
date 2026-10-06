@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR 010: Security exception and deployment boundaries
 
 Status: Accepted

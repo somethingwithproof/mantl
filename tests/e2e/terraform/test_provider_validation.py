@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 End-to-end tests for Terraform provider validation.
 

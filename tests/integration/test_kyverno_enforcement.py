@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Integration tests for Kyverno policy enforcement.
 
 These tests require a running Kubernetes cluster with Kyverno installed.
@@ -8,13 +9,12 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict
 
 import pytest
 import yaml
 
-
 # Fixtures
+
 
 @pytest.fixture(scope="module")
 def cluster_available() -> bool:
@@ -69,9 +69,10 @@ def test_namespace():
 
 # Helper functions
 
-def apply_manifest(manifest: Dict, namespace: str = "default") -> subprocess.CompletedProcess:
+
+def apply_manifest(manifest: dict, namespace: str = "default") -> subprocess.CompletedProcess:
     """Apply a Kubernetes manifest and return the result."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(manifest, f)
         manifest_file = f.name
 
@@ -91,8 +92,8 @@ def create_pod_manifest(
     name: str,
     image: str,
     namespace: str = "default",
-    labels: Dict[str, str] = None,
-) -> Dict:
+    labels: dict[str, str] = None,
+) -> dict:
     """Create a pod manifest."""
     manifest = {
         "apiVersion": "v1",
@@ -117,6 +118,7 @@ def create_pod_manifest(
 
 
 # Registry restriction tests
+
 
 @pytest.mark.integration
 @pytest.mark.requires_cluster
@@ -166,11 +168,10 @@ def test_blocked_registry_rejected(cluster_available, kyverno_installed, test_na
 
 # Required labels tests
 
+
 @pytest.mark.integration
 @pytest.mark.requires_cluster
-def test_pod_without_required_labels_blocked(
-    cluster_available, kyverno_installed, test_namespace
-):
+def test_pod_without_required_labels_blocked(cluster_available, kyverno_installed, test_namespace):
     """Test that pods without required labels are blocked."""
     if not cluster_available or not kyverno_installed:
         pytest.skip("Requires cluster with Kyverno installed")
@@ -192,6 +193,7 @@ def test_pod_without_required_labels_blocked(
 
 
 # Image signature verification tests
+
 
 @pytest.mark.integration
 @pytest.mark.requires_cluster
@@ -241,6 +243,7 @@ def test_unsigned_image_blocked_when_policy_enforced(
 
 # Policy report tests
 
+
 @pytest.mark.integration
 @pytest.mark.requires_cluster
 def test_policy_reports_generated(cluster_available, kyverno_installed, test_namespace):
@@ -258,6 +261,7 @@ def test_policy_reports_generated(cluster_available, kyverno_installed, test_nam
 
     # Wait a bit for policy report generation
     import time
+
     time.sleep(5)
 
     # Check if policy reports exist
@@ -273,6 +277,7 @@ def test_policy_reports_generated(cluster_available, kyverno_installed, test_nam
 
 
 # Namespace exclusion tests
+
 
 @pytest.mark.integration
 @pytest.mark.requires_cluster
@@ -306,11 +311,10 @@ def test_system_namespaces_excluded(cluster_available, kyverno_installed):
 
 # Multi-container pod tests
 
+
 @pytest.mark.integration
 @pytest.mark.requires_cluster
-def test_multi_container_all_validated(
-    cluster_available, kyverno_installed, test_namespace
-):
+def test_multi_container_all_validated(cluster_available, kyverno_installed, test_namespace):
     """Test that all containers in a pod are validated."""
     if not cluster_available or not kyverno_installed:
         pytest.skip("Requires cluster with Kyverno installed")
@@ -352,12 +356,11 @@ def test_multi_container_all_validated(
 
 # Performance test
 
+
 @pytest.mark.integration
 @pytest.mark.requires_cluster
 @pytest.mark.slow
-def test_policy_validation_performance(
-    cluster_available, kyverno_installed, test_namespace
-):
+def test_policy_validation_performance(cluster_available, kyverno_installed, test_namespace):
     """Test that policy validation doesn't significantly delay pod creation."""
     if not cluster_available or not kyverno_installed:
         pytest.skip("Requires cluster with Kyverno installed")

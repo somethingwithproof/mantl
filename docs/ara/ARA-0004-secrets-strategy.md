@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ARA-0004 Secrets and key management
 Status: Accepted
 Date: 2025-12-27

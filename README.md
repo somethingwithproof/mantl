@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 <img src="docs/_static/mantl-mark.svg" alt="Mantl — connected platform layers" width="360" />
 
 # Mantl
@@ -220,4 +221,6 @@ are intentions, not release guarantees.
 
 Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/somethingwithproof/mantl/security/advisories/new).
 See the [security policy](SECURITY.md). Mantl is licensed under [Apache-2.0](LICENSE);
-vendored components retain their own licenses.
+the existing MIT components and vendored content retain their own licenses.
+See [license declarations and maintenance](docs/licensing.md) for component scope
+and SPDX conventions.

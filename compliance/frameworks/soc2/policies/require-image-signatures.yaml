@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Kyverno Policy: Require Signed Container Images
 # SOC2 CC6.8 - Malicious Software Prevention
 apiVersion: kyverno.io/v1

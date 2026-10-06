@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Verify the configured SonarCloud project before generating coverage."""
 
 import json

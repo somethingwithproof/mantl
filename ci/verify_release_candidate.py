@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Verify local RC packages and reviewed-plan behavior without publishing."""
 
 import argparse

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 package framework
 
 // PolicyControls preserves every selected mapping for a policy, including aliases.

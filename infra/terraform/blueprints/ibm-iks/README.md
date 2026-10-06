@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # IBM Cloud - IKS (IBM Kubernetes Service) Blueprint
 
 Terraform blueprint for deploying IBM Kubernetes Service with Mantl platform.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // GitHub Actions owns required checks, Sonar analysis and release publication.
 // This compatibility entrypoint runs local checks on an existing Jenkins worker.
 node {

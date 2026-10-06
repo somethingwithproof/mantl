@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Talos Linux Cluster Kustomization
 # Immutable Kubernetes with API-driven configuration
 # https://www.talos.dev/

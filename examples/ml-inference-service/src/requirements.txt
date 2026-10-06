@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Generated from requirements.in with mise and uv; edit the input and regenerate.
 annotated-doc==0.0.5 \
     --hash=sha256:117bac03a25ede5df5440e855b32d556049ca169ead221505badf432fed4b101 \

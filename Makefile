@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 .PHONY: help install-dev install-staging install-production install-small install-medium install-full clean test go-test go-coverage test-unit test-coverage test-watch lint format validate security-scan audit wizard cli-install
 
 # Default target
@@ -103,7 +104,7 @@ manifests: ## Generate CRD manifests from the API markers
 # Object generation does not require CRD group markers, so keep DeepCopy methods
 # current for both the compliance and platform API packages.
 generate: ## Regenerate DeepCopy methods from the API markers
-	$(CONTROLLER_GEN) object paths=./apis/...
+	$(CONTROLLER_GEN) object:headerFile=hack/boilerplate.go.txt paths=./apis/...
 
 test-unit: ## Run unit tests only
 	@echo "${GREEN}Running unit tests...${RESET}"

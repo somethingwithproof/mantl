@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Troubleshooting Mantl
 
 Start with [the release quickstart](quickstart-platform.md),

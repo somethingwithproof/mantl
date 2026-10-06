@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # SonarCloud analysis
 
 Mantl uses the `somethingwithproof` SonarCloud organization and project key

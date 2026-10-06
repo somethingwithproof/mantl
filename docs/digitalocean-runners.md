@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # DigitalOcean runners
 
 Eligible Linux jobs select single-job DigitalOcean runners when the repository

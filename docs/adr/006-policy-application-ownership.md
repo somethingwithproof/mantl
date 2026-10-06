@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR 006: GitOps Owns Policy Application; the Compliance Operator Resolves and Reports
 
 ## Status

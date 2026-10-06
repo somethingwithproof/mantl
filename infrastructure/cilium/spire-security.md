@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # SPIRE template prerequisites
 
 This template is experimental. Local YAML validation establishes configuration

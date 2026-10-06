@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Resolve complete, hash-locked Python dependencies with the pinned uv runtime."""
 
 import argparse
@@ -61,7 +62,8 @@ def compile_lock(root, target, output, constraint=None):
         else "requirements.in with mise and uv"
     )
     output.write_text(
-        f"# Generated from {origin}; edit the input and regenerate.\n"
+        "# SPDX-License-Identifier: Apache-2.0\n"
+        + f"# Generated from {origin}; edit the input and regenerate.\n"
         + output.read_text(encoding="utf-8"),
         encoding="utf-8",
     )

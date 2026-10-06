@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Local candidate validation rejects mismatched bytes and incomplete user assets."""
 
 import hashlib

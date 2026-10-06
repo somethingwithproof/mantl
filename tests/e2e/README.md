@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # End-to-End Test Suite
 
 Comprehensive end-to-end tests for the mantl platform, covering Terraform validation, cluster security, platform components, disaster recovery, and performance.

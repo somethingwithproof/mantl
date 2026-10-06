@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Kyverno Policy Template: Require NetworkPolicy
 # Generated from SOC2 CC6.1 control mapping
 apiVersion: kyverno.io/v1
@@ -44,7 +45,7 @@ spec:
         message: |
           SOC2 CC6.1 Violation: Namespace '{{request.namespace}}' has no NetworkPolicy.
           Network segmentation is required for logical access control.
-          
+
           Remediation: Create a NetworkPolicy for this namespace.
           Documentation: https://mantl.io/docs/compliance/soc2/cc6.1
         deny:

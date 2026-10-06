@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Release installation and verification
 
 Release Please manages SemVer and changelogs. Its release-created output invokes

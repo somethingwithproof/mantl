@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR 009: GitHub Actions validation ownership
 
 Status: Accepted

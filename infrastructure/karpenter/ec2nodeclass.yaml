@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Karpenter EC2NodeClass Configurations
 # Defines AWS-specific node configurations
 # https://karpenter.sh/docs/concepts/nodeclasses/

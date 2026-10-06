@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Cilium mTLS Configuration for Zero-Trust Service-to-Service Authentication
 # Experimental identity-authentication template; see spire-security.md prerequisites.
 # Cilium mutual authentication alone does not encrypt application traffic.

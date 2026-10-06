@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Cloudflare Terraform (mantl/terraform/cloudflare)
 
 Modernized for Terraform 1.x using the Cloudflare provider v5.x.

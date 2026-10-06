@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # DigitalOcean Kubernetes (DOKS) Blueprint
 
 Production-ready Kubernetes cluster on DigitalOcean with VPC isolation, auto-scaling, monitoring, and enterprise security features.

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Talos Linux AWS Machine Templates
 # For use with Cluster API and Sidero
 # https://www.talos.dev/v1.6/talos-guides/install/cloud-platforms/aws/

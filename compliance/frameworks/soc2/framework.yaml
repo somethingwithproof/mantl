@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # SOC2 Type II Compliance Framework
 # Based on AICPA Trust Services Criteria 2017
 apiVersion: compliance.mantl.io/v1alpha1

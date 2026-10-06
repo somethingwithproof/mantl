@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Package fleet indexes immutable metadata journals under authenticated enrollment.
 package fleet
 

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # IAM 5-to-6 policy consolidation. Role resource addresses remain unchanged.
 # Inspect the plan for policy replacements before upgrading deployed clusters.
 

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Archived Nomad Terraform security limits
 
 This module is archived and is not part of the supported Kubernetes platform.

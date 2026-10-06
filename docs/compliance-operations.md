@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Compliance installation and operations
 
 The runtime is beta. Terraform validation is static evidence; deployment,

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ARA-0003 Policy-as-Code
 Status: Accepted
 Date: 2025-12-27

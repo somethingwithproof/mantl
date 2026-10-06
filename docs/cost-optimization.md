@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Cost Optimization Guide
 
 Comprehensive strategies for reducing cloud infrastructure costs while maintaining performance and reliability.

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ML Inference Service Example
 
 Machine learning model serving application demonstrating:

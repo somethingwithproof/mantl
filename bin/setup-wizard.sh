@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 # Mantl Platform Setup Wizard
 # Interactive configuration and deployment
 set -euo pipefail

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Package collection defines isolated, bounded evidence execution and receipts.
 package collection
 

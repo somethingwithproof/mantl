@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Basic smoke tests to ensure the test harness runs.
 
 These keep `pytest` from exiting with code 5 (no tests collected) in minimal setups.

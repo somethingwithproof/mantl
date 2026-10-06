@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Cluster identity, VPC, ingress, and the core cluster outputs are defined in
 # main.tf. This file holds only the remaining, non-duplicate outputs.
 

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl examples
 
 For the current compiler, start with [mantl-spec.yaml](mantl-spec.yaml) and

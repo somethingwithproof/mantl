@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Unit tests for infrastructure validation.
 
 Tests validate that infrastructure files exist and are properly formatted.

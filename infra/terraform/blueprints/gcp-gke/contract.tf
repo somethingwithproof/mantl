@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Stable, non-secret interface consumed by Mantl tooling.
 output "platform_contract" {
   description = "Provider-neutral platform identity; deployment verification is separate"

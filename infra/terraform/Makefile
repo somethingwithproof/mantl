@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 .PHONY: validate fmt tflint tfsec checkov
 
 validate: ## terraform init/validate for all blueprints

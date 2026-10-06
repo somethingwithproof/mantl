@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Event-Driven Architecture Example
 
 Microservices communication using NATS message broker demonstrating:

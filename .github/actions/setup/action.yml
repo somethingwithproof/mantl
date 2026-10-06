@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 name: Set up Mantl tools
 description: Install only the requested mise tools and cache their dependencies
 inputs:

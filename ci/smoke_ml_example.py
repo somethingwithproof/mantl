@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Verify that the pinned ML dependencies import and the health handler responds."""
 
 import asyncio

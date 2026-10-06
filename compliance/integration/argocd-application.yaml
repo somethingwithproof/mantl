@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # ArgoCD Application for Compliance Module
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -10,7 +11,7 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  
+
   source:
     repoURL: https://github.com/mantl-io/mantl.git
     targetRevision: HEAD
@@ -56,7 +57,7 @@ metadata:
     app.kubernetes.io/part-of: mantl
 spec:
   project: default
-  
+
   source:
     repoURL: https://github.com/mantl-io/mantl.git
     targetRevision: HEAD
@@ -71,7 +72,7 @@ spec:
       prune: true
       selfHeal: true
 ---
-# ArgoCD Application for CIS Kubernetes Framework  
+# ArgoCD Application for CIS Kubernetes Framework
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -81,7 +82,7 @@ metadata:
     app.kubernetes.io/part-of: mantl
 spec:
   project: default
-  
+
   source:
     repoURL: https://github.com/mantl-io/mantl.git
     targetRevision: HEAD

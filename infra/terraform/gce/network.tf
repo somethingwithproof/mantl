@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Custom-mode VPC network, subnetwork, and firewalls for the modern GCE schema.
 # use_modern_gce_network is declared in main.tf alongside the instance schema.
 

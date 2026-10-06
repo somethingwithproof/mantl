@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl Example Applications
 
 This directory contains example applications demonstrating various platform features and best practices.

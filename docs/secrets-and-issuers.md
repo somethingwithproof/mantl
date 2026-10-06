@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Secrets and Issuers
 
 This repo expects External Secrets Operator (ESO) to sync secrets from Vault.

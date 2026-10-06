@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Provider & WI Overlays
 
 These are example overlays, not a verified deployment recipe. Review installed

@@ -2,6 +2,7 @@
 name: mantl-compliance
 description: Load when working on the compliance operator. Covers CRD types under apis/compliance, the controllers that reconcile them, framework YAML under compliance/frameworks, Kyverno policies under policies/kyverno, and the evidence capture path in pkg/evidence, plus the framework-policy-evidence-finding-audit wiring and the ADR 003 evidence contract.
 ---
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 
 # mantl compliance skill
 

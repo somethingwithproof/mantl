@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 ################################################################################
 # Mantl GCP GKE Blueprint
 # Production-ready GKE cluster with security hardening

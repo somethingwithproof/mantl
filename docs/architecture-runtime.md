@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # 2026–2027 runtime architecture
 
 The new execution path and fleet service are beta. Local API and PostgreSQL

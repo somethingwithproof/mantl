@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Package acceptance verifies provider acceptance records without promoting
 // static validation or an unauthenticated assertion to deployment evidence.
 package acceptance
