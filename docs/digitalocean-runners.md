@@ -34,6 +34,20 @@ Docker execution, completion and actual VM deletion. Power-off alone does not
 end DigitalOcean billing. A job timeout starts after runner assignment: cancel
 queued smoke runs if provisioning fails.
 
+Manual smoke runs accept `jobs=1` (default) or `jobs=8`. Use the eight-job mode
+to verify queued demand beyond the normal four-runner cap:
+
+```sh
+gh workflow run digitalocean-runner-smoke.yml \
+  --repo somethingwithproof/mantl --ref main --field jobs=8
+```
+
+All eight samples must complete, and every allocated VM must be confirmed gone.
+A JIT runner can execute a different queued job than its trigger. The controller
+must preserve the original demand when that happens, replace capacity only after
+cleanup and a fresh queued-job check, and retain authoritative original-job
+completion across restart. PR-triggered smoke runs use one sample.
+
 After smoke and deletion succeed, set `DO_RUNNERS_ENABLED=true` and run ordinary
 CI against the current PR head. Enable release routing only with successful
 package/image validation; exact-tag checks, signing and permissions remain
