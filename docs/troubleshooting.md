@@ -9,8 +9,8 @@ Do not paste credentials, raw evidence, or sensitive manifests into public issue
 ## Offline generation
 
 **Unknown flag:** v0.4.0 `plan` has no `--dry-run`, `--format`, or `--output-dir`.
-Use `mantl plan platform.yaml`, or build main for the extra flags. Saved-plan
-comparison and `apply --plan` also require main. Main inventories use v1alpha2;
+Use `mantl plan platform.yaml`, or install v0.5.0 for the extra flags. Saved-plan
+comparison and `apply --plan` also require v0.5.0 or later. Inventories use v1alpha2;
 regenerate older v1alpha1 inventories. The legacy
 `bin/mantl` shell installer is not the supported Go CLI.
 
@@ -20,11 +20,11 @@ GCP/Azure require `provider.accountId`; tenants require `gitops.tenantPath`.
 Unknown fields are rejected. Generation does not validate whether a cloud accepts
 the requested Kubernetes version or whether a Git path exists.
 
-**Unexpected files:** v0.4.0 writes `.mantl/build` in your current directory.
+**Unexpected files:** the default output is `.mantl/build` in your current directory.
 Known generated Application files are refreshed, while unrelated/stale tenant
 files can remain. The tenant Kustomization lists only desired files. Use separate
 working directories for separate specs; inspect the index before committing output.
-Main output inventories identify desired bytes, not every file already on disk.
+Output inventories identify desired bytes, not every file already on disk.
 
 **Terraform cannot provision from the build directory:** the generated JSON is
 only variables. Use the matching verified source bundle's blueprint, review its

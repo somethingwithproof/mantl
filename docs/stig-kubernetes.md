@@ -6,7 +6,8 @@ Mantl includes experimental support for the Defense Information Systems Agency
 **V2R3** catalog contains all 91 requirement IDs, rule revisions, severities, and
 Control Correlation Identifiers (CCIs) from the source benchmark. It is not a
 claim of support for the latest DISA revision, STIG compliance, or authorization
-to operate. This content is available from source; it is not in release v0.4.0.
+to operate. This content is included in v0.5.0 and control content version 1.0.2;
+it is absent from release v0.4.0.
 
 ## Scope and coverage
 
@@ -54,8 +55,8 @@ Kustomization; that root retains the existing SOC2/runtime topology.
 ## Enable through reviewed GitOps configuration
 
 Install the operator, Kyverno, evidence identity/storage, and compliance CRDs
-using [compliance operations](compliance-operations.md). A source-built operator
-image includes this catalog automatically; the published v0.4.0 image does not.
+using [compliance operations](compliance-operations.md). The v0.5.0 operator
+image includes this catalog; the v0.4.0 image does not.
 Do not select the new framework until the mounted content includes it.
 
 Add `policies/kyverno/stig-kubernetes` to a reviewed ArgoCD policy
@@ -104,6 +105,6 @@ and publishing a new immutable content bundle. Do not substitute a newer
 benchmark under version `2.3`. Add collectors or mappings only with tests showing
 that incomplete evidence cannot produce a passing full-control result.
 
-The source content version advances to `1.0.2` for these new mappings; this change
-does not publish a bundle. Offline policy tests run with Kyverno CLI `1.16.1`,
+Content version `1.0.2` identifies these new mappings. Verify the release bundle's
+manifest and digest before mounting it. Offline policy tests run with Kyverno CLI `1.16.1`,
 matching the application version of the platform's pinned Kyverno chart `3.6.1`.

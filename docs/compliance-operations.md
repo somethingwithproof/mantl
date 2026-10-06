@@ -39,7 +39,7 @@ then `mise exec -- go install ./cmd/mantl`. The shell
 `bin/mantl` is a legacy installer; the supported Go entrypoint provides `plan`,
 `apply`, `status`, `validate-clouds`, and `compliance` commands.
 
-For v0.4.0, use the verified `operator-install.yaml` and image digest recorded in
+For v0.5.0, use the verified `operator-install.yaml` and image digest recorded in
 `release-identity.json`, together with your environment configuration. For source
 customization, build `Dockerfile.compliance-operator` and record your own image digest.
 Create a reviewed overlay including `deploy/operator/base`, setting that digest,

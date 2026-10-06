@@ -36,15 +36,15 @@ mise exec -- make go-test
 ```
 
 The build has a development version unless release metadata is supplied.
-From the checkout, the main-only offline planning workflow is:
+From the checkout, the source-built offline planning workflow is:
 
 ```sh
 /tmp/mantl-main plan examples/mantl-spec.yaml --dry-run --format json
 /tmp/mantl-main plan examples/mantl-spec.yaml --output-dir /tmp/mantl-generated --format json
 ```
 
-Main also supports saved inventories, read-only comparisons, and reviewed apply;
-see [planning](docs/platform-planning.md#save-and-compare-reviewed-plans-main-only).
+The CLI also supports saved inventories, read-only comparisons, and reviewed apply;
+see [planning](docs/platform-planning.md#save-and-compare-reviewed-plans).
 This is generated-input verification, not approval of Terraform resource changes.
 
 For installation on your development PATH, `mise exec -- go install ./cmd/mantl`

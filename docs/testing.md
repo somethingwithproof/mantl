@@ -27,7 +27,7 @@ mise exec -- go run ./cmd/mantl validate-clouds --source-dir .
 mise exec -- make manifests generate
 ```
 
-The first command uses **main-only** flags. Static cloud validation inspects the
+The first command uses flags introduced in **v0.5.0**. Static cloud validation inspects the
 AWS/GCP/Azure contract without deployment. API generation checks drift, not
 admission in a real cloud. Rendered Applications reference Git content that must
 be reviewed and published separately.
