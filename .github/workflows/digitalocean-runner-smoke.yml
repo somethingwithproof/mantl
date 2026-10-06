@@ -2,7 +2,13 @@
 # yamllint disable rule:line-length
 name: DigitalOcean runner smoke
 'on':
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      jobs:
+        description: Runner samples (eight exercises demand beyond the normal four-runner cap)
+        type: choice
+        options: ['1', '8']
+        default: '1'
   pull_request:
     paths:
       - .github/workflows/digitalocean-runner-smoke.yml
@@ -19,6 +25,10 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: [self-hosted, Linux, X64, mantl-do]
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.jobs == '8' && '[1,2,3,4,5,6,7,8]' || '[1]') }}
     steps:
       - name: Verify isolated runner prerequisites
         env:
