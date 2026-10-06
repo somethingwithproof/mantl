@@ -192,3 +192,58 @@ def test_verifier_rejects_symlinked_report_before_running_cli(tmp_path, monkeypa
     with pytest.raises(ValueError, match="symlinks"):
         candidate.verify("0.5.0-rc.1", directory)
     assert outside.read_text() == "fixture must stay unchanged"
+
+
+@pytest.mark.parametrize("phase", ["identity", "plan", "packages"])
+def test_verifier_bounds_commands_and_rejects_timeouts(tmp_path, monkeypatch, phase):
+    directory = complete_candidate(tmp_path, monkeypatch)
+    original_run = subprocess.run
+    calls = []
+
+    def run(args, **kwargs):
+        calls.append((args, kwargs))
+        target = (
+            (phase == "identity" and args[-1] == "--version")
+            or (phase == "plan" and "--save-plan" in args)
+            or (phase == "packages" and args[0] == "bash")
+        )
+        if target:
+            raise subprocess.TimeoutExpired(args, kwargs["timeout"])
+        return original_run(args, **kwargs)
+
+    monkeypatch.setattr(candidate.subprocess, "run", run)
+    with pytest.raises(ValueError, match="timed out after"):
+        candidate.verify("0.5.0-rc.1", directory, native_packages=phase == "packages")
+    assert not (directory / "candidate-verification.json").exists()
+    assert calls
+    for args, kwargs in calls:
+        assert kwargs["timeout"] == (
+            candidate.PACKAGE_TIMEOUT_SECONDS
+            if args[0] == "bash"
+            else candidate.CLI_TIMEOUT_SECONDS
+        )
+
+
+@pytest.mark.parametrize("escape", ["outside", "traversal", "symlink"])
+def test_verifier_rejects_untrusted_artifact_directory_before_execution(
+    tmp_path, monkeypatch, escape
+):
+    directory = candidate_directory(tmp_path, monkeypatch)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    if escape == "outside":
+        directory = outside
+    elif escape == "traversal":
+        directory = directory / ".." / "candidate"
+    else:
+        alias = tmp_path / "dist" / "alias"
+        alias.symlink_to(outside, target_is_directory=True)
+        directory = alias
+    monkeypatch.setattr(
+        candidate,
+        "verify_checksums",
+        lambda *args: pytest.fail("read artifacts before path validation"),
+    )
+    with pytest.raises(ValueError, match="release paths|release artifacts"):
+        candidate.verify("0.5.0-rc.1", directory)
+    assert not (outside / "candidate-verification.json").exists()

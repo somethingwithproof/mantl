@@ -14,6 +14,9 @@ from pathlib import Path
 from scripts import release_paths
 
 ROOT = Path(__file__).resolve().parents[1]
+CLI_TIMEOUT_SECONDS = 60
+PACKAGE_TIMEOUT_SECONDS = 600
+
 RC_VERSION = re.compile(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-rc\.[1-9]\d*", re.ASCII)
 ARCHIVE_FILES = {
     "mantl",
@@ -23,6 +26,25 @@ ARCHIVE_FILES = {
     "docs/quickstart-platform.md",
     "docs/_static/mantl-mark.svg",
 }
+
+
+def bounded_run(args, *, timeout=CLI_TIMEOUT_SECONDS, **kwargs):
+    """Bound candidate execution and preserve subprocess failure semantics."""
+    try:
+        return subprocess.run(args, timeout=timeout, **kwargs)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError(
+            f"candidate command timed out after {timeout} seconds: {Path(args[0]).name}"
+        ) from error
+
+
+def bounded_output(args, **kwargs):
+    try:
+        return subprocess.check_output(args, timeout=CLI_TIMEOUT_SECONDS, **kwargs)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError(
+            f"candidate command timed out after {CLI_TIMEOUT_SECONDS} seconds: {Path(args[0]).name}"
+        ) from error
 
 
 def expected_artifacts(version):
@@ -83,14 +105,14 @@ def verify_native_cli(directory, version):
         binary = work / "mantl"
         binary.write_bytes(payload)
         binary.chmod(0o700)
-        identity = subprocess.check_output([str(binary), "--version"], text=True).strip()
-        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        identity = bounded_output([str(binary), "--version"], text=True).strip()
+        commit = bounded_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         if identity != f"mantl version {version} ({commit})":
             raise ValueError("candidate CLI identity does not match this checkout/version")
         spec = ROOT / "examples/mantl-spec.yaml"
         reviewed = work / "reviewed.json"
         generated = work / "generated"
-        subprocess.run(
+        bounded_run(
             [
                 str(binary),
                 "plan",
@@ -104,7 +126,7 @@ def verify_native_cli(directory, version):
             check=True,
             stdout=subprocess.DEVNULL,
         )
-        subprocess.run(
+        bounded_run(
             [
                 str(binary),
                 "plan",
@@ -122,7 +144,7 @@ def verify_native_cli(directory, version):
         changed.write_text(
             spec.read_text().replace("name: prod-us-east", "name: candidate-changed", 1)
         )
-        response = subprocess.run(
+        response = bounded_run(
             [
                 str(binary),
                 "plan",
@@ -163,9 +185,9 @@ def verify(version, directory, native_packages=False):
         "scope": "local-unsigned-snapshot",
         "artifacts": artifacts,
         "cli": verify_native_cli(directory, version),
-        "worktreeDirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT)),
+        "worktreeDirty": bool(bounded_output(["git", "status", "--porcelain"], cwd=ROOT)),
         "sourceDiffSHA256": hashlib.sha256(
-            subprocess.check_output(["git", "diff", "--no-ext-diff", "--binary", "HEAD"], cwd=ROOT)
+            bounded_output(["git", "diff", "--no-ext-diff", "--binary", "HEAD"], cwd=ROOT)
         ).hexdigest(),
         "nativePackages": "not-run",
         "signatureVerification": "requires-hosted-release",
@@ -173,8 +195,11 @@ def verify(version, directory, native_packages=False):
         "cloudAcceptance": "not-run",
     }
     if native_packages:
-        subprocess.run(
-            ["bash", str(ROOT / "ci/verify-cli-packages.sh"), str(directory)], cwd=ROOT, check=True
+        bounded_run(
+            ["bash", str(ROOT / "ci/verify-cli-packages.sh"), str(directory)],
+            cwd=ROOT,
+            check=True,
+            timeout=PACKAGE_TIMEOUT_SECONDS,
         )
         report["nativePackages"] = "passed"
     report_path.write_text(json.dumps(report, indent=2) + "\n")
