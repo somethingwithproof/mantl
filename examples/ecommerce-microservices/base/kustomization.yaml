@@ -1,30 +1,31 @@
+# SPDX-License-Identifier: Apache-2.0
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 namespace: ecommerce
 
 resources:
-- namespace.yaml
-- frontend/deployment.yaml
-- frontend/service.yaml
-- frontend/canary.yaml
-- frontend/servicemonitor.yaml
-- products-api/deployment.yaml
-- products-api/service.yaml
-- products-api/canary.yaml
-- products-api/servicemonitor.yaml
+  - namespace.yaml
+  - frontend/deployment.yaml
+  - frontend/service.yaml
+  - frontend/canary.yaml
+  - frontend/servicemonitor.yaml
+  - products-api/deployment.yaml
+  - products-api/service.yaml
+  - products-api/canary.yaml
+  - products-api/servicemonitor.yaml
 
 commonLabels:
   app.kubernetes.io/managed-by: kustomize
   platform: mantl
 
 configMapGenerator:
-- name: app-config
-  literals:
-  - LOG_LEVEL=info
-  - ENVIRONMENT=production
+  - name: app-config
+    literals:
+      - LOG_LEVEL=info
+      - ENVIRONMENT=production
 
 secretGenerator:
-- name: products-api-secrets
-  literals:
-  - database-url=postgresql://products:CHANGEME@ecommerce-db-rw:5432/products
+  - name: products-api-secrets
+    literals:
+      - database-url=postgresql://products:CHANGEME@ecommerce-db-rw:5432/products

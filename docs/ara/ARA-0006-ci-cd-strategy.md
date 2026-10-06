@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ARA-0006 CI/CD strategy and triggers
 Status: Accepted
 Date: 2025-12-27

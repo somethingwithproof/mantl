@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Cilium Tetragon Helm Values
 # eBPF-based security observability
 # https://tetragon.io/

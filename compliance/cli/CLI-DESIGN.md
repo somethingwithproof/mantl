@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl Compliance CLI Design
 
 ## Overview

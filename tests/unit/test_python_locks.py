@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Dependency regeneration must detect drift and leave failed updates untouched."""
 
 import importlib.util
@@ -67,7 +68,9 @@ def test_compilation_retains_pins_and_constrains_test_dependencies(locks, tmp_pa
 
     monkeypatch.setattr(locks.subprocess, "run", run)
     locks.compile_lock(tmp_path, "requirements-test", output, constraint)
-    assert output.read_text().startswith("# Generated from requirements-test.in")
+    lines = output.read_text().splitlines()
+    assert lines[0] == "# SPDX-License-Identifier: Apache-2.0"
+    assert lines[1].startswith("# Generated from requirements-test.in")
     assert "--hash=sha256:" in output.read_text()
 
 

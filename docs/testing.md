@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Testing and validation boundaries
 
 Use the pinned mise toolchain and [contributor setup](../CONTRIBUTING.md).

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # VCS
 .git
 .gitignore
@@ -37,4 +38,3 @@ coverage
 .vagrant
 
 .git/
-

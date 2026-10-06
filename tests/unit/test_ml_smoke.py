@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """The ML compatibility check must fail on unavailable or unhealthy services."""
 
 import importlib.util

@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # DigitalOcean Ephemeral CI Runners
 
 Mantl CI uses ephemeral DigitalOcean droplets for pushes and manual runs when

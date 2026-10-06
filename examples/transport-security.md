@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Example transport prerequisites
 
 These examples require provisioned TLS endpoints. They do not install or claim

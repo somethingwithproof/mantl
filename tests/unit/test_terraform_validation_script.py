@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Terraform validation must fail when any owned module is invalid."""
 
 import os

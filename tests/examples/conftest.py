@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Isolated example fixtures; no broker, database, cloud or telemetry connections."""
 
 import importlib.util

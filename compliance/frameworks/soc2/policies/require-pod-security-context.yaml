@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Kyverno Policy: Require Pod Security Context
 # SOC2 CC6.1 - Logical Access Controls
 apiVersion: kyverno.io/v1
@@ -36,7 +37,7 @@ spec:
         message: |
           SOC2 CC6.1 Violation: Pods must run as non-root.
           Set spec.securityContext.runAsNonRoot: true
-          
+
           Remediation: Add securityContext with runAsNonRoot: true
           Documentation: https://mantl.io/docs/compliance/soc2/cc6.1
         pattern:

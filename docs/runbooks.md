@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Operations, upgrades, backup, and recovery
 
 These procedures cover implemented Mantl responsibilities. They require adaptation

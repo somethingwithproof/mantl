@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Example Web Service Job for Nomad
 # Production-ready job specification with Consul Connect
 # https://developer.hashicorp.com/nomad/docs/job-specification

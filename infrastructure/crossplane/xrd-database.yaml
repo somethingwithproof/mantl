@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Crossplane Composite Resource Definition (XRD) for Database Infrastructure
 # Provides a cloud-agnostic interface for managed database provisioning
 # https://docs.crossplane.io/latest/concepts/composite-resource-definitions/

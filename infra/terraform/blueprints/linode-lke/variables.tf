@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Core Configuration
 variable "cluster_name" {
   description = "Name of the LKE cluster"

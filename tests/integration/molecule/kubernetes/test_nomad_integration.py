@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Tests for Kubernetes-Nomad integration.
 
@@ -7,7 +8,7 @@ This module uses pytest fixtures to eliminate duplication and follow DRY princip
 from __future__ import annotations
 
 import os
-from typing import Any, Callable, Dict, List
+from typing import Any
 
 import pytest
 
@@ -34,19 +35,19 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(inventory_file).g
 
 
 @pytest.fixture
-def ansible_vars(host) -> Dict[str, Any]:
+def ansible_vars(host) -> dict[str, Any]:
     """Get Ansible variables for the host."""
     return host.ansible.get_variables()
 
 
 @pytest.fixture
-def host_groups(ansible_vars: Dict[str, Any]) -> List[str]:
+def host_groups(ansible_vars: dict[str, Any]) -> list[str]:
     """Get the groups this host belongs to."""
     return ansible_vars.get("group_names", [])
 
 
 @pytest.fixture
-def is_control_node(host_groups: List[str]) -> bool:
+def is_control_node(host_groups: list[str]) -> bool:
     """Check if this is a control node."""
     return "control" in host_groups
 
@@ -57,7 +58,7 @@ def skip_if_not_control(is_control_node: bool) -> None:
         pytest.skip("Not a control node")
 
 
-def skip_if_feature_disabled(ansible_vars: Dict[str, Any], feature: str) -> None:
+def skip_if_feature_disabled(ansible_vars: dict[str, Any], feature: str) -> None:
     """Skip test if a feature is not enabled."""
     if not ansible_vars.get(feature, False):
         pytest.skip(f"{feature} not enabled")
@@ -185,7 +186,7 @@ def test_example_job_content(host, is_control_node: bool) -> None:
 
 
 def test_common_criteria_settings(
-    host, is_control_node: bool, ansible_vars: Dict[str, Any]
+    host, is_control_node: bool, ansible_vars: dict[str, Any]
 ) -> None:
     """Test Common Criteria settings in the integration."""
     skip_if_not_control(is_control_node)
@@ -203,7 +204,7 @@ def test_common_criteria_settings(
         assert_file_contains(host, config_file, content)
 
 
-def test_service_discovery(host, is_control_node: bool, ansible_vars: Dict[str, Any]) -> None:
+def test_service_discovery(host, is_control_node: bool, ansible_vars: dict[str, Any]) -> None:
     """Test cross-platform service discovery configuration."""
     skip_if_not_control(is_control_node)
 
@@ -232,7 +233,7 @@ def test_service_discovery(host, is_control_node: bool, ansible_vars: Dict[str, 
         assert_file_contains(host, job_file, content)
 
 
-def test_vault_integration(host, is_control_node: bool, ansible_vars: Dict[str, Any]) -> None:
+def test_vault_integration(host, is_control_node: bool, ansible_vars: dict[str, Any]) -> None:
     """Test Vault integration for secrets management."""
     skip_if_not_control(is_control_node)
     skip_if_feature_disabled(ansible_vars, "kubernetes_nomad_vault_integration_enabled")
@@ -262,7 +263,7 @@ def test_vault_integration(host, is_control_node: bool, ansible_vars: Dict[str, 
         assert_file_contains(host, job_file, content)
 
 
-def test_federated_metrics(host, is_control_node: bool, ansible_vars: Dict[str, Any]) -> None:
+def test_federated_metrics(host, is_control_node: bool, ansible_vars: dict[str, Any]) -> None:
     """Test federated metrics and logging configuration."""
     skip_if_not_control(is_control_node)
     skip_if_feature_disabled(ansible_vars, "kubernetes_nomad_metrics_enabled")
@@ -290,7 +291,7 @@ def test_federated_metrics(host, is_control_node: bool, ansible_vars: Dict[str, 
         assert_file_contains(host, job_file, content)
 
 
-def test_multi_region(host, is_control_node: bool, ansible_vars: Dict[str, Any]) -> None:
+def test_multi_region(host, is_control_node: bool, ansible_vars: dict[str, Any]) -> None:
     """Test multi-region orchestration configuration."""
     skip_if_not_control(is_control_node)
     skip_if_feature_disabled(ansible_vars, "kubernetes_nomad_multi_region_enabled")
@@ -305,7 +306,7 @@ def test_multi_region(host, is_control_node: bool, ansible_vars: Dict[str, Any])
         assert_file_contains(host, job_file, content)
 
 
-def test_gpu_scheduling(host, is_control_node: bool, ansible_vars: Dict[str, Any]) -> None:
+def test_gpu_scheduling(host, is_control_node: bool, ansible_vars: dict[str, Any]) -> None:
     """Test GPU workload scheduling configuration."""
     skip_if_not_control(is_control_node)
     skip_if_feature_disabled(ansible_vars, "kubernetes_nomad_gpu_enabled")
@@ -320,7 +321,7 @@ def test_gpu_scheduling(host, is_control_node: bool, ansible_vars: Dict[str, Any
         assert_file_contains(host, job_file, content)
 
 
-def test_autoscaling(host, is_control_node: bool, ansible_vars: Dict[str, Any]) -> None:
+def test_autoscaling(host, is_control_node: bool, ansible_vars: dict[str, Any]) -> None:
     """Test autoscaling integration configuration."""
     skip_if_not_control(is_control_node)
     skip_if_feature_disabled(ansible_vars, "kubernetes_nomad_autoscaling_enabled")
@@ -335,7 +336,7 @@ def test_autoscaling(host, is_control_node: bool, ansible_vars: Dict[str, Any]) 
         assert_file_contains(host, job_file, content)
 
 
-def test_crd_support(host, is_control_node: bool, ansible_vars: Dict[str, Any]) -> None:
+def test_crd_support(host, is_control_node: bool, ansible_vars: dict[str, Any]) -> None:
     """Test custom resource definition support configuration."""
     skip_if_not_control(is_control_node)
     skip_if_feature_disabled(ansible_vars, "kubernetes_nomad_crd_enabled")
@@ -354,7 +355,7 @@ def test_crd_support(host, is_control_node: bool, ansible_vars: Dict[str, Any]) 
         assert_file_contains(host, job_file, content)
 
 
-def test_disaster_recovery(host, is_control_node: bool, ansible_vars: Dict[str, Any]) -> None:
+def test_disaster_recovery(host, is_control_node: bool, ansible_vars: dict[str, Any]) -> None:
     """Test disaster recovery configuration."""
     skip_if_not_control(is_control_node)
     skip_if_feature_disabled(ansible_vars, "kubernetes_nomad_disaster_recovery_enabled")
@@ -374,7 +375,7 @@ def test_disaster_recovery(host, is_control_node: bool, ansible_vars: Dict[str, 
         assert_file_contains(host, job_file, content)
 
 
-def test_opa_enforcement(host, is_control_node: bool, ansible_vars: Dict[str, Any]) -> None:
+def test_opa_enforcement(host, is_control_node: bool, ansible_vars: dict[str, Any]) -> None:
     """Test unified policy enforcement with OPA configuration."""
     skip_if_not_control(is_control_node)
     skip_if_feature_disabled(ansible_vars, "kubernetes_nomad_opa_enabled")

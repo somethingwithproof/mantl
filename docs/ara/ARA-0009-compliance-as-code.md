@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ARA-0009: Compliance-as-Code Platform
 
 ## Status
@@ -56,7 +57,7 @@ The core value proposition is **bidirectional traceability**:
 # Single control can map to multiple policies
 Control: SOC2-CC6.1 (Logical Access Security)
   - Policy: deny-privileged-containers
-  - Policy: deny-privilege-escalation  
+  - Policy: deny-privilege-escalation
   - Policy: require-network-policies
   - FalcoRule: detect-privilege-escalation
   - FalcoRule: detect-rbac-changes

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # IBM Cloud Provider Configuration
 variable "ibmcloud_api_key" {
   description = "IBM Cloud API key"

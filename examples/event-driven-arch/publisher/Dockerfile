@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Python 3.12.12; install only verified wheels from the resolved dependency lock.
 FROM python@sha256:f3fa41d74a768c2fce8016b98c191ae8c1bacd8f1152870a3f9f87d350920b7c
 ENV PYTHONDONTWRITEBYTECODE=1

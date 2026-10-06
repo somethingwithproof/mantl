@@ -1,8 +1,4 @@
-# Crossplane Provider Configurations
-# Multi-cloud infrastructure management with Crossplane
-# https://docs.crossplane.io/
-
----
+# SPDX-License-Identifier: Apache-2.0
 # AWS Provider Configuration
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
@@ -193,7 +189,8 @@ metadata:
     app.kubernetes.io/name: crossplane-function-patch-and-transform
     app.kubernetes.io/part-of: mantl-infrastructure
 spec:
-  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.7.0
+  package:
+    xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.7.0
 ---
 apiVersion: pkg.crossplane.io/v1beta1
 kind: Function
@@ -326,13 +323,13 @@ metadata:
 spec:
   credentials:
     source: IRSA
-  # Alternative: Use Secret for credentials
-  # credentials:
-  #   source: Secret
-  #   secretRef:
-  #     namespace: crossplane-system
-  #     name: aws-credentials
-  #     key: credentials
+# Alternative: Use Secret for credentials
+# credentials:
+#   source: Secret
+#   secretRef:
+#     namespace: crossplane-system
+#     name: aws-credentials
+#     key: credentials
 ---
 # GCP ProviderConfig - configure credentials source
 # Uses Workload Identity for secure authentication
@@ -347,13 +344,13 @@ spec:
   projectID: ""  # Set via environment overlay
   credentials:
     source: InjectedIdentity
-  # Alternative: Use Secret for credentials
-  # credentials:
-  #   source: Secret
-  #   secretRef:
-  #     namespace: crossplane-system
-  #     name: gcp-credentials
-  #     key: credentials.json
+# Alternative: Use Secret for credentials
+# credentials:
+#   source: Secret
+#   secretRef:
+#     namespace: crossplane-system
+#     name: gcp-credentials
+#     key: credentials.json
 ---
 # Azure ProviderConfig - configure credentials source
 # Uses Workload Identity for secure authentication

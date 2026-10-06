@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Platform Security Quick Start Guide
 
 ## 🚀 Deploy a Secure Cluster in 10 Minutes

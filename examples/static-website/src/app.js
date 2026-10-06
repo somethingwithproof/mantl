@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * Simple JavaScript for static website
  * Demonstrates health check API integration and dynamic status updates

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Falco Rules for SOC2 Compliance
 # Maps runtime detection to specific compliance controls
 customRules:

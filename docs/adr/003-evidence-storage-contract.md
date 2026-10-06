@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR 003: Compliance Evidence Storage Contract
 
 ## Status

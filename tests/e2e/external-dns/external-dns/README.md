@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ExternalDNS E2E (RFC2136)
 
 This test provisions a bind9 server inside the cluster and configures ExternalDNS with RFC2136 + TSIG.

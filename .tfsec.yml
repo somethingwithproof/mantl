@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # tfsec configuration for this repository
 # Keep the signal high: scan blueprints strictly, relax on examples.
 # Docs: https://aquasecurity.github.io/tfsec/latest/configuration/config/

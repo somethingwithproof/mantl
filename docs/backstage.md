@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Backstage integration
 
 Register `templates/backstage/web-service/template.yaml` in an existing Backstage

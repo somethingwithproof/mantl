@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: MIT -->
 # PAUSATF WordPress (Bedrock-style)
 
 This app is a Composer-managed WordPress project for the pausatf.org site. It uses a Bedrock-style layout with environment variables, Composer-managed core/plugins, and CI.

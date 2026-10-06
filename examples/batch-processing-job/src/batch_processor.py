@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 Batch Processing Job - Processes large datasets in parallel batches
 

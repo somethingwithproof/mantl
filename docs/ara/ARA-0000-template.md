@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ARA-0000 Title
 Status: Proposed | Accepted | Superseded | Deprecated
 Date: YYYY-MM-DD

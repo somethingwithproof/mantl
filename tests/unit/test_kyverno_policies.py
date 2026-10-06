@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Unit tests for Kyverno policies.
 
 These tests validate that Kyverno policies correctly enforce security controls

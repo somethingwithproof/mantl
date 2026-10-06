@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Cilium Tetragon Security Policies Kustomization
 # eBPF-based runtime security
 # https://tetragon.io/

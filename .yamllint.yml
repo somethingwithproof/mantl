@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 ---
 # yamllint ran with no config, so it fell back to the stock defaults and every
 # Dependabot PR touching a workflow failed the pre-commit hook on rules that do

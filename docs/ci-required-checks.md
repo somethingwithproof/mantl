@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Required GitHub checks
 
 Main currently requires these exact check contexts:

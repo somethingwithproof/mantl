@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Exercise CI selection and aggregate failures without cloud access."""
 
 import importlib.util

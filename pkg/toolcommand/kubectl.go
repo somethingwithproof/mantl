@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 // Package toolcommand constructs bounded external-tool invocations without PATH lookup.
 package toolcommand
 

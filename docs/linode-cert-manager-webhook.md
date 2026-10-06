@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Linode cert-manager DNS-01 Webhook (optional)
 
 This repo does not bundle a Linode DNS-01 solver by default. If you choose to use Linode for ACME:

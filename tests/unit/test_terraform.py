@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Unit tests for Terraform configurations.
 
 These tests validate Terraform syntax, configuration validity, and security best practices.

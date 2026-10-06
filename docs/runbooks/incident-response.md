@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Incident Response Playbooks
 
 > Historical component-stack procedure examples. These commands and objectives

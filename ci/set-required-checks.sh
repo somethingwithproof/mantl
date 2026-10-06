@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
 #
 # Set required status checks for GitHub branch protection
 #
@@ -20,8 +21,6 @@
 set -euo pipefail
 
 # Constants
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly DEFAULT_BRANCH="main"
 
 # Color output

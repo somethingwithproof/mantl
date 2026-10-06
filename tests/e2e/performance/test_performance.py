@@ -1,14 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
 """
 End-to-end performance tests for Kubernetes cluster.
 
 Tests that measure cluster performance characteristics and establish baselines.
 """
-import subprocess
-import pytest
+
 import json
-import time
 import statistics
-from datetime import datetime
+import subprocess
+import time
+
+import pytest
 
 
 class TestAPIServerPerformance:
@@ -17,10 +19,7 @@ class TestAPIServerPerformance:
     def test_api_server_reachable(self):
         """Test that API server responds to requests."""
         result = subprocess.run(
-            ["kubectl", "cluster-info"],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["kubectl", "cluster-info"], capture_output=True, text=True, timeout=10
         )
 
         assert result.returncode == 0, "API server not reachable"
@@ -33,9 +32,7 @@ class TestAPIServerPerformance:
         for _ in range(10):
             start_time = time.time()
             result = subprocess.run(
-                ["kubectl", "get", "nodes", "-o", "json"],
-                capture_output=True,
-                timeout=5
+                ["kubectl", "get", "nodes", "-o", "json"], capture_output=True, timeout=5
             )
             end_time = time.time()
 
@@ -55,9 +52,7 @@ class TestAPIServerPerformance:
         """Test performance of listing all pods across namespaces."""
         start_time = time.time()
         result = subprocess.run(
-            ["kubectl", "get", "pods", "-A", "-o", "json"],
-            capture_output=True,
-            timeout=30
+            ["kubectl", "get", "pods", "-A", "-o", "json"], capture_output=True, timeout=30
         )
         duration = time.time() - start_time
 
@@ -73,17 +68,14 @@ class TestPodStartupPerformance:
         """Create a test namespace."""
         namespace = f"perf-test-{int(time.time())}"
 
-        subprocess.run(
-            ["kubectl", "create", "namespace", namespace],
-            capture_output=True
-        )
+        subprocess.run(["kubectl", "create", "namespace", namespace], capture_output=True)
 
         yield namespace
 
         # Cleanup
         subprocess.run(
             ["kubectl", "delete", "namespace", namespace, "--force", "--grace-period=0"],
-            capture_output=True
+            capture_output=True,
         )
 
     def test_single_pod_startup_time(self, test_namespace):
@@ -93,9 +85,8 @@ class TestPodStartupPerformance:
         # Create pod
         create_start = time.time()
         result = subprocess.run(
-            ["kubectl", "run", pod_name, "--image=nginx:1.27-alpine",
-             "-n", test_namespace],
-            capture_output=True
+            ["kubectl", "run", pod_name, "--image=nginx:1.27-alpine", "-n", test_namespace],
+            capture_output=True,
         )
         assert result.returncode == 0, "Failed to create pod"
 
@@ -106,10 +97,9 @@ class TestPodStartupPerformance:
 
         while time.time() - start_time < max_wait:
             result = subprocess.run(
-                ["kubectl", "get", "pod", pod_name, "-n", test_namespace,
-                 "-o", "json"],
+                ["kubectl", "get", "pod", pod_name, "-n", test_namespace, "-o", "json"],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             if result.returncode == 0:
@@ -130,9 +120,17 @@ class TestPodStartupPerformance:
 
         # Cleanup
         subprocess.run(
-            ["kubectl", "delete", "pod", pod_name, "-n", test_namespace,
-             "--force", "--grace-period=0"],
-            capture_output=True
+            [
+                "kubectl",
+                "delete",
+                "pod",
+                pod_name,
+                "-n",
+                test_namespace,
+                "--force",
+                "--grace-period=0",
+            ],
+            capture_output=True,
         )
 
     def test_multiple_pods_startup_time(self, test_namespace):
@@ -143,10 +141,17 @@ class TestPodStartupPerformance:
         # Create deployment
         create_start = time.time()
         result = subprocess.run(
-            ["kubectl", "create", "deployment", deployment_name,
-             "--image=nginx:1.27-alpine", f"--replicas={replica_count}",
-             "-n", test_namespace],
-            capture_output=True
+            [
+                "kubectl",
+                "create",
+                "deployment",
+                deployment_name,
+                "--image=nginx:1.27-alpine",
+                f"--replicas={replica_count}",
+                "-n",
+                test_namespace,
+            ],
+            capture_output=True,
         )
         assert result.returncode == 0, "Failed to create deployment"
 
@@ -157,10 +162,18 @@ class TestPodStartupPerformance:
 
         while time.time() - start_time < max_wait:
             result = subprocess.run(
-                ["kubectl", "get", "deployment", deployment_name,
-                 "-n", test_namespace, "-o", "json"],
+                [
+                    "kubectl",
+                    "get",
+                    "deployment",
+                    deployment_name,
+                    "-n",
+                    test_namespace,
+                    "-o",
+                    "json",
+                ],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             if result.returncode == 0:
@@ -175,15 +188,23 @@ class TestPodStartupPerformance:
         total_time = time.time() - create_start
 
         assert all_ready, f"Not all pods ready within {max_wait}s"
-        assert total_time < 120, (
-            f"Deployment of {replica_count} pods took too long: {total_time:.1f}s"
-        )
+        assert (
+            total_time < 120
+        ), f"Deployment of {replica_count} pods took too long: {total_time:.1f}s"
 
         # Cleanup
         subprocess.run(
-            ["kubectl", "delete", "deployment", deployment_name,
-             "-n", test_namespace, "--force", "--grace-period=0"],
-            capture_output=True
+            [
+                "kubectl",
+                "delete",
+                "deployment",
+                deployment_name,
+                "-n",
+                test_namespace,
+                "--force",
+                "--grace-period=0",
+            ],
+            capture_output=True,
         )
 
 
@@ -195,32 +216,38 @@ class TestNetworkPerformance:
         """Create a test namespace for network tests."""
         namespace = "network-perf-test"
 
-        subprocess.run(
-            ["kubectl", "create", "namespace", namespace],
-            capture_output=True
-        )
+        subprocess.run(["kubectl", "create", "namespace", namespace], capture_output=True)
 
         yield namespace
 
         # Cleanup
         subprocess.run(
             ["kubectl", "delete", "namespace", namespace, "--force", "--grace-period=0"],
-            capture_output=True
+            capture_output=True,
         )
 
     def test_pod_to_pod_connectivity(self, test_namespace):
         """Test basic pod-to-pod connectivity."""
         # Create two nginx pods
         subprocess.run(
-            ["kubectl", "run", "pod1", "--image=nginx:1.27-alpine",
-             "-n", test_namespace],
-            capture_output=True
+            ["kubectl", "run", "pod1", "--image=nginx:1.27-alpine", "-n", test_namespace],
+            capture_output=True,
         )
 
         subprocess.run(
-            ["kubectl", "run", "pod2", "--image=nicolaka/netshoot:latest",
-             "-n", test_namespace, "--command", "--", "sleep", "300"],
-            capture_output=True
+            [
+                "kubectl",
+                "run",
+                "pod2",
+                "--image=nicolaka/netshoot:latest",
+                "-n",
+                test_namespace,
+                "--command",
+                "--",
+                "sleep",
+                "300",
+            ],
+            capture_output=True,
         )
 
         # Wait for pods to be ready
@@ -228,10 +255,18 @@ class TestNetworkPerformance:
 
         # Get pod1 IP
         result = subprocess.run(
-            ["kubectl", "get", "pod", "pod1", "-n", test_namespace,
-             "-o", "jsonpath={.status.podIP}"],
+            [
+                "kubectl",
+                "get",
+                "pod",
+                "pod1",
+                "-n",
+                test_namespace,
+                "-o",
+                "jsonpath={.status.podIP}",
+            ],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         if result.returncode != 0:
@@ -241,41 +276,70 @@ class TestNetworkPerformance:
 
         # Test connectivity from pod2 to pod1
         result = subprocess.run(
-            ["kubectl", "exec", "pod2", "-n", test_namespace, "--",
-             "ping", "-c", "3", "-W", "2", pod1_ip],
+            [
+                "kubectl",
+                "exec",
+                "pod2",
+                "-n",
+                test_namespace,
+                "--",
+                "ping",
+                "-c",
+                "3",
+                "-W",
+                "2",
+                pod1_ip,
+            ],
             capture_output=True,
-            timeout=10
+            timeout=10,
         )
 
         assert result.returncode == 0, "Pod-to-pod connectivity failed"
 
         # Cleanup
         subprocess.run(
-            ["kubectl", "delete", "pod", "pod1", "pod2", "-n", test_namespace,
-             "--force", "--grace-period=0"],
-            capture_output=True
+            [
+                "kubectl",
+                "delete",
+                "pod",
+                "pod1",
+                "pod2",
+                "-n",
+                test_namespace,
+                "--force",
+                "--grace-period=0",
+            ],
+            capture_output=True,
         )
 
     def test_service_discovery_latency(self, test_namespace):
         """Test DNS resolution latency for services."""
         # Create a service
         subprocess.run(
-            ["kubectl", "run", "web", "--image=nginx:1.27-alpine",
-             "-n", test_namespace],
-            capture_output=True
+            ["kubectl", "run", "web", "--image=nginx:1.27-alpine", "-n", test_namespace],
+            capture_output=True,
         )
 
         subprocess.run(
-            ["kubectl", "expose", "pod", "web", "--port=80",
-             "-n", test_namespace],
-            capture_output=True
+            ["kubectl", "expose", "pod", "web", "--port=80", "-n", test_namespace],
+            capture_output=True,
         )
 
         # Create test pod
         subprocess.run(
-            ["kubectl", "run", "test", "--image=nicolaka/netshoot:latest",
-             "-n", test_namespace, "--command", "--", "sleep", "300"],
-            capture_output=True
+            [
+                "kubectl",
+                "run",
+                "test",
+                "--image=nicolaka/netshoot:latest",
+                "-n",
+                test_namespace,
+                "--command",
+                "--",
+                "sleep",
+                "300",
+            ],
+            capture_output=True,
         )
 
         # Wait for resources
@@ -286,10 +350,18 @@ class TestNetworkPerformance:
         for _ in range(5):
             start_time = time.time()
             result = subprocess.run(
-                ["kubectl", "exec", "test", "-n", test_namespace, "--",
-                 "nslookup", f"web.{test_namespace}.svc.cluster.local"],
+                [
+                    "kubectl",
+                    "exec",
+                    "test",
+                    "-n",
+                    test_namespace,
+                    "--",
+                    "nslookup",
+                    f"web.{test_namespace}.svc.cluster.local",
+                ],
                 capture_output=True,
-                timeout=5
+                timeout=5,
             )
             duration = time.time() - start_time
 
@@ -302,9 +374,17 @@ class TestNetworkPerformance:
 
         # Cleanup
         subprocess.run(
-            ["kubectl", "delete", "pod,service", "web,test", "-n", test_namespace,
-             "--force", "--grace-period=0"],
-            capture_output=True
+            [
+                "kubectl",
+                "delete",
+                "pod,service",
+                "web,test",
+                "-n",
+                test_namespace,
+                "--force",
+                "--grace-period=0",
+            ],
+            capture_output=True,
         )
 
 
@@ -333,10 +413,7 @@ spec:
         # Create PVC
         create_start = time.time()
         result = subprocess.run(
-            ["kubectl", "apply", "-f", "-"],
-            input=pvc_manifest,
-            capture_output=True,
-            text=True
+            ["kubectl", "apply", "-f", "-"], input=pvc_manifest, capture_output=True, text=True
         )
 
         if result.returncode != 0:
@@ -349,10 +426,9 @@ spec:
 
         while time.time() - start_time < max_wait:
             result = subprocess.run(
-                ["kubectl", "get", "pvc", pvc_name, "-n", namespace,
-                 "-o", "json"],
+                ["kubectl", "get", "pvc", pvc_name, "-n", namespace, "-o", "json"],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             if result.returncode == 0:
@@ -366,10 +442,7 @@ spec:
         total_time = time.time() - create_start
 
         # Cleanup
-        subprocess.run(
-            ["kubectl", "delete", "pvc", pvc_name, "-n", namespace],
-            capture_output=True
-        )
+        subprocess.run(["kubectl", "delete", "pvc", pvc_name, "-n", namespace], capture_output=True)
 
         assert pvc_bound, f"PVC not bound within {max_wait}s"
         assert total_time < 60, f"PVC provisioning took too long: {total_time:.1f}s"
@@ -401,10 +474,7 @@ spec:
 
         # Create pod
         result = subprocess.run(
-            ["kubectl", "apply", "-f", "-"],
-            input=pod_manifest,
-            capture_output=True,
-            text=True
+            ["kubectl", "apply", "-f", "-"], input=pod_manifest, capture_output=True, text=True
         )
 
         if result.returncode != 0:
@@ -418,10 +488,9 @@ spec:
 
         while time.time() - start_time < max_wait:
             result = subprocess.run(
-                ["kubectl", "get", "pod", pod_name, "-n", namespace,
-                 "-o", "json"],
+                ["kubectl", "get", "pod", pod_name, "-n", namespace, "-o", "json"],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             if result.returncode == 0:
@@ -444,19 +513,15 @@ spec:
 
         # Cleanup
         subprocess.run(
-            ["kubectl", "delete", "pod", pod_name, "-n", namespace,
-             "--force", "--grace-period=0"],
-            capture_output=True
+            ["kubectl", "delete", "pod", pod_name, "-n", namespace, "--force", "--grace-period=0"],
+            capture_output=True,
         )
 
         if scheduled_time and running_time:
             scheduler_latency = scheduled_time - start_time
-            container_start_latency = running_time - scheduled_time
 
             # Scheduler should be fast
-            assert scheduler_latency < 5.0, (
-                f"Scheduler latency too high: {scheduler_latency:.3f}s"
-            )
+            assert scheduler_latency < 5.0, f"Scheduler latency too high: {scheduler_latency:.3f}s"
 
 
 class TestResourceUtilization:
@@ -464,11 +529,7 @@ class TestResourceUtilization:
 
     def test_node_resource_utilization(self):
         """Test that nodes have available resources."""
-        result = subprocess.run(
-            ["kubectl", "top", "nodes"],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(["kubectl", "top", "nodes"], capture_output=True, text=True)
 
         if result.returncode != 0:
             pytest.skip("Metrics server not available")
@@ -491,15 +552,11 @@ class TestResourceUtilization:
     def test_system_pods_resource_usage(self):
         """Test that system pods are not consuming excessive resources."""
         result = subprocess.run(
-            ["kubectl", "top", "pods", "-n", "kube-system"],
-            capture_output=True,
-            text=True
+            ["kubectl", "top", "pods", "-n", "kube-system"], capture_output=True, text=True
         )
 
         if result.returncode != 0:
             pytest.skip("Metrics server not available")
 
         # Just verify we can get metrics
-        assert "CPU" in result.stdout or "MEMORY" in result.stdout, (
-            "Could not retrieve pod metrics"
-        )
+        assert "CPU" in result.stdout or "MEMORY" in result.stdout, "Could not retrieve pod metrics"

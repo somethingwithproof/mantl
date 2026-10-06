@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Batch Processing Job for Nomad
 # Parameterized batch job with GPU support
 # https://developer.hashicorp.com/nomad/docs/job-specification

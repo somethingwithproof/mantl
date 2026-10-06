@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 // Template: configure the application image and reviewed GitOps repository.
 // Registry credentials belong to the Jenkins worker; manifest changes are artifacts.
 node {

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Restrict container images to approved registries
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
@@ -22,14 +23,17 @@ spec:
                 - Pod
       validate:
         message: >-
-          Images must be from approved registries: 
-          ghcr.io, gcr.io, docker.io/library, quay.io, 
+          Images must be from approved registries:
+          ghcr.io, gcr.io, docker.io/library, quay.io,
           registry.k8s.io, or your private registry.
         pattern:
           spec:
             containers:
-              - image: "ghcr.io/* | gcr.io/* | docker.io/library/* | quay.io/* | registry.k8s.io/* | *.dkr.ecr.*.amazonaws.com/* | harbor.example.com/*"
+              - image: "ghcr.io/* | gcr.io/* | docker.io/library/* | quay.io/* | registry.k8s.io/*
+                  | *.dkr.ecr.*.amazonaws.com/* | harbor.example.com/*"
             =(initContainers):
-              - image: "ghcr.io/* | gcr.io/* | docker.io/library/* | quay.io/* | registry.k8s.io/* | *.dkr.ecr.*.amazonaws.com/* | harbor.example.com/*"
+              - image: "ghcr.io/* | gcr.io/* | docker.io/library/* | quay.io/* | registry.k8s.io/*
+                  | *.dkr.ecr.*.amazonaws.com/* | harbor.example.com/*"
             =(ephemeralContainers):
-              - image: "ghcr.io/* | gcr.io/* | docker.io/library/* | quay.io/* | registry.k8s.io/* | *.dkr.ecr.*.amazonaws.com/* | harbor.example.com/*"
+              - image: "ghcr.io/* | gcr.io/* | docker.io/library/* | quay.io/* | registry.k8s.io/*
+                  | *.dkr.ecr.*.amazonaws.com/* | harbor.example.com/*"

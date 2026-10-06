@@ -1,3 +1,5 @@
+.. SPDX-License-Identifier: Apache-2.0
+
 .. note::
 
    Historical design/component reference. For the current Kubernetes compiler and

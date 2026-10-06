@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 ################################################################################
 # Mantl AWS EKS Blueprint
 # Production-ready EKS cluster with IRSA for platform components

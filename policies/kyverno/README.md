@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Kyverno Policies
 
 This folder is applied by the ArgoCD app `kyverno-policies`.

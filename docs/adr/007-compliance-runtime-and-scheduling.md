@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # ADR 007: Packaged compliance definitions and durable evidence scheduling
 
 Status: Accepted for implementation; review required before merge.

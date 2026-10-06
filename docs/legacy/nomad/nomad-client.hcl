@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # HashiCorp Nomad Client Configuration
 # Worker node configuration for Mantl platform
 # https://developer.hashicorp.com/nomad/docs/configuration

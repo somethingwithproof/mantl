@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # Mantl features and architecture plan
 
 Date: 2026-10-04

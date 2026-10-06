@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 CC6.1:
   - Review namespace NetworkPolicies and add only required ingress, DNS, and service egress.
   - Set runAsNonRoot and RuntimeDefault seccomp in the workload security context.

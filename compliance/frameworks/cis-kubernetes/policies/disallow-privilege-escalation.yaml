@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # CIS Kubernetes 5.2.2 - Disallow Privilege Escalation
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy

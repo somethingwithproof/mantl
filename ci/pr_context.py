@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Validate the exact PR head for bot-dispatched CI and Sonar analysis."""
 
 import json

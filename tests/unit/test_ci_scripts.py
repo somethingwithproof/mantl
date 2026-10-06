@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 """Unit tests for CI scripts and configuration.
 
 Tests validate that CI scripts exist, are executable, and have valid syntax.

@@ -1,0 +1,409 @@
+# SPDX-License-Identifier: Apache-2.0
+version = 1
+
+# Preserve upstream notices; annotate vendored bytes without editing them.
+[[annotations]]
+path = [
+  "platform/automation/runbooks/README.md",
+  "platform/automation/runbooks/auto-scale/hpa-adjuster.yaml",
+  "platform/automation/runbooks/cert-renewal/cert-checker.yaml",
+  "platform/automation/runbooks/kustomization.yaml",
+  "platform/automation/runbooks/log-cleanup/log-rotator.yaml",
+  "platform/automation/runbooks/namespace.yaml",
+  "platform/automation/runbooks/pod-restart/crashloop-detector.yaml",
+  "platform/automation/runbooks/serviceaccount.yaml",
+  "platform/backup/velero/README.md",
+  "platform/backup/velero/helmrelease.yaml",
+  "platform/backup/velero/kustomization.yaml",
+  "platform/backup/velero/namespace.yaml",
+  "platform/backup/velero/values.yaml",
+  "platform/base/argocd/app-of-apps.yaml",
+  "platform/base/argocd/kustomization.yaml",
+  "platform/base/argocd/namespace.yaml",
+  "platform/base/argocd/notifications-cm.yaml",
+  "platform/base/cert-manager/acme/azure/clusterissuer.yaml",
+  "platform/base/cert-manager/acme/azure/externalsecret.yaml",
+  "platform/base/cert-manager/acme/azure/kustomization.yaml",
+  "platform/base/cert-manager/acme/cloudflare/clusterissuer.yaml",
+  "platform/base/cert-manager/acme/cloudflare/externalsecret.yaml",
+  "platform/base/cert-manager/acme/cloudflare/kustomization.yaml",
+  "platform/base/cert-manager/acme/digitalocean/clusterissuer.yaml",
+  "platform/base/cert-manager/acme/digitalocean/externalsecret.yaml",
+  "platform/base/cert-manager/acme/digitalocean/kustomization.yaml",
+  "platform/base/cert-manager/acme/gcp/clusterissuer.yaml",
+  "platform/base/cert-manager/acme/gcp/externalsecret.yaml",
+  "platform/base/cert-manager/acme/gcp/kustomization.yaml",
+  "platform/base/cert-manager/acme/ibm/clusterissuer.yaml",
+  "platform/base/cert-manager/acme/ibm/externalsecret.yaml",
+  "platform/base/cert-manager/acme/ibm/kustomization.yaml",
+  "platform/base/cert-manager/acme/oci/clusterissuer.yaml",
+  "platform/base/cert-manager/acme/oci/externalsecret.yaml",
+  "platform/base/cert-manager/acme/oci/kustomization.yaml",
+  "platform/base/cert-manager/acme/route53/clusterissuer.yaml",
+  "platform/base/cert-manager/acme/route53/externalsecret.yaml",
+  "platform/base/cert-manager/acme/route53/kustomization.yaml",
+  "platform/base/cert-manager/cluster-issuer.yaml",
+  "platform/base/cert-manager/cluster-issuers/aws-route53.yaml",
+  "platform/base/cert-manager/cluster-issuers/azure-dns.yaml",
+  "platform/base/cert-manager/cluster-issuers/cloudflare.yaml",
+  "platform/base/cert-manager/cluster-issuers/gcp-cloud-dns.yaml",
+  "platform/base/cert-manager/cluster-issuers/kustomization.yaml",
+  "platform/base/cert-manager/cluster-issuers/letsencrypt-production.yaml",
+  "platform/base/cert-manager/cluster-issuers/letsencrypt-staging.yaml",
+  "platform/base/cert-manager/cluster-issuers/self-signed.yaml",
+  "platform/base/cert-manager/issuers/kustomization.yaml",
+  "platform/base/cert-manager/issuers/letsencrypt-prod.yaml",
+  "platform/base/cert-manager/issuers/letsencrypt-staging.yaml",
+  "platform/base/cert-manager/issuers/selfsigned.yaml",
+  "platform/base/cert-manager/kustomization.yaml",
+  "platform/base/cert-manager/namespace.yaml",
+  "platform/base/cert-manager/values.yaml",
+  "platform/base/cilium/kustomization.yaml",
+  "platform/base/cilium/l2-announcement.yaml",
+  "platform/base/cilium/values.yaml",
+  "platform/base/crossplane/compositions/mantl-bucket-composition.yaml",
+  "platform/base/crossplane/compositions/mantl-bucket-xrd.yaml",
+  "platform/chaos/chaos-mesh/README.md",
+  "platform/chaos/chaos-mesh/experiments/network-delay.yaml",
+  "platform/chaos/chaos-mesh/experiments/pod-failure.yaml",
+  "platform/chaos/chaos-mesh/experiments/stress-test.yaml",
+  "platform/chaos/chaos-mesh/operator/helmrelease.yaml",
+  "platform/chaos/chaos-mesh/operator/kustomization.yaml",
+  "platform/chaos/chaos-mesh/operator/namespace.yaml",
+  "platform/chaos/chaos-mesh/operator/values.yaml",
+  "platform/cost/opencost/README.md",
+  "platform/cost/opencost/helmrelease.yaml",
+  "platform/cost/opencost/kustomization.yaml",
+  "platform/cost/opencost/namespace.yaml",
+  "platform/cost/opencost/values.yaml",
+  "platform/crossplane/kustomization.yaml",
+  "platform/crossplane/namespace.yaml",
+  "platform/crossplane/values.yaml",
+  "platform/data/cloudnative-pg/README.md",
+  "platform/data/cloudnative-pg/examples/production-cluster.yaml",
+  "platform/data/cloudnative-pg/operator/helmrelease.yaml",
+  "platform/data/cloudnative-pg/operator/kustomization.yaml",
+  "platform/data/cloudnative-pg/operator/namespace.yaml",
+  "platform/data/cloudnative-pg/operator/values.yaml",
+  "platform/developer-portal/backstage/README.md",
+  "platform/developer-portal/backstage/config/kustomization.yaml",
+  "platform/developer-portal/backstage/config/namespace.yaml",
+  "platform/developer-portal/backstage/config/values.yaml",
+  "platform/developer-portal/backstage/templates/service-template.yaml",
+  "platform/dns/external-dns/digitalocean/externalsecret.yaml",
+  "platform/dns/external-dns/kustomization.yaml",
+  "platform/dns/external-dns/linode/externalsecret.yaml",
+  "platform/dns/external-dns/namespace.yaml",
+  "platform/dns/external-dns/values.yaml",
+  "platform/ingress/gateway-api/base/gateway-class.yaml",
+  "platform/ingress/gateway-api/base/gateway.yaml",
+  "platform/ingress/gateway-api/base/kustomization.yaml",
+  "platform/ingress/gateway-api/examples/canary-route.yaml",
+  "platform/ingress/gateway-api/examples/header-based-route.yaml",
+  "platform/ingress/gateway-api/examples/hello-route.yaml",
+  "platform/ingress/gateway-api/routes/http-redirect.yaml",
+  "platform/ingress/gateway-api/routes/kustomization.yaml",
+  "platform/ingress/gateway-api/sample/gateway.yaml",
+  "platform/ingress/gateway-api/sample/httproute.yaml",
+  "platform/ingress/gateway-api/sample/kustomization.yaml",
+  "platform/monitoring/grafana/dashboards/capacity-planning.json",
+  "platform/monitoring/grafana/dashboards/compliance-overview.json",
+  "platform/monitoring/grafana/dashboards/cost-analysis.json",
+  "platform/monitoring/grafana/dashboards/golden-signals.json",
+  "platform/monitoring/grafana/dashboards/platform-health.json",
+  "platform/monitoring/grafana/dashboards/security-posture.json",
+  "platform/monitoring/prometheus/slo-rules.yaml",
+  "platform/multi-cluster/README.md",
+  "platform/multi-cluster/applicationsets/ecommerce-multi-cluster.yaml",
+  "platform/multi-cluster/clusters/cluster-template.yaml",
+  "platform/multi-cluster/kustomization.yaml",
+  "platform/multi-tenancy/vcluster/README.md",
+  "platform/multi-tenancy/vcluster/values.yaml",
+  "platform/network-policies/argocd-network-policy.yaml",
+  "platform/network-policies/cert-manager-network-policy.yaml",
+  "platform/network-policies/external-secrets-network-policy.yaml",
+  "platform/network-policies/kustomization.yaml",
+  "platform/network-policies/monitoring-network-policy.yaml",
+  "platform/observability/grafana/dashboards/kustomization.yaml",
+  "platform/observability/grafana/dashboards/platform-health.yaml",
+  "platform/observability/loki/kustomization.yaml",
+  "platform/observability/loki/values.yaml",
+  "platform/observability/otel-collector/kustomization.yaml",
+  "platform/observability/otel-collector/namespace.yaml",
+  "platform/observability/otel-collector/values.yaml",
+  "platform/observability/prometheus/kustomization.yaml",
+  "platform/observability/prometheus/namespace.yaml",
+  "platform/observability/prometheus/overlays/dev/kustomization.yaml",
+  "platform/observability/prometheus/overlays/dev/values.yaml",
+  "platform/observability/prometheus/overlays/staging/kustomization.yaml",
+  "platform/observability/prometheus/overlays/staging/values.yaml",
+  "platform/observability/prometheus/rules/platform-alerts.yaml",
+  "platform/observability/prometheus/values.yaml",
+  "platform/observability/tempo/kustomization.yaml",
+  "platform/observability/tempo/values.yaml",
+  "platform/progressive-delivery/base/analysis-template.yaml",
+  "platform/progressive-delivery/base/kustomization.yaml",
+  "platform/progressive-delivery/base/namespace.yaml",
+  "platform/progressive-delivery/flagger/README.md",
+  "platform/progressive-delivery/flagger/examples/ab-testing.yaml",
+  "platform/progressive-delivery/flagger/examples/basic-canary.yaml",
+  "platform/progressive-delivery/flagger/examples/blue-green.yaml",
+  "platform/progressive-delivery/flagger/helmrelease.yaml",
+  "platform/progressive-delivery/flagger/kustomization.yaml",
+  "platform/progressive-delivery/flagger/namespace.yaml",
+  "platform/progressive-delivery/flagger/values.yaml",
+  "platform/registry/harbor/kustomization.yaml",
+  "platform/registry/harbor/namespace.yaml",
+  "platform/registry/harbor/values.yaml",
+  "platform/secrets/base/cluster-secret-store.yaml",
+  "platform/secrets/base/kustomization.yaml",
+  "platform/secrets/base/namespace.yaml",
+  "platform/secrets/external-secrets/kustomization.yaml",
+  "platform/secrets/external-secrets/namespace.yaml",
+  "platform/secrets/external-secrets/providers/aws-secrets-manager.yaml",
+  "platform/secrets/external-secrets/providers/azure-key-vault.yaml",
+  "platform/secrets/external-secrets/providers/gcp-secret-manager.yaml",
+  "platform/secrets/external-secrets/providers/hashicorp-vault.yaml",
+  "platform/secrets/external-secrets/values.yaml",
+  "platform/security/base/disallow-privileged-containers.yaml",
+  "platform/security/base/kustomization.yaml",
+  "platform/security/base/require-ro-rootfs.yaml",
+  "platform/security/base/restrict-image-registries.yaml",
+  "platform/security/falco/kustomization.yaml",
+  "platform/security/falco/namespace.yaml",
+  "platform/security/falco/values.yaml",
+  "platform/security/kyverno/README.md",
+  "platform/security/kyverno/kustomization.yaml",
+  "platform/security/kyverno/namespace.yaml",
+  "platform/security/kyverno/operator/helmrelease.yaml",
+  "platform/security/kyverno/policies/disallow-default-namespace.yaml",
+  "platform/security/kyverno/policies/disallow-default-serviceaccount.yaml",
+  "platform/security/kyverno/policies/disallow-latest-tag.yaml",
+  "platform/security/kyverno/policies/pss-restricted.yaml",
+  "platform/security/kyverno/policies/require-change-annotations.yaml",
+  "platform/security/kyverno/policies/require-labels.yaml",
+  "platform/security/kyverno/policies/require-network-policy.yaml",
+  "platform/security/kyverno/policies/require-replicas.yaml",
+  "platform/security/kyverno/policies/require-resource-limits.yaml",
+  "platform/security/kyverno/policies/restrict-external-ips.yaml",
+  "platform/security/kyverno/policies/restrict-image-registries.yaml",
+  "platform/security/kyverno/policies/restrict-service-account-tokens.yaml",
+  "platform/security/tetragon/kustomization.yaml",
+  "platform/security/tetragon/namespace.yaml",
+  "platform/security/tetragon/policies/crypto-mining.yaml",
+  "platform/security/tetragon/policies/kustomization.yaml",
+  "platform/security/tetragon/policies/privilege-escalation.yaml",
+  "platform/security/tetragon/policies/sensitive-file-access.yaml",
+  "platform/security/tetragon/policies/suspicious-network.yaml",
+  "platform/security/tetragon/values.yaml",
+  "platform/security/trivy-operator/helmrelease.yaml",
+  "platform/security/trivy-operator/kustomization.yaml",
+  "platform/security/trivy-operator/namespace.yaml",
+  "platform/security/trivy-operator/values.yaml",
+]
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileComment = "Maintained platform composition and repository metadata; upstream chart roots are declared separately."
+
+[[annotations]]
+path = "platform/crossplane/charts/crossplane-1.18.1/crossplane/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "policies/kyverno/charts/kyverno-3.3.3/kyverno/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/base/cert-manager/charts/cert-manager-v1.16.2/cert-manager/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/base/cilium/charts/cilium-1.16.5/cilium/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/dns/external-dns/charts/external-dns-1.15.0/external-dns/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/loki/charts/loki-6.23.0/loki/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/otel-collector/charts/opentelemetry-collector-0.107.0/opentelemetry-collector/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/tempo/charts/tempo-1.14.0/tempo/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/registry/harbor/charts/harbor-1.16.0/harbor/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/secrets/external-secrets/charts/external-secrets-0.12.1/external-secrets/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/security/falco/charts/falco-4.15.0/falco/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "policies/kyverno/charts/kyverno-3.3.3/kyverno/charts/crds/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "policies/kyverno/charts/kyverno-3.3.3/kyverno/charts/grafana/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/loki/charts/loki-6.23.0/loki/charts/grafana-agent-operator/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/loki/charts/loki-6.23.0/loki/charts/minio/**"
+precedence = "closest"
+SPDX-License-Identifier = "AGPL-3.0-or-later"
+
+[[annotations]]
+path = "platform/observability/loki/charts/loki-6.23.0/loki/charts/rollout-operator/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/crds/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/grafana/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/kube-state-metrics/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/prometheus-node-exporter/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/prometheus-windows-exporter/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/dev/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/staging/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/secrets/external-secrets/charts/external-secrets-0.12.1/external-secrets/charts/bitwarden-sdk-server/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/security/falco/charts/falco-4.15.0/falco/charts/falcosidekick/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/security/falco/charts/falco-4.15.0/falco/charts/k8s-metacollector/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/dev/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/crds/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/dev/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/grafana/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/dev/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/kube-state-metrics/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/dev/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/prometheus-node-exporter/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/dev/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/prometheus-windows-exporter/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/staging/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/crds/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/staging/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/grafana/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/staging/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/kube-state-metrics/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/staging/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/prometheus-node-exporter/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "platform/observability/prometheus/overlays/staging/charts/kube-prometheus-stack-65.2.0/kube-prometheus-stack/charts/prometheus-windows-exporter/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "infra/terraform/examples/aks-external-dns-wi/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileComment = "Preserve unvalidated legacy/reference assets byte-for-byte; this declaration does not establish a working example."
+
+[[annotations]]
+path = "infra/terraform/examples/gke-external-dns-wi/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileComment = "Preserve unvalidated legacy/reference assets byte-for-byte; this declaration does not establish a working example."
+
+[[annotations]]
+path = "infra/terraform/vsphere/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileComment = "Preserve unvalidated legacy/reference assets byte-for-byte; this declaration does not establish a working example."

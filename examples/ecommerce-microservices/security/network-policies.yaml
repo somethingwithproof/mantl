@@ -1,4 +1,4 @@
----
+# SPDX-License-Identifier: Apache-2.0
 # Default deny all ingress traffic
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -8,7 +8,7 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Ingress
+    - Ingress
 ---
 # Allow ingress traffic to frontend from ingress controller
 apiVersion: networking.k8s.io/v1
@@ -21,15 +21,15 @@ spec:
     matchLabels:
       app.kubernetes.io/name: frontend
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: ingress-nginx
-    ports:
-    - protocol: TCP
-      port: 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
 ---
 # Allow frontend to call APIs
 apiVersion: networking.k8s.io/v1
@@ -42,15 +42,15 @@ spec:
     matchLabels:
       app.kubernetes.io/component: api
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/name: frontend
-    ports:
-    - protocol: TCP
-      port: 8000
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: frontend
+      ports:
+        - protocol: TCP
+          port: 8000
 ---
 # Allow APIs to access database
 apiVersion: networking.k8s.io/v1
@@ -63,15 +63,15 @@ spec:
     matchLabels:
       cnpg.io/cluster: ecommerce-db
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app.kubernetes.io/component: api
-    ports:
-    - protocol: TCP
-      port: 5432
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: api
+      ports:
+        - protocol: TCP
+          port: 5432
 ---
 # Allow Prometheus to scrape metrics
 apiVersion: networking.k8s.io/v1
@@ -84,20 +84,20 @@ spec:
     matchLabels:
       app.kubernetes.io/part-of: ecommerce
   policyTypes:
-  - Ingress
+    - Ingress
   ingress:
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          name: mantl-system
-      podSelector:
-        matchLabels:
-          app: prometheus
-    ports:
-    - protocol: TCP
-      port: 8000
-    - protocol: TCP
-      port: 9113
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: mantl-system
+          podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8000
+        - protocol: TCP
+          port: 9113
 ---
 # Allow DNS queries
 apiVersion: networking.k8s.io/v1
@@ -108,15 +108,15 @@ metadata:
 spec:
   podSelector: {}
   policyTypes:
-  - Egress
+    - Egress
   egress:
-  - to:
-    - namespaceSelector:
-        matchLabels:
-          name: kube-system
-      podSelector:
-        matchLabels:
-          k8s-app: kube-dns
-    ports:
-    - protocol: UDP
-      port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53

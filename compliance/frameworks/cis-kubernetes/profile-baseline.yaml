@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # CIS Kubernetes Baseline Profile
 # Enables all Level 1 controls (basic hardening)
 apiVersion: compliance.mantl.io/v1alpha1

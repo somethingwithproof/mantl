@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 # E-Commerce Microservices Example
 
 Production-ready microservices application demonstrating mantl platform capabilities.

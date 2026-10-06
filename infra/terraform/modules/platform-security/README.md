@@ -1,3 +1,4 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- BEGIN_TF_DOCS -->
 ## Requirements
 
