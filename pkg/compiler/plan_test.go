@@ -102,3 +102,46 @@ func verifyPlanArtifacts(t *testing.T, plan Plan, dir string) {
 		}
 	}
 }
+
+func TestIgnoredConfigurationIsVisibleWithoutChangingArtifacts(t *testing.T) {
+	cluster := newTestCluster("small")
+	baseline, err := Compile(cluster)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cluster.Spec.Networking.Exposure = "public"
+	cluster.Spec.Networking.VpcID = "vpc-example"
+	cluster.Spec.Profile.Compliance = "hipaa"
+	changed, err := Compile(cluster)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(baseline.Artifacts, changed.Artifacts) {
+		t.Fatal("unimplemented inputs unexpectedly altered generated configuration")
+	}
+	if baseline.SpecSHA256 == changed.SpecSHA256 {
+		t.Fatal("review identity omitted ignored configuration")
+	}
+	for _, field := range []string{"profile.size", "networking.domain", "profile.compliance"} {
+		if !strings.Contains(strings.Join(changed.Notices, "\n"), field) {
+			t.Fatalf("accepted but limited field has no notice: %s", field)
+		}
+	}
+}
+
+func TestAccountAndExperimentalProviderNoticesAreScoped(t *testing.T) {
+	cluster := newTestCluster("small")
+	cluster.Spec.Provider.AccountID = "example-account"
+	notices := strings.Join(compilationNotices(cluster), "\n")
+	if !strings.Contains(notices, "AWS provider.accountId") {
+		t.Fatal("ignored AWS account selection was silent")
+	}
+	cluster.Spec.Provider.Kind = "gcp"
+	if strings.Contains(strings.Join(compilationNotices(cluster), "\n"), "provider.accountId") {
+		t.Fatal("GCP project input incorrectly declared ignored")
+	}
+	cluster.Spec.Provider.Kind = "do"
+	if !strings.Contains(strings.Join(compilationNotices(cluster), "\n"), "experimental") {
+		t.Fatal("experimental provider maturity omitted")
+	}
+}
