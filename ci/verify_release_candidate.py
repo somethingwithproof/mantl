@@ -1,0 +1,266 @@
+# SPDX-License-Identifier: Apache-2.0
+"""Verify local RC packages and reviewed-plan behavior without publishing."""
+
+import argparse
+import contextlib
+import hashlib
+import json
+import os
+import platform
+import re
+import stat
+import subprocess
+import tarfile
+import tempfile
+import uuid
+from pathlib import Path
+
+from scripts import release_paths
+
+ROOT = Path(__file__).resolve().parents[1]
+CLI_TIMEOUT_SECONDS = 60
+PACKAGE_TIMEOUT_SECONDS = 600
+
+RC_VERSION = re.compile(r"(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-rc\.[1-9]\d*", re.ASCII)
+ARCHIVE_FILES = {
+    "mantl",
+    "LICENSE",
+    "README.md",
+    "docs/releases.md",
+    "docs/quickstart-platform.md",
+    "docs/_static/mantl-mark.svg",
+}
+
+
+def bounded_run(args, *, timeout=CLI_TIMEOUT_SECONDS, **kwargs):
+    """Bound candidate execution and preserve subprocess failure semantics."""
+    try:
+        return subprocess.run(args, timeout=timeout, **kwargs)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError(
+            f"candidate command timed out after {timeout} seconds: {Path(args[0]).name}"
+        ) from error
+
+
+def bounded_output(args, **kwargs):
+    try:
+        return subprocess.check_output(args, timeout=CLI_TIMEOUT_SECONDS, **kwargs)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError(
+            f"candidate command timed out after {CLI_TIMEOUT_SECONDS} seconds: {Path(args[0]).name}"
+        ) from error
+
+
+def expected_artifacts(version):
+    if not RC_VERSION.fullmatch(version):
+        raise ValueError("candidate version must be SemVer MAJOR.MINOR.PATCH-rc.N")
+    archives = {
+        f"mantl_{version}_{os}_{arch}.tar.gz"
+        for os in ("linux", "darwin")
+        for arch in ("amd64", "arm64")
+    }
+    packages = {
+        f"mantl_{version}_linux_{arch}.{kind}"
+        for arch in ("amd64", "arm64")
+        for kind in ("deb", "rpm")
+    }
+    return archives | packages
+
+
+def verify_checksums(directory, version):
+    expected = expected_artifacts(version)
+    seen = set()
+    manifest = release_paths.artifact_path(directory / "cli-checksums.txt")
+    for line in manifest.read_text().splitlines():
+        digest, name = line.split(maxsplit=1)
+        if name not in expected or name in seen or not re.fullmatch(r"[a-f0-9]{64}", digest):
+            raise ValueError("candidate checksum inventory is invalid")
+        file = release_paths.artifact_path(directory / name)
+        with file.open("rb") as stream:
+            if hashlib.file_digest(stream, "sha256").hexdigest() != digest:
+                raise ValueError(f"candidate checksum mismatch: {name}")
+        seen.add(name)
+    if seen != expected:
+        raise ValueError("candidate checksum inventory is incomplete")
+    return sorted(seen)
+
+
+def verify_archive(path):
+    with tarfile.open(path) as archive:
+        entries = archive.getmembers()
+        names = {entry.name for entry in entries}
+        if len(names) != len(entries) or not ARCHIVE_FILES.issubset(names):
+            raise ValueError("candidate archive omits CLI, license, quickstart or logo")
+        if any(not entry.isfile() or entry.size > 64 * 1024 * 1024 for entry in entries):
+            raise ValueError("candidate archive contains unsupported entries")
+        return archive.extractfile("mantl").read()
+
+
+def verify_native_cli(directory, version):
+    system = platform.system().lower()
+    architecture = {"x86_64": "amd64", "AMD64": "amd64", "aarch64": "arm64", "arm64": "arm64"}.get(
+        platform.machine()
+    )
+    if system not in {"linux", "darwin"} or architecture is None:
+        raise ValueError("candidate CLI smoke check requires a supported native host")
+    payload = verify_archive(directory / f"mantl_{version}_{system}_{architecture}.tar.gz")
+    with tempfile.TemporaryDirectory(prefix="candidate-smoke-", dir=directory) as temporary:
+        work = Path(temporary)
+        binary = work / "mantl"
+        binary.write_bytes(payload)
+        binary.chmod(0o700)
+        identity = bounded_output([str(binary), "--version"], text=True).strip()
+        commit = bounded_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        if identity != f"mantl version {version} ({commit})":
+            raise ValueError("candidate CLI identity does not match this checkout/version")
+        spec = ROOT / "examples/mantl-spec.yaml"
+        reviewed = work / "reviewed.json"
+        generated = work / "generated"
+        bounded_run(
+            [
+                str(binary),
+                "plan",
+                str(spec),
+                "--output-dir",
+                str(generated),
+                "--save-plan",
+                str(reviewed),
+            ],
+            cwd=work,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        bounded_run(
+            [
+                str(binary),
+                "plan",
+                str(spec),
+                "--dry-run",
+                "--compare",
+                str(reviewed),
+                "--fail-on-change",
+            ],
+            cwd=work,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        changed = work / "changed.yaml"
+        changed.write_text(
+            spec.read_text().replace("name: prod-us-east", "name: candidate-changed", 1)
+        )
+        response = bounded_run(
+            [
+                str(binary),
+                "plan",
+                str(changed),
+                "--dry-run",
+                "--compare",
+                str(reviewed),
+                "--fail-on-change",
+            ],
+            cwd=work,
+            capture_output=True,
+            text=True,
+        )
+        if response.returncode == 0 or not response.stdout:
+            raise ValueError("candidate read-only change gate accepted changed inputs")
+        saved = json.loads(reviewed.read_text())
+        if saved["schemaVersion"] != "mantl.io/plan/v1alpha2":
+            raise ValueError("candidate plan schema is unexpected")
+        return {
+            "identity": identity,
+            "artifactCount": len(saved["artifacts"]),
+            "schemaVersion": saved["schemaVersion"],
+            "unchangedComparison": "passed",
+            "changedInputGate": "passed",
+        }
+
+
+def inspect_candidate(version, directory, native_packages=False):
+    artifacts = verify_checksums(directory, version)
+    for name in artifacts:
+        if name.endswith(".tar.gz"):
+            verify_archive(directory / name)
+    report = {
+        "schemaVersion": "mantl.io/candidate-verification/v1alpha1",
+        "version": version,
+        "scope": "local-unsigned-snapshot",
+        "artifacts": artifacts,
+        "cli": verify_native_cli(directory, version),
+        "worktreeDirty": bool(bounded_output(["git", "status", "--porcelain"], cwd=ROOT)),
+        "sourceDiffSHA256": hashlib.sha256(
+            bounded_output(["git", "diff", "--no-ext-diff", "--binary", "HEAD"], cwd=ROOT)
+        ).hexdigest(),
+        "nativePackages": "not-run",
+        "signatureVerification": "requires-hosted-release",
+        "provenanceVerification": "requires-hosted-release",
+        "cloudAcceptance": "not-run",
+    }
+    if native_packages:
+        bounded_run(
+            ["bash", str(ROOT / "ci/verify-cli-packages.sh"), str(directory)],
+            cwd=ROOT,
+            check=True,
+            timeout=PACKAGE_TIMEOUT_SECONDS,
+        )
+        report["nativePackages"] = "passed"
+    return report
+
+
+def write_report(directory_fd, report):
+    """Publish JSON atomically without following a substituted destination symlink."""
+    destination = "candidate-verification.json"
+    try:
+        existing = os.stat(destination, dir_fd=directory_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        existing = None
+    if existing is not None and not stat.S_ISREG(existing.st_mode):
+        raise ValueError("candidate report must be a regular file, not a symlink")
+    temporary = f".candidate-report-{uuid.uuid4().hex}.tmp"
+    descriptor = os.open(
+        temporary,
+        os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
+        0o600,
+        dir_fd=directory_fd,
+    )
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump(report, stream, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, destination, src_dir_fd=directory_fd, dst_dir_fd=directory_fd)
+    finally:
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(temporary, dir_fd=directory_fd)
+
+
+def verify(version, directory, native_packages=False):
+    directory = release_paths.artifact_path(directory)
+    release_paths.artifact_path(directory / "candidate-verification.json")
+    # Pin the directory before running the candidate: path replacement during its
+    # smoke checks must never redirect report output into another directory.
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        report = inspect_candidate(version, directory, native_packages)
+        write_report(descriptor, report)
+        return report
+    finally:
+        os.close(descriptor)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("version")
+    parser.add_argument("--directory", type=Path, required=True)
+    parser.add_argument(
+        "--native-packages",
+        action="store_true",
+        help="Run existing isolated Docker DEB/RPM lifecycle checks",
+    )
+    args = parser.parse_args()
+    print(json.dumps(verify(args.version, args.directory, args.native_packages), indent=2))
+
+
+if __name__ == "__main__":
+    main()
