@@ -7,7 +7,7 @@ outside Kubernetes etcd. The current compliance runtime is beta.
 
 | Capability | Current scope |
 | --- | --- |
-| Go CLI | Spec planning, bootstrap, live status, static cloud validation |
+| Go CLI | Offline spec previews and artifact hashes, bootstrap, scoped JSON status, static cloud validation |
 | GitOps | ArgoCD owns policy deployment and lifecycle |
 | SOC2 | Packaged controls/policies, profile coverage, findings and config snapshots; unsupported collectors are reported as gaps |
 | Audit execution (beta) | Durable AuditRuns and isolated, scoped collector Jobs |
@@ -26,11 +26,31 @@ constitute SOC2, HIPAA, or PCI certification.
 
 ## Installation
 
-Download the CLI tar.gz, deb or rpm from a tagged GitHub release and verify its
-checksums and signature. Use the matching platform bundle through `--source-dir`
+The current published release is [v0.4.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.4.0).
+It provides Linux/macOS amd64/arm64 CLI tar.gz archives, Linux deb/rpm packages,
+and operator/platform assets with signatures, checksums, SBOMs and provenance.
+Download the matching CLI and authenticate the signed checksum manifest before
+checking downloaded files. Use the matching platform bundle through `--source-dir`
 for bootstrap, and the digest-pinned installation manifest for the operator.
-See [release installation and verification](docs/releases.md). The release
-workflow is implemented; local snapshot assets do not constitute a published release.
+See [release installation and verification](docs/releases.md). Local snapshot assets do not constitute a published release.
+
+## Plan and inspect a platform
+
+The next CLI release adds offline previews and a JSON artifact inventory. These
+commands currently require a build from main after this feature is merged;
+v0.4.0 supports the original `mantl plan SPEC` generation command.
+
+```sh
+mantl plan examples/mantl-spec.yaml --dry-run --format json
+mantl plan examples/mantl-spec.yaml --output-dir build/production
+mantl status examples/mantl-spec.yaml --context TARGET --format json --require-healthy
+```
+
+Previewing writes no files and makes no cluster or Terraform calls. Generation
+lists exact artifact hashes. Commit tenant manifests to the configured GitOps
+repository before bootstrap. Planning does not establish cloud readiness or
+compliance. Status checks the generated Application topology; policy counts are
+reported separately from application health.
 
 ## Development
 
@@ -67,6 +87,7 @@ The supported entrypoint is the Go CLI. `bin/mantl` and wizard/Make installers a
 legacy paths and do not define the current operator contract.
 
 - [Installation, evidence export, and recovery](docs/compliance-operations.md)
+- [Offline platform planning](docs/platform-planning.md)
 - [Features and architecture plan](docs/superpowers/plans/2026-10-04-features-and-architecture.md)
 - [Architecture decisions](docs/adr/)
 - [Codex repository instructions](AGENTS.md)

@@ -4,6 +4,15 @@ Release Please manages SemVer and changelogs. Its release-created output invokes
 the reusable release workflow directly; publishing does not depend on another
 workflow being triggered by a GITHUB_TOKEN-created release event.
 
+## Published baseline and next-release changes
+
+[v0.4.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.4.0) is the
+current published CLI baseline. It includes scoped JSON platform status and the
+optional `--require-healthy` application gate. Its 29 downloadable assets include
+CLI archives/packages, signed checksums, SBOMs, provenance and installation assets.
+The next CLI release adds [offline planning previews and artifact inventories](platform-planning.md);
+these new plan flags are not available in the v0.4.0 binaries.
+
 The release checks out the exact validated tag and publishes:
 
 - Linux/macOS amd64/arm64 CLI tar.gz archives;
@@ -14,9 +23,19 @@ The release checks out the exact validated tag and publishes:
 - a multiarchitecture operator image and OCI bundles.
 
 Download assets using `gh release download TAG --repo somethingwithproof/mantl`.
-Verify checksums with `sha256sum -c checksums.txt`. Verify the checksum signature
-with Cosign and an exact GitHub Actions workflow identity for this repository;
-do not accept arbitrary certificate identities. release-identity.json records the resolved operator digest; control-oci-identity.json
+Authenticate `checksums.txt` using its Cosign bundle before trusting its hashes.
+Require the GitHub Actions OIDC issuer and this exact workflow identity:
+
+```sh
+cosign verify-blob checksums.txt --bundle checksums.sigstore.json \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity https://github.com/somethingwithproof/mantl/.github/workflows/release.yml@refs/heads/main
+sha256sum -c checksums.txt
+```
+
+On macOS use `shasum -a 256 -c checksums.txt` for the checksum step. Check that the
+certificate/source provenance matches the release commit as well as the workflow
+identity. Do not accept arbitrary certificate identities. release-identity.json records the resolved operator digest; control-oci-identity.json
 and platform-oci-identity.json record OCI bundle identities. Keep the source tag
 and these identities with the installation.
 

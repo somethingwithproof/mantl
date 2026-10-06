@@ -24,26 +24,6 @@ func ParseSpec(filePath string) (*v1alpha1.MantlCluster, error) {
 		return nil, fmt.Errorf("failed to unmarshal spec: %w", err)
 	}
 
-	// Validate required fields
-	if cluster.Spec.Provider.Kind == "" {
-		return nil, fmt.Errorf("spec.provider.kind is required")
-	}
-	if cluster.Spec.Provider.Region == "" {
-		return nil, fmt.Errorf("spec.provider.region is required")
-	}
-	if cluster.Spec.Kubernetes.Distribution == "" {
-		return nil, fmt.Errorf("spec.kubernetes.distribution is required")
-	}
-	if cluster.Spec.Kubernetes.Version == "" {
-		return nil, fmt.Errorf("spec.kubernetes.version is required")
-	}
-	if cluster.Spec.Profile.Size == "" {
-		return nil, fmt.Errorf("spec.profile.size is required")
-	}
-	if cluster.Spec.Networking.Domain == "" {
-		return nil, fmt.Errorf("spec.networking.domain is required")
-	}
-
 	if err := Validate(&cluster); err != nil {
 		return nil, err
 	}
@@ -53,6 +33,14 @@ func ParseSpec(filePath string) (*v1alpha1.MantlCluster, error) {
 var dnsName = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
 func Validate(cluster *v1alpha1.MantlCluster) error {
+	if cluster == nil {
+		return fmt.Errorf("cluster must not be nil")
+	}
+
+	if err := validateRequiredFields(cluster); err != nil {
+		return err
+	}
+
 	if !dnsName.MatchString(cluster.Name) || len(cluster.Name) > 63 {
 		return fmt.Errorf("metadata.name must be a DNS label")
 	}
@@ -107,6 +95,24 @@ func validateTenants(tenants []v1alpha1.TenantSpec) error {
 		}
 		seen[ns] = true
 		seenNames[t.Name] = true
+	}
+	return nil
+}
+
+func validateRequiredFields(cluster *v1alpha1.MantlCluster) error {
+	type requiredField struct{ name, value string }
+	fields := []requiredField{
+		{"spec.provider.kind", cluster.Spec.Provider.Kind},
+		{"spec.provider.region", cluster.Spec.Provider.Region},
+		{"spec.kubernetes.distribution", cluster.Spec.Kubernetes.Distribution},
+		{"spec.kubernetes.version", cluster.Spec.Kubernetes.Version},
+		{"spec.profile.size", cluster.Spec.Profile.Size},
+		{"spec.networking.domain", cluster.Spec.Networking.Domain},
+	}
+	for _, field := range fields {
+		if field.value == "" {
+			return fmt.Errorf("%s is required", field.name)
+		}
 	}
 	return nil
 }

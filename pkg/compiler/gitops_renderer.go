@@ -117,32 +117,68 @@ func renderTenantTopology(cluster *v1alpha1.MantlCluster, outputDir string) erro
 
 // renderTenant generates Namespace and RBAC RoleBindings for a tenant.
 func renderTenant(outputDir string, tenant v1alpha1.TenantSpec, environment string) error {
+	data, err := tenantManifest(tenant, environment)
+	if err != nil {
+		return err
+	}
+	if !dnsName.MatchString(tenant.Name) || len(tenant.Name) > 63 {
+		return fmt.Errorf("invalid tenant name")
+	}
+	return os.WriteFile(filepath.Join(outputDir, tenant.Name+".yaml"), data, 0600)
+}
+
+// syncWaveEntry pairs a component prefix with its ArgoCD sync-wave number.
+type syncWaveEntry struct {
+	prefix string
+	wave   string
+}
+
+// syncWavePriority assigns ArgoCD sync-wave numbers to known infrastructure
+// components. Lower waves deploy first; anything not listed defaults to "3".
+// Ordered by prefix length descending so longer (more specific) prefixes match
+// first, eliminating ambiguity when one prefix is a substring of another.
+var syncWavePriority = []syncWaveEntry{
+	{"external-secrets", "1"},
+	{"cert-manager", "1"},
+	{"monitoring", "2"},
+	{"kyverno", "2"},
+}
+
+// renderApp is a helper to generate a standard ArgoCD Application manifest.
+func renderApp(outputDir, name, path string) error {
+	return renderAppSource(outputDir, name, path, "https://github.com/somethingwithproof/mantl.git", "main")
+}
+func renderAppSource(outputDir, name, path, repository, revision string) error {
+	data, err := applicationManifest(name, path, repository, revision)
+	if err != nil {
+		return err
+	}
+	if !dnsName.MatchString(name) || len(name) > 63 {
+		return fmt.Errorf("invalid application name")
+	}
+	return os.WriteFile(filepath.Join(outputDir, name+".yaml"), data, 0600)
+}
+
+func tenantEnvironment(cluster *v1alpha1.MantlCluster) string {
+	if cluster.Spec.Environment != "" {
+		return cluster.Spec.Environment
+	}
+	return map[string]string{"small": "dev", "medium": "staging", "full": "production"}[cluster.Spec.Profile.Size]
+}
+
+func tenantManifest(tenant v1alpha1.TenantSpec, environment string) ([]byte, error) {
 	if environment == "" {
 		environment = "dev"
 	}
 	if environment != "dev" && environment != "staging" && environment != "production" {
-		return fmt.Errorf("invalid tenant environment")
+		return nil, fmt.Errorf("invalid tenant environment")
 	}
 	if tenant.Name == "kustomization" {
-		return fmt.Errorf("tenant name kustomization conflicts with generated manifest index")
+		return nil, fmt.Errorf("tenant name kustomization conflicts with generated manifest index")
 	}
 	ns := tenant.Namespace
 	if ns == "" {
 		ns = tenant.Name
-	}
-
-	tenantFile := filepath.Join(outputDir, fmt.Sprintf("%s.yaml", tenant.Name))
-
-	absOut, err := filepath.Abs(outputDir)
-	if err != nil {
-		return fmt.Errorf("failed to resolve output directory: %w", err)
-	}
-	absFile, err := filepath.Abs(tenantFile)
-	if err != nil {
-		return fmt.Errorf("failed to resolve tenant file path: %w", err)
-	}
-	if !strings.HasPrefix(absFile, absOut+string(filepath.Separator)) {
-		return fmt.Errorf("tenant name %q results in path outside output directory", tenant.Name)
 	}
 
 	// Create Namespace
@@ -202,35 +238,14 @@ func renderTenant(outputDir string, tenant v1alpha1.TenantSpec, environment stri
 	for _, obj := range isolation {
 		data, err := yaml.Marshal(obj)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		content += "---\n" + string(data)
 	}
-	return os.WriteFile(tenantFile, []byte(content), 0600)
+	return []byte(content), nil
 }
 
-// syncWaveEntry pairs a component prefix with its ArgoCD sync-wave number.
-type syncWaveEntry struct {
-	prefix string
-	wave   string
-}
-
-// syncWavePriority assigns ArgoCD sync-wave numbers to known infrastructure
-// components. Lower waves deploy first; anything not listed defaults to "3".
-// Ordered by prefix length descending so longer (more specific) prefixes match
-// first, eliminating ambiguity when one prefix is a substring of another.
-var syncWavePriority = []syncWaveEntry{
-	{"external-secrets", "1"},
-	{"cert-manager", "1"},
-	{"monitoring", "2"},
-	{"kyverno", "2"},
-}
-
-// renderApp is a helper to generate a standard ArgoCD Application manifest.
-func renderApp(outputDir, name, path string) error {
-	return renderAppSource(outputDir, name, path, "https://github.com/somethingwithproof/mantl.git", "main")
-}
-func renderAppSource(outputDir, name, path, repository, revision string) error {
+func applicationManifest(name, path, repository, revision string) ([]byte, error) {
 	wave := "3"
 	for _, entry := range syncWavePriority {
 		if strings.HasPrefix(name, entry.prefix) {
@@ -273,33 +288,14 @@ func renderAppSource(outputDir, name, path, repository, revision string) error {
 	if name == "root-platform" {
 		patch, err := json.Marshal([]map[string]interface{}{{"op": "replace", "path": "/spec/source/repoURL", "value": repository}, {"op": "replace", "path": "/spec/source/targetRevision", "value": revision}})
 		if err != nil {
-			return err
+			return nil, err
 		}
 		app["spec"].(map[string]interface{})["source"].(map[string]interface{})["kustomize"] = map[string]interface{}{"patches": []interface{}{map[string]interface{}{"target": map[string]string{"group": "argoproj.io", "version": "v1alpha1", "kind": "Application", "name": "kyverno-policies"}, "patch": string(patch)}}}
 	}
 	data, err := yaml.Marshal(app)
 	if err != nil {
-		return fmt.Errorf("failed to render application %s: %w", name, err)
+		return nil, fmt.Errorf("failed to render application %s: %w", name, err)
 	}
 
-	outPath := filepath.Join(outputDir, fmt.Sprintf("%s.yaml", name))
-	absOut, err := filepath.Abs(outputDir)
-	if err != nil {
-		return fmt.Errorf("failed to resolve output directory: %w", err)
-	}
-	absFile, err := filepath.Abs(outPath)
-	if err != nil {
-		return fmt.Errorf("failed to resolve output file path: %w", err)
-	}
-	if !strings.HasPrefix(absFile, absOut+string(filepath.Separator)) {
-		return fmt.Errorf("app name %q results in path outside output directory", name)
-	}
-	return os.WriteFile(outPath, data, 0600)
-}
-
-func tenantEnvironment(cluster *v1alpha1.MantlCluster) string {
-	if cluster.Spec.Environment != "" {
-		return cluster.Spec.Environment
-	}
-	return map[string]string{"small": "dev", "medium": "staging", "full": "production"}[cluster.Spec.Profile.Size]
+	return data, nil
 }
