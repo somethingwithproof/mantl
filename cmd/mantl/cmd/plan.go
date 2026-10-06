@@ -40,10 +40,10 @@ func newPlanCommand() *cobra.Command {
 			}
 			if !dryRun {
 				if err := compiler.RenderTerraform(cluster, outputDir); err != nil {
-					return err
+					return fmt.Errorf("write terraform artifacts to %s: %w", outputDir, err)
 				}
 				if err := compiler.RenderGitOps(cluster, outputDir); err != nil {
-					return err
+					return fmt.Errorf("write gitops artifacts to %s: %w", outputDir, err)
 				}
 			}
 			return writePlan(command.OutOrStdout(), format, plan, outputDir, dryRun)

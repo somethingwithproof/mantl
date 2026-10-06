@@ -10,7 +10,7 @@ modifying files, contacting a cluster, or running Terraform:
 
 ```sh
 mantl plan examples/mantl-spec.yaml --dry-run
-mantl plan examples/mantl-spec.yaml --dry-run --format json > plan.json
+mantl plan examples/mantl-spec.yaml --dry-run --format json
 ```
 
 Generate the reviewed artifacts in a chosen directory:

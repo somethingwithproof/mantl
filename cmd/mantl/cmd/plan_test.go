@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/thomasvincent/mantl/pkg/compiler"
@@ -117,5 +118,38 @@ func TestPlanOutputFailureAndText(t *testing.T) {
 	}
 	if !bytes.Contains(output.Bytes(), []byte("Would generate 1 artifacts")) || !bytes.Contains(output.Bytes(), []byte("hash  file")) || !bytes.Contains(output.Bytes(), []byte("offline")) {
 		t.Fatalf("incomplete text preview: %s", output.String())
+	}
+}
+
+func TestPlanGenerationFailurePreservesError(t *testing.T) {
+	for _, artifactType := range []string{"terraform", "gitops"} {
+		t.Run(artifactType, func(t *testing.T) {
+			outputDir := t.TempDir()
+			blocked := filepath.Join(outputDir, "gitops")
+			if artifactType == "terraform" {
+				blocked = outputDir
+				if err := os.Remove(outputDir); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := os.WriteFile(blocked, []byte("preserve"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			command := newPlanCommand()
+			command.SetArgs([]string{planSpec(t), "--output-dir", outputDir})
+			var output bytes.Buffer
+			command.SetOut(&output)
+			err := command.Execute()
+			var pathError *os.PathError
+			if !errors.As(err, &pathError) || !strings.Contains(err.Error(), "write "+artifactType+" artifacts to "+outputDir) {
+				t.Fatalf("write error lacks context or underlying cause: %v", err)
+			}
+			if output.Len() != 0 {
+				t.Fatal("failed generation emitted a success inventory")
+			}
+			if data, err := os.ReadFile(blocked); err != nil || string(data) != "preserve" {
+				t.Fatal("write failure modified blocking file")
+			}
+		})
 	}
 }
