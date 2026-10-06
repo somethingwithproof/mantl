@@ -50,7 +50,7 @@ func Compile(cluster *v1alpha1.MantlCluster) (Plan, error) {
 		SchemaVersion: PlanSchemaVersion, Platform: cluster.Name,
 		Provider: cluster.Spec.Provider.Kind, Distribution: cluster.Spec.Kubernetes.Distribution,
 		Applications: []PlannedApplication{}, Artifacts: []Artifact{},
-		Notices: []string{"Offline compilation does not verify repository contents, infrastructure changes, cluster health or compliance.", "Bootstrap applies selected Applications; removed Applications require a reviewed GitOps cleanup."},
+		Notices: compilationNotices(cluster),
 	}
 	identity, err := json.Marshal(planSpecIdentity{Name: cluster.Name, Spec: cluster.Spec})
 	if err != nil {
@@ -115,4 +115,25 @@ func (plan *Plan) add(path string, data []byte) {
 type planSpecIdentity struct {
 	Name string                    `json:"name"`
 	Spec v1alpha1.MantlClusterSpec `json:"spec"`
+}
+
+// compilationNotices describes the effects of accepted inputs without echoing
+// their values or implying that absent blueprint integrations were generated.
+func compilationNotices(cluster *v1alpha1.MantlCluster) []string {
+	notices := []string{
+		"Offline compilation does not verify repository contents, infrastructure changes, cluster health or compliance.",
+		"Bootstrap applies selected Applications; removed Applications require a reviewed GitOps cleanup.",
+		"profile.size selects environment labels only; configure cloud node sizing in the provider blueprint.",
+		"networking.domain, exposure and vpcId are not emitted as Terraform inputs; configure DNS, API exposure and VPC settings separately.",
+	}
+	if cluster.Spec.Profile.Compliance != "" {
+		notices = append(notices, "profile.compliance does not select or install a ComplianceProfile; configure reviewed profile resources separately.")
+	}
+	if cluster.Spec.Provider.Kind == "aws" && cluster.Spec.Provider.AccountID != "" {
+		notices = append(notices, "AWS provider.accountId does not select the target account; verify the account resolved by your runtime credentials.")
+	}
+	if cluster.Spec.Provider.Kind != "local" && cluster.Spec.Provider.Kind != "aws" && cluster.Spec.Provider.Kind != "gcp" && cluster.Spec.Provider.Kind != "azure" {
+		notices = append(notices, "This provider is experimental; parser acceptance does not establish a working bootstrap or cloud acceptance path.")
+	}
+	return notices
 }

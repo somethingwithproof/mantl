@@ -87,6 +87,14 @@ Artifact contents are omitted. Preview and generation report identical metadata
 for identical specs and compiler versions. JSON identifies the desired artifacts;
 use the command exit status to determine whether writing succeeded.
 
+Current source builds also report limited-effect fields in `notices`: profile
+size labels do not size nodes, networking fields do not configure DNS/VPC/access,
+and a nonempty compliance profile does not install a `ComplianceProfile`. An AWS
+account ID does not override the runtime credential account. Experimental provider
+pairs carry an additional maturity notice. These notices do not change generated
+artifacts; saved-plan comparisons still bind the full spec, including these fields.
+The published v0.4.0 CLI does not expose this structured notice output.
+
 The entire spec and artifact set are compiled before output files are written.
 Invalid specs return an error without generating files. Disk errors can still
 leave partial output; generation is not a transactional directory replacement.
