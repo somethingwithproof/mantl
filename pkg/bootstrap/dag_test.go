@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"github.com/thomasvincent/mantl/pkg/compiler"
 	"os"
 	"path/filepath"
 	"strings"
@@ -99,17 +100,17 @@ func TestBootstrapGitOpsAppliesOnlyGeneratedManifests(t *testing.T) {
 	if err := os.Mkdir(directory, 0700); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"root.yaml", "notes.txt"} {
+	for _, name := range []string{"root.yaml", "notes.txt", "unreviewed.yaml"} {
 		if err := os.WriteFile(filepath.Join(directory, name), []byte("fixture"), 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	dag := &ExecutionDAG{BuildDir: build, KubeContext: "fixture"}
+	dag := &ExecutionDAG{BuildDir: build, KubeContext: "fixture", Applications: []compiler.GitOpsApplication{{Name: "root"}}}
 	if err := dag.BootstrapGitOps(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(logfile)
-	if err != nil || strings.Contains(string(data), "notes.txt") || !strings.Contains(string(data), "root.yaml") {
+	if err != nil || strings.Contains(string(data), "notes.txt") || strings.Contains(string(data), "unreviewed.yaml") || !strings.Contains(string(data), "root.yaml") {
 		t.Fatalf("unexpected bootstrap inputs: %s, %v", data, err)
 	}
 	t.Setenv("KUBECTL_FIXTURE_FAIL", "namespace")
@@ -168,5 +169,25 @@ func TestCreateLocalCluster_InvalidNameRejected(t *testing.T) {
 				t.Errorf("error = %q, want it to contain 'invalid cluster name'", err.Error())
 			}
 		})
+	}
+}
+
+func TestBootstrapValidatesAllInputsBeforeApplying(t *testing.T) {
+	logfile := fakeKubectl(t)
+	build := t.TempDir()
+	if err := os.Mkdir(filepath.Join(build, "gitops"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(build, "gitops/root.yaml"), []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, applications := range [][]compiler.GitOpsApplication{nil, {{Name: "../escape"}}, {{Name: "root"}, {Name: "missing"}}} {
+		dag := &ExecutionDAG{BuildDir: build, Applications: applications}
+		if err := dag.BootstrapGitOps(context.Background()); err == nil {
+			t.Fatal("invalid bootstrap inputs accepted")
+		}
+	}
+	if _, err := os.Stat(logfile); !os.IsNotExist(err) {
+		t.Fatal("invalid topology reached kubectl apply")
 	}
 }

@@ -3,6 +3,7 @@ package compiler
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -22,6 +23,7 @@ type Artifact struct {
 // Plan is an offline, deterministic compiler result. Hashes are integrity
 // identifiers, not signatures or deployment acceptance evidence.
 type Plan struct {
+	SpecSHA256    string               `json:"specSHA256"`
 	SchemaVersion string               `json:"schemaVersion"`
 	Platform      string               `json:"platform"`
 	Provider      string               `json:"provider"`
@@ -45,11 +47,18 @@ func Compile(cluster *v1alpha1.MantlCluster) (Plan, error) {
 		return Plan{}, fmt.Errorf("validate platform: %w", err)
 	}
 	plan := Plan{
-		SchemaVersion: "mantl.io/plan/v1alpha1", Platform: cluster.Name,
+		SchemaVersion: PlanSchemaVersion, Platform: cluster.Name,
 		Provider: cluster.Spec.Provider.Kind, Distribution: cluster.Spec.Kubernetes.Distribution,
 		Applications: []PlannedApplication{}, Artifacts: []Artifact{},
-		Notices: []string{"Offline compilation does not verify repository contents, infrastructure changes, cluster health or compliance."},
+		Notices: []string{"Offline compilation does not verify repository contents, infrastructure changes, cluster health or compliance.", "Bootstrap applies selected Applications; removed Applications require a reviewed GitOps cleanup."},
 	}
+	identity, err := json.Marshal(planSpecIdentity{Name: cluster.Name, Spec: cluster.Spec})
+	if err != nil {
+		return Plan{}, fmt.Errorf("hash platform spec: %w", err)
+	}
+	hash := sha256.Sum256(identity)
+	plan.SpecSHA256 = hex.EncodeToString(hash[:])
+
 	terraform, err := terraformManifest(cluster)
 	if err != nil {
 		return Plan{}, err
@@ -70,6 +79,9 @@ func Compile(cluster *v1alpha1.MantlCluster) (Plan, error) {
 		plan.Notices = append(plan.Notices, "GitOps follows main; artifact hashes do not pin the referenced repository contents.")
 	}
 	sort.Slice(plan.Artifacts, func(i, j int) bool { return plan.Artifacts[i].Path < plan.Artifacts[j].Path })
+	if err := ValidatePlan(plan); err != nil {
+		return Plan{}, err
+	}
 	return plan, nil
 }
 
@@ -98,4 +110,9 @@ func (plan *Plan) compileTenants(cluster *v1alpha1.MantlCluster) error {
 func (plan *Plan) add(path string, data []byte) {
 	hash := sha256.Sum256(data)
 	plan.Artifacts = append(plan.Artifacts, Artifact{Path: path, SHA256: hex.EncodeToString(hash[:]), Size: len(data), Content: data})
+}
+
+type planSpecIdentity struct {
+	Name string                    `json:"name"`
+	Spec v1alpha1.MantlClusterSpec `json:"spec"`
 }

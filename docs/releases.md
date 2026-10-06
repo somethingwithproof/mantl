@@ -10,8 +10,9 @@ workflow being triggered by a GITHUB_TOKEN-created release event.
 current published CLI baseline. It includes scoped JSON platform status and the
 optional `--require-healthy` application gate. Its 29 downloadable assets include
 CLI archives/packages, signed checksums, SBOMs, provenance and installation assets.
-The next CLI release adds [offline planning previews and artifact inventories](platform-planning.md);
-these new plan flags are not available in the v0.4.0 binaries.
+The next CLI release adds [offline planning, saved-plan apply and artifact comparisons](platform-planning.md).
+These plan/apply flags are not available in the v0.4.0 binaries. Saved inventories
+use `mantl.io/plan/v1alpha2`; regenerate earlier v1alpha1 inventories before use.
 
 The release checks out the exact validated tag and publishes:
 

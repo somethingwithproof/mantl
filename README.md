@@ -7,7 +7,7 @@ outside Kubernetes etcd. The current compliance runtime is beta.
 
 | Capability | Current scope |
 | --- | --- |
-| Go CLI | Offline spec previews and artifact hashes, bootstrap, scoped JSON status, static cloud validation |
+| Go CLI | Offline previews, saved-plan verification and artifact comparisons, bootstrap, scoped JSON status |
 | GitOps | ArgoCD owns policy deployment and lifecycle |
 | SOC2 | Packaged controls/policies, profile coverage, findings and config snapshots; unsupported collectors are reported as gaps |
 | Audit execution (beta) | Durable AuditRuns and isolated, scoped collector Jobs |
@@ -36,18 +36,21 @@ See [release installation and verification](docs/releases.md). Local snapshot as
 
 ## Plan and inspect a platform
 
-The next CLI release adds offline previews and a JSON artifact inventory. These
+The next CLI release adds offline previews, saved-plan verification and artifact
+comparisons. These
 commands currently require a build from main after this feature is merged;
 v0.4.0 supports the original `mantl plan SPEC` generation command.
 
 ```sh
 mantl plan examples/mantl-spec.yaml --dry-run --format json
-mantl plan examples/mantl-spec.yaml --output-dir build/production
+mantl plan examples/mantl-spec.yaml --output-dir build/production --save-plan reviewed-plan.json
+mantl plan examples/mantl-spec.yaml --dry-run --compare reviewed-plan.json --fail-on-change
 mantl status examples/mantl-spec.yaml --context TARGET --format json --require-healthy
 ```
 
 Previewing writes no files and makes no cluster or Terraform calls. Generation
-lists exact artifact hashes. Commit tenant manifests to the configured GitOps
+lists exact artifact hashes. The [reviewed-plan apply workflow](docs/platform-planning.md#save-and-compare-reviewed-plans)
+verifies the spec and files, checks prerequisites, and executes a private snapshot. Commit tenant manifests to the configured GitOps
 repository before bootstrap. Planning does not establish cloud readiness or
 compliance. Status checks the generated Application topology; policy counts are
 reported separately from application health.
