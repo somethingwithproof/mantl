@@ -69,9 +69,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$BASE" ] || [[ "$BASE" =~ ^0+$ ]]; then
-            git ls-files -z | mise exec -- python ci/changed_components.py >> "$GITHUB_OUTPUT"
+            git ls-files -z | mise exec -- python -m ci.changed_components >> "$GITHUB_OUTPUT"
           else
-            git diff --name-only -z "$BASE" "$HEAD" | mise exec -- python ci/changed_components.py >> "$GITHUB_OUTPUT"
+            git diff --name-only -z "$BASE" "$HEAD" | mise exec -- python -m ci.changed_components >> "$GITHUB_OUTPUT"
           fi
   go:
     name: Go tests and coverage

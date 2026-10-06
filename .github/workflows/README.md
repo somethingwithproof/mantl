@@ -28,7 +28,12 @@ only documentation. ADR 009 records the ownership and test-scope rules.
 | digitalocean-runner-smoke.yml | Dedicated single-job runner prerequisites, mise and Docker validation | Relevant same-repository PR, manual |
 | wp-ci.yml | Legacy WordPress PHP compatibility/syntax and custom-code checks | Relevant application changes, manual |
 
-Release Please dispatches preflight CI on its generated PR head branch. CI verifies
+Release Please checks for an existing `pull_request` CI run matching the generated
+PR number, branch and current head before dispatching advisory preflight CI.
+Queued, running, completed and approval-pending matching PR runs suppress parallel
+manual runs. A bounded ten-second grace period handles PR-run creation; closed or
+superseded PRs are not dispatched. Failed/cancelled PR runs should be rerun as PR
+runs when appropriate rather than replaced with a manual dispatch. CI verifies
 the PR is open and the dispatched commit matches its current head before selecting
 checks or attaching Sonar analysis. GitHub does not count workflow_dispatch job
 checks toward required PR checks. For a PR created or updated with GITHUB_TOKEN,
@@ -48,7 +53,7 @@ external provenance generator owns its runner selection. See
 The component selector and final CI result always use GitHub-hosted runners.
 They coordinate checks without occupying the dedicated pool. Python example
 application tests run only for the changed examples on pull requests; shared
-fixtures, dependency locks or CI configuration select the full example matrix.
+fixtures, dependency locks, Python runtime pins or CI configuration select the full example matrix.
 Main pushes and standalone runs test all five Python examples. Documentation-only
 changes keep Go, Python, repository checks and Sonar mandatory, while skipping
 unaffected examples and component/package jobs. Markdown under templates or
@@ -110,3 +115,15 @@ See ../../docs/releases.md for the supported artifacts and release process.
 The core Python job also checks the ML example’s pinned dependencies and health
 handler when its source, runtime, shared setup, or CI configuration changes. Its
 coverage is appended to the same report used by SonarCloud.
+
+Changes limited to known pins in `mise.toml` select additional components that
+consume those tools. For example, Kyverno selects policy/chart checks and is
+exercised by mandatory Python tests; Terraform selects infrastructure and the
+developer image; Go selects runtime/package validation and the developer image.
+Unknown tools, missing/invalid Git configuration, changes outside `[tools]`,
+shared setup changes and selector implementation changes retain full component
+validation. Main/standalone runs keep the full Python example baseline.
+
+Release Please and Dependabot auto-merge are metadata-only jobs and always use
+GitHub-hosted runners. They do not occupy the dedicated DigitalOcean build pool;
+release artifact jobs retain their existing routing and validation.
