@@ -1,12 +1,17 @@
 # Provider & WI Overlays
 
-## Production
+These are example overlays, not a verified deployment recipe. Review installed
+components and identities before applying them: the commands modify a cluster and
+the Terraform step creates cloud resources/costs. Provider acceptance and native
+immutable-storage parity are not established; start with [bootstrap prerequisites](quickstart-platform.md#deployment-is-a-separate-step).
+
+## Production directory examples
 - AWS: `kubectl apply -k clusters/production/overlays/aws`
 - GKE: `kubectl apply -k clusters/production/overlays/gke`
 - AKS: `kubectl apply -k clusters/production/overlays/aks`
 - GKE (WI): `kubectl apply -k clusters/production/overlays/gke-wi`
 - AKS (WI):
-  1. Run terraform example to create UAMI and FIC: `terraform -chdir=terraform/examples/aks-external-dns-wi apply`
+  1. Run terraform example to create UAMI and FIC: `terraform -chdir=infra/terraform/examples/aks-external-dns-wi apply`
   2. Set the client id in `clusters/production/overlays/aks-wi/kustomization.yaml` (uamiClientId literal)
   3. `kubectl apply -k clusters/production/overlays/aks-wi`
 

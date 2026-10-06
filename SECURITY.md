@@ -75,8 +75,13 @@ Verify a signed image before trusting it:
 ```bash
 cosign verify \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  ghcr.io/thomasvincent/mantl:<tag>
+  --certificate-identity https://github.com/somethingwithproof/mantl/.github/workflows/release.yml@refs/heads/main \
+  ghcr.io/somethingwithproof/mantl-operator@sha256:041574e2d205a61da0e800dba986fbf26c8047142fef4a1b00e3e7651346c257
 ```
+
+This is the v0.4.0 operator identity recorded in `release-identity.json`. For another
+release, obtain its digest from the authenticated release assets; do not substitute
+an unverified tag. See [release verification](docs/releases.md).
 
 Admission-time enforcement of image signatures is available through the Kyverno
 policies in `policies/kyverno/`.

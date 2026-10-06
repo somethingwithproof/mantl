@@ -3,6 +3,16 @@
 ## Status
 Accepted
 
+## Current validation status
+
+The parity decision below is a target for shared static hardening. AWS/GCP/Azure
+blueprints have static contract validation, not recorded deployment, identity,
+upgrade, audit-delivery, or recovery acceptance. Earlier descriptions of provider
+maturity in the context are historical, not current support guarantees. All three
+currently use the AWS S3 evidence backend; native GCS/Azure WORM is not implemented.
+See [the project maturity table](../../README.md#capabilities-and-maturity) and
+[runtime limitations](../architecture-runtime.md#provider-acceptance-and-oscal).
+
 ## Context
 The README advertised seven clouds. Only AWS EKS was production-grade; GCP and
 Azure were bare module wrappers, and the rest were unverified. Maintaining seven

@@ -1,105 +1,223 @@
+<img src="docs/_static/mantl-mark.svg" alt="Mantl — connected platform layers" width="360" />
+
 # Mantl
 
-Mantl is a Kubernetes platform compiler and compliance operator built around
-OpenTofu/Terraform, ArgoCD, and Kyverno. It generates platform configuration,
-reports policy coverage and findings, and captures scheduled, hashed evidence
-outside Kubernetes etcd. The current compliance runtime is beta.
+Repeatable Kubernetes platform configuration with traceable compliance evidence.
 
-| Capability | Current scope |
-| --- | --- |
-| Go CLI | Offline previews, saved-plan verification and artifact comparisons, bootstrap, scoped JSON status |
-| GitOps | ArgoCD owns policy deployment and lifecycle |
-| SOC2 | Packaged controls/policies, profile coverage, findings and config snapshots; unsupported collectors are reported as gaps |
-| Audit execution (beta) | Durable AuditRuns and isolated, scoped collector Jobs |
-| Evaluations (beta) | Coverage/freshness states, approved exceptions and linked finding history |
-| Fleet API (beta) | Enrolled mTLS metadata ingestion, tenant PostgreSQL RLS and replay |
-| Evidence | Versioned S3 Object Lock objects, minimum retention, manifests and verified export |
-| Cloud blueprints | AWS/GCP/Azure static contracts; deployment and recovery acceptance remain environment-specific |
-| Other clouds | Experimental; no parity guarantee |
-| Tenant isolation | Namespace RBAC, default-deny network policy, quotas and limits |
-| Runtime signals | Falco JSON-to-Finding ingestion with reviewed mappings |
-| Developer experience | Backstage pull-request scaffold; portal deployment is not included |
-| HIPAA/PCI/CIS | Framework assets exist; each needs separate end-to-end acceptance |
+[![Mantl CI](https://github.com/somethingwithproof/mantl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/somethingwithproof/mantl/actions/workflows/ci.yml)
+[![GitHub release](https://img.shields.io/github/v/release/somethingwithproof/mantl)](https://github.com/somethingwithproof/mantl/releases/latest)
+[![License: Apache-2.0](https://img.shields.io/github/license/somethingwithproof/mantl)](LICENSE)
+[![Go toolchain: 1.26.7](https://img.shields.io/badge/Go_toolchain-1.26.7-00ADD8?logo=go)](mise.toml)
+[![Documentation](https://img.shields.io/badge/docs-in_repository-2563eb)](docs/README.md)
 
-Policy checks and evidence collection support an audit workflow; they do not
-constitute SOC2, HIPAA, or PCI certification.
+Platform teams manually integrate infrastructure provisioning, GitOps delivery,
+tenant isolation, security policies, and audit evidence. Keeping these pieces
+consistent—and explaining which controls are covered—requires ongoing engineering.
 
-## Installation
+Mantl reduces that assembly work with a **platform compiler**: a `MantlCluster`
+YAML file becomes Terraform variable inputs, ArgoCD Application manifests, and
+namespace isolation manifests. A separate Go compliance operator reconciles
+control mappings, findings, evaluations, and retained evidence. The goal is a
+repeatable platform whose configuration and audit evidence can be inspected.
+The runtime is **beta**; start with offline generation below.
 
-The current published release is [v0.4.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.4.0).
-It provides Linux/macOS amd64/arm64 CLI tar.gz archives, Linux deb/rpm packages,
-and operator/platform assets with signatures, checksums, SBOMs and provenance.
-Download the matching CLI and authenticate the signed checksum manifest before
-checking downloaded files. Use the matching platform bundle through `--source-dir`
-for bootstrap, and the digest-pinned installation manifest for the operator.
-See [release installation and verification](docs/releases.md). Local snapshot assets do not constitute a published release.
+## Who it is for
 
-## Plan and inspect a platform
+Mantl is for platform engineers who own Kubernetes infrastructure and GitOps, and
+security engineers who need to inspect the evidence behind configured controls.
+Use it to:
 
-The next CLI release adds offline previews, saved-plan verification and artifact
-comparisons. These
-commands currently require a build from main after this feature is merged;
-v0.4.0 supports the original `mantl plan SPEC` generation command.
+- Generate a consistent platform topology and tenant namespace baseline for review.
+- Track policy findings alongside control coverage, evidence freshness, and exceptions.
+- Collect versioned evidence and export archives whose contents can be verified.
 
-```sh
-mantl plan examples/mantl-spec.yaml --dry-run --format json
-mantl plan examples/mantl-spec.yaml --output-dir build/production --save-plan reviewed-plan.json
-mantl plan examples/mantl-spec.yaml --dry-run --compare reviewed-plan.json --fail-on-change
-mantl status examples/mantl-spec.yaml --context TARGET --format json --require-healthy
+You provide the specification, Git repository and revision, reviewed infrastructure
+settings, cloud identity, Kubernetes access, policy scope, and evidence bucket.
+You remain responsible for cloud accounts and costs, Terraform state, Git access,
+network connectivity, tenant access review, workload backups, upgrades, control
+completeness, and recovery testing. Mantl does not replace those decisions or an auditor.
+
+## How it works
+
+```mermaid
+flowchart LR
+    Spec["MantlCluster YAML"] --> Compiler["Mantl CLI compiler"]
+    Compiler --> Vars["Terraform variables"]
+    Compiler --> Manifests["ArgoCD and tenant manifests"]
+    Vars --> Infra["Reviewed blueprint + OpenTofu or Terraform"]
+    Infra --> Cluster["Kubernetes cluster"]
+    Manifests --> Review["Operator review and Git publication"]
+    Review --> Argo["ArgoCD reconciliation"]
+    Argo --> Cluster
+    Cluster --> Reports["Kyverno policy reports"]
+    Reports --> Operator["Compliance operator"]
+    Operator --> Evidence["Evaluations and versioned S3 evidence"]
 ```
 
-Previewing writes no files and makes no cluster or Terraform calls. Generation
-lists exact artifact hashes. The [reviewed-plan apply workflow](docs/platform-planning.md#save-and-compare-reviewed-plans)
-verifies the spec and files, checks prerequisites, and executes a private snapshot. Commit tenant manifests to the configured GitOps
-repository before bootstrap. Planning does not establish cloud readiness or
-compliance. Status checks the generated Application topology; policy counts are
-reported separately from application health.
+`plan` runs offline and writes configuration. Its Terraform output is a variables
+file, **not a complete infrastructure configuration or a Terraform resource-change
+plan**. OpenTofu/Terraform combines it with an existing provider blueprint to
+provision resources. The separate `apply` command invokes provisioning and cluster
+bootstrap; it changes infrastructure and can incur costs.
 
-## Development
+ArgoCD reconciles repository content into the cluster. Kyverno enforces configured
+admission policies and produces PolicyReports. The compliance operator interprets
+configured mappings and collects evidence; it does not apply policy changes.
 
-```sh
-mise install
-mise exec -- make go-test
-mise exec -- go install ./cmd/mantl
-mise exec -- go run ./cmd/mantl --help
-mise exec -- go run ./cmd/mantl validate-clouds
+## A small example
+
+Save this as `platform.yaml`. It models a development EKS platform with one tenant;
+the domain and admin identity are examples, and the Kubernetes version is an
+input for generation, not a recommendation of current cloud availability.
+
+```yaml
+apiVersion: platform.mantl.io/v1alpha1
+kind: MantlCluster
+metadata:
+  name: team-dev
+spec:
+  provider:
+    kind: aws
+    region: us-east-1
+  kubernetes:
+    distribution: eks
+    version: "1.31"
+  profile:
+    size: small
+  networking:
+    domain: platform.example.com
+    exposure: private
+  features:
+    security: true
+  gitops:
+    repository: https://github.com/somethingwithproof/mantl.git
+    revision: v0.4.0
+    tenantPath: tenants/team-dev
+  tenants:
+    - name: payments
+      admins: [payments-admin@example.com]
 ```
 
-Use `make go-test` to exclude vendored chart tests. Regenerate API artifacts with
-`mise exec -- make manifests generate` after changing CRDs. `platform/` contains
-vendored components; maintain Mantl behavior under `pkg`, `controllers`, and `deploy`.
+With v0.4.0, `mantl plan platform.yaml` generates six files:
 
-Python dependency inputs are `requirements.in` and `requirements-test.in`; each
-Python example has its own `requirements.in`. After updating a direct pin, run
-`mise exec -- python -m ci.lock_python_dependencies` to regenerate the complete
-hash-locked requirements. CI checks the locks for drift. Install with
-`python -m pip install --only-binary :all: --require-hashes -r requirements.txt -r requirements-test.txt`.
+```text
+.mantl/build/
+├── terraform.tfvars.json
+├── gitops/
+│   ├── root-platform.yaml
+│   ├── addon-security.yaml
+│   └── platform-tenants.yaml
+└── tenants/
+    ├── kustomization.yaml
+    └── payments.yaml
+```
 
-The devcontainer builds the pinned mise toolchain and runs as `mantl`. It mounts
-the checkout into `/workspace`, creates a project `.venv`, and installs local
-commit hooks. Cloud credentials remain host-mounted; setup does not create a
-cluster. Optional kind setup requires a pinned kind installation through mise
-and an explicit `CREATE_KIND_CLUSTER=true`.
+The variables contain `cluster_name`, `region`, `kubernetes_version`, and
+`environment` (`dev`). Profile size sets labels, not cloud node sizes; networking
+fields do not automatically configure private access or DNS. The Applications reference `deploy/gitops/core`,
+`platform/security/base`, and `tenants/team-dev` at the specified Git revision.
+The tenant file contains a Namespace, an admin RoleBinding, a default-deny
+NetworkPolicy, a ResourceQuota, and a LimitRange.
 
-Kubectl invocations use fixed installation directories, without searching `PATH`.
-For a mise-managed binary, set `MANTL_KUBECTL_PATH="$(mise which kubectl)"` before
-using cluster-facing CLI commands. The override must be an absolute path to a
-regular executable without group or world write permission.
+This example is ready for **offline generation**. Before deployment, use a repository
+and revision you control containing the platform paths and committed tenant files;
+`tenants/team-dev` is not supplied by the referenced Mantl release. Review identities,
+resource limits, and DNS/service traffic rules. Network isolation requires a CNI
+that enforces NetworkPolicy. See [specification and outputs](docs/platform-planning.md).
 
-The supported entrypoint is the Go CLI. `bin/mantl` and wizard/Make installers are
-legacy paths and do not define the current operator contract.
+## Getting started
 
-- [Installation, evidence export, and recovery](docs/compliance-operations.md)
-- [Offline platform planning](docs/platform-planning.md)
-- [Features and architecture plan](docs/superpowers/plans/2026-10-04-features-and-architecture.md)
-- [Architecture decisions](docs/adr/)
-- [Codex repository instructions](AGENTS.md)
-- [Contribution guidance](CONTRIBUTING.md)
-- [Security reporting](SECURITY.md)
+The current published baseline is [v0.4.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.4.0).
+Downloadable CLI archives cover Linux/macOS on amd64/arm64; Linux also has DEB/RPM
+packages. Go, cloud credentials, Terraform, and a cluster are unnecessary for `plan`.
 
-[Runtime architecture and migration](docs/architecture-runtime.md) describes the
-new beta adapters and their operational prerequisites. Do not infer production readiness from
-a chart being present or a Terraform configuration passing static validation.
+1. Follow the [verified release installation](docs/quickstart-platform.md#install-a-verified-release).
+   Authenticate the checksum manifest with Cosign before checking artifact hashes.
+2. Save the specification above as `platform.yaml` in a new working directory.
+3. Using the installed CLI, generate and inspect the files:
 
-The beta CLI also provides [scoped platform status](docs/platform-status.md) with
-JSON output and an explicit application health gate for CI.
+   ```sh
+   mantl --version
+   mantl plan platform.yaml
+   cat .mantl/build/terraform.tfvars.json
+   cat .mantl/build/tenants/payments.yaml
+   ```
+
+The result is local configuration to review. Nothing has been provisioned or applied.
+Continue with [bootstrap prerequisites](docs/quickstart-platform.md#deployment-is-a-separate-step)
+only when you have supplied environment-specific settings and understand the changes.
+
+**Main only:** main adds plan previews/inventories, saved plans and comparisons,
+and `apply --plan` verification with preflight and expected-Application convergence.
+These new plan/apply flags are absent from v0.4.0. [Build instructions](CONTRIBUTING.md#build-and-test)
+and the [planning guide](docs/platform-planning.md#main-only-preview-and-inventory)
+cover that path separately.
+
+## Capabilities and maturity
+
+| Area | What exists | Maturity / validation boundary |
+| --- | --- | --- |
+| Configuration compiler | Strict spec parsing; Terraform variables; feature Applications; tenant RBAC, quotas, limits, isolation | Published v0.4.0; offline generation tested. Preview, saved-plan, and comparison flags are main only. |
+| Bootstrap and observation | OpenTofu/Terraform invocation, kind path, pinned ArgoCD installation; scoped `status` JSON and application gate | Beta. Main adds reviewed-input verification and scoped convergence. Application health is distinct from compliance; bootstrap success is not cloud acceptance. |
+| AWS EKS, GCP GKE, Azure AKS | Blueprints and a common static hardening contract | Static validation exists; deployment, identity, upgrade, audit delivery, and recovery acceptance remain unestablished. |
+| Other providers | DOKS, LKE, OKE, IKS, and OpenStack assets/parser options | Experimental; assets do not establish a working deployment path. |
+| Compliance runtime | Profiles, PolicyReport findings, scheduled AuditRuns/collector Jobs, evaluations, exception approval, history | Beta. Resource snapshots are implemented; unsupported log/metrics/query collectors remain coverage gaps. |
+| Framework content | SOC2, HIPAA, PCI-DSS, CIS Kubernetes catalogs/profiles; reviewed SOC2 policy topology | Content and mappings are not proof of complete or end-to-end framework coverage. Evidence supports audits, not certification. |
+| Evidence | AWS S3 versioned objects, Object Lock COMPLIANCE retention, hash/version verification, archive export | AWS S3 backend for all cluster providers; native GCS/Azure WORM backends are not implemented. |
+| Fleet and exchange | Optional mTLS fleet metadata service, PostgreSQL tenant isolation/replay; bounded OSCAL catalog exchange | Beta; requires operator overlays. No fleet UI; OSCAL exchange covers IDs/titles, not complete assessment interchange. |
+| Release distribution | Signed checksums, CLI archives/DEB/RPM, pinned install manifests, control/platform bundles, SBOMs and provenance | Published assets; package validation does not establish cloud deployment or version-to-version upgrade acceptance. |
+
+Evaluations keep coverage, result, freshness, evidence, and exceptions separate.
+Missing or stale evidence cannot establish a current pass. An approved exception
+annotates a failure without turning it into a pass. A configured control mapping
+shows intended scope, not proof that every workload is covered.
+
+Vendored charts under `platform/` and architecture plans describe a larger possible
+stack; their presence does not establish integrated support. See the
+[architecture boundaries](docs/architecture-diagram.md) and
+[provider acceptance limits](docs/architecture-runtime.md#provider-acceptance-and-oscal).
+
+## Architecture and responsibilities
+
+- **CLI and packages** (`cmd/mantl`, `pkg/compiler`, `pkg/bootstrap`): validate inputs,
+  render configuration, and explicitly invoke provisioning/bootstrap tools.
+- **ArgoCD and Kyverno** (`deploy/gitops`, `policies/kyverno`): Git owns desired policy
+  content; ArgoCD reconciles it, and Kyverno supplies enforcement/reporting.
+- **Compliance APIs and controllers** (`apis/compliance`, `controllers/compliance`):
+  reconcile profiles, findings, audit schedules/runs, evaluations, and exceptions.
+- **Collectors and evidence** (`pkg/collection`, `pkg/evidence`): bounded collection,
+  retained raw objects in S3, and version/hash references in Kubernetes metadata.
+- **Framework data** (`compliance/frameworks`): YAML catalogs, profiles, and mappings
+  reviewed independently of the Go runtime.
+- **Optional fleet** (`pkg/fleet`, `deploy/fleet`): authenticated metadata aggregation;
+  PostgreSQL is a rebuildable index, and raw evidence remains in object storage.
+
+The [runtime architecture](docs/architecture-runtime.md) details identities, storage,
+policy ownership, and failure handling.
+
+## Documentation
+
+Start at the [documentation index](docs/README.md), or go directly to:
+
+- [Quickstart and bootstrap](docs/quickstart-platform.md)
+- [Platform specification, examples, and generated outputs](docs/platform-planning.md)
+- [Observed platform status](docs/platform-status.md)
+- [Compliance concepts, storage, verification, and export](docs/compliance-operations.md)
+- [Architecture diagrams](docs/architecture-diagram.md) and [runtime responsibilities](docs/architecture-runtime.md)
+- [Operations, upgrades, backup, and recovery](docs/runbooks.md)
+- [Releases and verification](docs/releases.md)
+- [Troubleshooting](docs/troubleshooting.md)
+
+## Development and contributing
+
+Use the pinned [mise toolchain](mise.toml). Read [CONTRIBUTING.md](CONTRIBUTING.md)
+for setup, scoped tests, dependency locks, devcontainers, and pull requests, and
+[AGENTS.md](AGENTS.md) for repository boundaries. Design records live in
+[docs/adr](docs/adr); roadmaps under [docs/superpowers/specs](docs/superpowers/specs)
+are intentions, not release guarantees.
+
+## Security and license
+
+Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/somethingwithproof/mantl/security/advisories/new).
+See the [security policy](SECURITY.md). Mantl is licensed under [Apache-2.0](LICENSE);
+vendored components retain their own licenses.

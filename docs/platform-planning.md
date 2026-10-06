@@ -1,22 +1,82 @@
-# Offline platform planning
+# Platform specification and offline planning
 
-The preview flags described here are implemented for the next CLI release.
-Build from main after merge to use them; published v0.4.0 binaries support only
-the original generation command.
+`mantl plan` validates a MantlCluster specification and compiles Terraform variables,
+ArgoCD Applications, and tenant manifests. It neither provisions resources nor
+resolves the referenced Git content.
 
-`mantl plan` validates a MantlCluster spec and compiles Terraform variables,
-ArgoCD Applications and tenant manifests. Preview a change without creating or
-modifying files, contacting a cluster, or running Terraform:
+## Published v0.4.0 generation
+
+Save [the README example](../README.md#a-small-example) as `platform.yaml`, or obtain
+`examples/mantl-spec.yaml` through the tagged clone in [the quickstart](quickstart-platform.md#generate-configuration-offline).
+The release command is:
 
 ```sh
-mantl plan examples/mantl-spec.yaml --dry-run
-mantl plan examples/mantl-spec.yaml --dry-run --format json
+mantl plan platform.yaml
+```
+
+It writes `.mantl/build/terraform.tfvars.json`, an Application for
+`deploy/gitops/core`, Applications for enabled features, and optional tenant files.
+Variables are **inputs to existing blueprints**, not complete infrastructure code.
+The AWS variables are only cluster name, region, Kubernetes version, and environment;
+GCP uses `project` from `accountId`, and Azure uses `resource_group_name` and `location`.
+Profile size selects the environment label; it does not size cloud node groups.
+Networking fields do not automatically configure domains, VPCs, or public access.
+Review provider blueprint variables separately before provisioning.
+
+## Specification reference
+
+The CLI reads a YAML file into [the platform API types](../apis/platform/v1alpha1/types.go)
+and applies [strict parsing and validation](../pkg/compiler/spec_parser.go). It is
+not a reconciled platform provisioning controller; do not assume that applying a
+`MantlCluster` object provisions a cluster. Unknown fields are rejected.
+
+| Field | Current behavior |
+| --- | --- |
+| `metadata.name` | Required DNS label; used as cluster name. |
+| `provider.kind`, `kubernetes.distribution` | Valid pairs: local/kind, aws/eks, gcp/gke, azure/aks, do/doks, linode/lke, oci/oke, ibm/iks, openstack/kubernetes. Validation is not provider acceptance. |
+| `provider.region`, `kubernetes.version` | Required strings. Local generation also requires them; no live provider version lookup occurs. |
+| `provider.accountId` | Required for GCP project or Azure resource group. AWS account selection comes from credentials, not this field. |
+| `profile.size` | Required: small, medium, full; labels map to dev, staging, production (Terraform uses prod). |
+| `environment` | Optional override: dev, staging, production. |
+| `networking.domain` | Required input; domain/exposure/vpcId are not wired into the generated Terraform variables. |
+| `features` | Boolean selections generate feature Applications at the paths below; omitted values are false. |
+| `gitops.repository`, `revision` | Optional; defaults to this Mantl repository and main. Explicit HTTPS repository URLs must omit credentials. Pin a reviewed revision. |
+| `gitops.operatorPath` | Overrides the compliance Application source path; use an environment-specific overlay. |
+| `gitops.tenantPath` | Required when tenants exist; relative path in the Git repository where generated files must be committed. |
+| `tenants` | Unique DNS-label names/namespaces; namespace defaults to name. Admin strings become Kubernetes User subjects bound to namespace admin. |
+| `profile.compliance` | Present in the API but not used to select/install a compliance profile by the compiler. Configure ComplianceProfile resources separately. |
+
+Feature paths are `observability` → `platform/observability/prometheus/overlays/dev`,
+`security` → `platform/security/base`, `secrets` → `platform/secrets/base`,
+`compliance` → `deploy/operator/base` (or `operatorPath`), and
+`progressiveDelivery` → `platform/progressive-delivery/base`.
+These Applications reference repository assets; feature names do not prove every
+component described in an old design is integrated. The root always references
+`deploy/gitops/core`, including its Kyverno, cert-manager, and policy children.
+
+Tenant output includes a Kustomization listing only desired tenants. Each tenant
+gets a Namespace, optional admin RoleBinding, default-deny ingress/egress policy,
+ResourceQuota, and LimitRange. Limits are fixed defaults, not profile-sized.
+Add reviewed traffic rules and confirm CNI enforcement before running workloads.
+Keeping tenantPath after removing the last tenant permits reconciliation of an
+empty desired set; pruning can delete namespaces and workloads.
+
+## Main-only preview and inventory
+
+These flags are implemented on main and are **absent from published v0.4.0**.
+Build using [the contributor instructions](../CONTRIBUTING.md#build-and-test).
+From a source checkout, preview without creating files, contacting a cluster,
+or running Terraform:
+
+```sh
+/tmp/mantl-main plan examples/mantl-spec.yaml --dry-run
+/tmp/mantl-main plan examples/mantl-spec.yaml --dry-run --format json
 ```
 
 Generate the reviewed artifacts in a chosen directory:
 
 ```sh
-mantl plan examples/mantl-spec.yaml --output-dir build/production --format json
+/tmp/mantl-main plan examples/mantl-spec.yaml --output-dir build/production --format json
 ```
 
 The default directory remains `.mantl/build`. Text output lists artifact paths,
@@ -45,14 +105,14 @@ moving revision such as `main` can resolve to different source contents later.
 Use `mantl status` for observed application health and the compliance commands
 for separately scoped compliance results. Runtime and cloud acceptance remain beta.
 
-## Save and compare reviewed plans
+## Save and compare reviewed plans (main only)
 
 Generate artifacts and save their inventory in a separate review location:
 
 ```sh
-mantl plan examples/mantl-spec.yaml --output-dir build/production --save-plan reviewed-plan.json
-mantl plan examples/mantl-spec.yaml --dry-run --compare reviewed-plan.json
-mantl plan examples/mantl-spec.yaml --dry-run --compare reviewed-plan.json --format json --fail-on-change
+/tmp/mantl-main plan examples/mantl-spec.yaml --output-dir build/production --save-plan reviewed-plan.json
+/tmp/mantl-main plan examples/mantl-spec.yaml --dry-run --compare reviewed-plan.json
+/tmp/mantl-main plan examples/mantl-spec.yaml --dry-run --compare reviewed-plan.json --format json --fail-on-change
 ```
 
 The comparison lists added, changed and removed artifact paths. JSON includes
@@ -73,7 +133,7 @@ identity or authenticity.
 Apply the reviewed inputs using an explicitly selected target:
 
 ```sh
-mantl --context TARGET --source-dir PLATFORM_SOURCE apply examples/mantl-spec.yaml \
+/tmp/mantl-main --context TARGET --source-dir PLATFORM_SOURCE apply examples/mantl-spec.yaml \
   --plan reviewed-plan.json --output-dir build/production --timeout 30m
 ```
 

@@ -1,248 +1,59 @@
-# Testing Guide
+# Testing and validation boundaries
 
-This document describes the testing strategy, tools, and practices for the Mantl platform.
+Use the pinned mise toolchain and [contributor setup](../CONTRIBUTING.md).
+Tests have different scopes; none of the commands below is cloud acceptance.
 
-## Test Categories
+## First-party unit tests
 
-### Unit Tests (`tests/unit/`)
-
-Unit tests verify individual components in isolation without external dependencies.
-
-```bash
-# Run unit tests
-make test-unit
-
-# Run with coverage
-pytest -v --cov=. --cov-report=html tests/unit/
+```sh
+mise exec -- make go-test
+mise exec -- .venv/bin/python -m pytest tests/unit/
 ```
 
-**Test Files:**
-- `test_smoke.py` - Basic smoke tests for environment validation
-- `test_infrastructure.py` - Infrastructure file validation tests
-- `test_ci_scripts.py` - CI/CD script and workflow validation
+`make go-test` excludes vendored chart Go packages under `platform/` (ADR 004).
+Do not run `go test ./...`. `make go-coverage` measures the same first-party scope;
+coverage percentages do not establish complete framework/control coverage.
+Python tests exercise auxiliary scripts and contracts; the Go operator is the
+runtime source of truth. Example application jobs have separate locked dependencies.
 
-### Integration Tests (`tests/integration/`)
+## Offline compiler and contracts
 
-Integration tests verify component interactions, often requiring external services.
-
-```bash
-# Run integration tests (requires INVENTORY or MOLECULE_INVENTORY_FILE)
-make test-integration
-
-# With explicit inventory
-INVENTORY=/path/to/inventory pytest -v tests/integration/
+```sh
+mise exec -- go run ./cmd/mantl plan examples/mantl-spec.yaml --dry-run --format json
+mise exec -- go run ./cmd/mantl validate-clouds --source-dir .
+mise exec -- make manifests generate
 ```
 
-### E2E Tests (`tests/e2e/`)
+The first command uses **main-only** flags. Static cloud validation inspects the
+AWS/GCP/Azure contract without deployment. API generation checks drift, not
+admission in a real cloud. Rendered Applications reference Git content that must
+be reviewed and published separately.
 
-End-to-end tests validate complete workflows in a real Kubernetes environment.
+## Disposable integration and packaging
 
-```bash
-# E2E tests run in CI via Kind clusters
-# See .github/workflows/ci.yml for E2E job configurations
-```
+[compliance-runtime.yml](../.github/workflows/compliance-runtime.yml) explicitly
+runs integration-tagged tests in `integration/controlapi` and `pkg/fleet` against
+an envtest Kubernetes API and disposable PostgreSQL, builds operator entrypoints,
+and checks package snapshots. These fixtures test admission, isolation, and package
+behavior without developer cloud credentials. They are not a full kind platform
+deployment or cloud acceptance suite.
 
-## Running Tests
+The integration job supplies `KUBEBUILDER_ASSETS` and `MANTL_TEST_DATABASE_URL`.
+Use the exact workflow fixture setup when reproducing it locally; do not point the
+tests at production databases or clusters. Its local database disables TLS for the
+fixture; the fleet deployment requires verified TLS and a role that cannot bypass RLS.
 
-### Quick Start
+`mise exec -- goreleaser release --snapshot --clean` builds local archives/packages.
+`ci/verify-cli-packages.sh dist` needs Docker and verifies native package lifecycles
+in isolated containers. It may pull pinned images, but does not publish or sign
+artifacts. [Release verification](releases.md) is a separate trust check.
 
-```bash
-# Install test dependencies
-pip install -r requirements.txt -r requirements-test.txt
+## Cloud acceptance gap
 
-# Run all tests
-make test
+Deployment, workload identity, private access, audit delivery, encryption, upgrade,
+recovery, and retained evidence need environment-specific acceptance records.
+`mantl acceptance verify` authenticates retained receipts; it does not independently
+perform or observe the deployment. See [runtime limits](architecture-runtime.md#provider-acceptance-and-oscal).
 
-# Run with coverage report
-make test-coverage
-```
-
-### Watch Mode (TDD)
-
-```bash
-# Install pytest-watch
-pip install pytest-watch
-
-# Run tests in watch mode
-make test-watch
-```
-
-## Coverage Requirements
-
-- **Minimum threshold:** 70% (configured in `pyproject.toml`)
-- **Target threshold:** 80%
-- **Coverage reports:** HTML reports generated in `htmlcov/`
-
-### Checking Coverage
-
-```bash
-# Generate coverage report
-pytest --cov=. --cov-report=html --cov-report=term-missing tests/
-
-# View HTML report
-open htmlcov/index.html
-```
-
-## Test Configuration
-
-### pytest Configuration (`pyproject.toml`)
-
-```toml
-[tool.pytest.ini_options]
-python_files = ["test_*.py"]
-python_functions = ["test_*"]
-addopts = "-v --maxfail=5 --tb=short"
-testpaths = ["tests"]
-markers = [
-    "slow: marks tests as slow",
-    "integration: marks tests as integration tests",
-    "e2e: marks tests as end-to-end tests",
-    "requires_docker: marks tests that require Docker",
-    "requires_kubernetes: marks tests that require a Kubernetes cluster",
-]
-```
-
-### Coverage Configuration
-
-```toml
-[tool.coverage.run]
-source = ["."]
-branch = true
-omit = ["*/tests/*", "*/__pycache__/*", "*/site-packages/*"]
-
-[tool.coverage.report]
-fail_under = 70
-show_missing = true
-```
-
-## Test Markers
-
-Use pytest markers to categorize and selectively run tests:
-
-```bash
-# Skip slow tests
-pytest -m "not slow" tests/
-
-# Run only integration tests
-pytest -m integration tests/
-
-# Run tests that don't require Docker
-pytest -m "not requires_docker" tests/
-```
-
-## Fixtures
-
-Common fixtures are defined in `tests/conftest.py`:
-
-| Fixture | Scope | Description |
-|---------|-------|-------------|
-| `project_root` | session | Path to project root directory |
-| `tests_dir` | session | Path to tests directory |
-| `has_kustomize` | session | Boolean: is kustomize installed |
-| `has_kubectl` | session | Boolean: is kubectl installed |
-| `has_docker` | session | Boolean: is Docker running |
-| `temp_dir` | function | Temporary directory for test artifacts |
-| `sample_deployment_yaml` | function | Sample K8s Deployment manifest |
-
-## CI/CD Testing
-
-Tests run automatically in GitHub Actions:
-
-1. **Lint Job** - Python (black, ruff), YAML (yamllint)
-2. **Type Check Job** - mypy static analysis
-3. **Test Job** - pytest with coverage, Codecov upload
-4. **Container Tests** - Tests in Docker container environment
-5. **Kind Smoke Test** - Kubernetes cluster verification
-6. **E2E Tests** - Full deployment tests
-
-### Local CI Simulation
-
-```bash
-# Run all validations locally
-make audit
-
-# Format code before committing
-make format
-
-# Run security scans
-make security-scan
-```
-
-## Writing New Tests
-
-### Test File Naming
-
-- Unit tests: `tests/unit/test_<module>.py`
-- Integration tests: `tests/integration/test_<feature>_integration.py`
-- E2E tests: `tests/e2e/<scenario>/`
-
-### Test Function Naming
-
-```python
-def test_<function_name>_<scenario>() -> None:
-    """Test description explaining what is being tested."""
-    # Arrange
-    ...
-    # Act
-    ...
-    # Assert
-    ...
-```
-
-### Example Test
-
-```python
-import pytest
-from pathlib import Path
-
-class TestMyFeature:
-    """Tests for MyFeature functionality."""
-
-    @pytest.fixture
-    def my_fixture(self, project_root: Path) -> str:
-        """Set up test data."""
-        return project_root / "my" / "path"
-
-    def test_feature_works(self, my_fixture: str) -> None:
-        """Verify feature produces expected output."""
-        result = my_function(my_fixture)
-        assert result == expected_value
-
-    @pytest.mark.slow
-    def test_feature_performance(self) -> None:
-        """Verify feature meets performance requirements."""
-        # Long-running test
-        ...
-
-    @pytest.mark.requires_docker
-    def test_feature_with_docker(self) -> None:
-        """Verify feature works with Docker."""
-        # Requires Docker daemon
-        ...
-```
-
-## Troubleshooting
-
-### Tests Fail Locally but Pass in CI
-
-- Check Python version matches CI (`python --version` should be 3.13+)
-- Ensure all dependencies installed: `pip install -r requirements-test.txt`
-- Some tests skip if tools aren't installed (kustomize, kubectl)
-
-### Coverage Too Low
-
-- Add tests for untested code paths
-- Check coverage report for missing lines: `open htmlcov/index.html`
-- Focus on critical business logic first
-
-### Slow Tests
-
-- Mark slow tests with `@pytest.mark.slow`
-- Run fast tests during development: `pytest -m "not slow"`
-- Consider mocking external dependencies
-
-## Resources
-
-- [pytest Documentation](https://docs.pytest.org/)
-- [pytest-cov Documentation](https://pytest-cov.readthedocs.io/)
-- [Testing Best Practices](https://docs.python-guide.org/writing/tests/)
+For actual CI selection and requirements use [the workflow inventory](../.github/workflows/README.md)
+and [required checks](ci-required-checks.md), rather than historical E2E descriptions.

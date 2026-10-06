@@ -1,254 +1,142 @@
-# Mantl Platform Quickstart
+# Getting started with Mantl
 
-**Last Updated**: 2025-12-27
+Start by generating reviewable configuration offline. The commands below target
+published **v0.4.0**, not an unreleased build. This workflow needs no cloud account,
+Kubernetes cluster, Terraform/OpenTofu, Docker, or Go.
 
-Deploy a production-ready Kubernetes platform with observability, security, and GitOps in minutes.
+## Install a verified release
 
-## Quick Start (Recommended)
+Prerequisites: a shell, `tar`, [GitHub CLI](https://cli.github.com/) (`gh`) for download,
+[Cosign](https://github.com/sigstore/cosign) (the repository pins 3.1.3), and
+`sha256sum` on Linux or `shasum` on macOS. A browser can download the same assets
+from [the release page](https://github.com/somethingwithproof/mantl/releases/tag/v0.4.0)
+if `gh` is unavailable. Keep the complete set together for the checksum command.
 
-The fastest way to get started is using the built-in automation:
+Create a new directory, download all attached release assets, and authenticate
+`checksums.txt` **before** using it:
 
-### Local Development (kind cluster)
-
-```bash
-git clone https://github.com/thomasvincent/mantl.git
-cd mantl
-make install-dev
+```sh
+mkdir mantl-v0.4.0
+cd mantl-v0.4.0
+gh release download v0.4.0 --repo somethingwithproof/mantl
+cosign verify-blob checksums.txt --bundle checksums.sigstore.json   --certificate-oidc-issuer https://token.actions.githubusercontent.com   --certificate-identity https://github.com/somethingwithproof/mantl/.github/workflows/release.yml@refs/heads/main
 ```
 
-This single command:
-- Creates a kind cluster with proper configuration
-- Installs ArgoCD and all platform components
-- Deploys example applications
-- Sets up the observability stack
+Then verify the signed manifest's listed files:
 
-### Interactive Setup (Custom Configuration)
-
-For more control over the installation:
-
-```bash
-make wizard
+```sh
+# Linux
+sha256sum -c checksums.txt
+# macOS: use this instead
+shasum -a 256 -c checksums.txt
 ```
 
-The wizard guides you through:
-- Environment selection (dev, staging, production)
-- Cloud provider choice
-- Resource profile (small, medium, full)
-- Component selection
-- Domain configuration
+Require successful signature and checksum verification. `release-identity.json`
+records source commit `06208514ee4a134f802e5022f67e2047fc58d532` for v0.4.0 and
+the pinned operator image. See [release verification](releases.md) for provenance,
+SBOMs (software bills of materials), container identities, and package details.
 
-### CLI Tool (Advanced Users)
+Select the archive matching your OS/architecture:
+`mantl_0.4.0_linux_amd64.tar.gz`, `mantl_0.4.0_linux_arm64.tar.gz`,
+`mantl_0.4.0_darwin_amd64.tar.gz`, or `mantl_0.4.0_darwin_arm64.tar.gz`.
+`uname -s` and `uname -m` identify the host; `x86_64` means amd64 and
+`aarch64`/Apple `arm64` means arm64. For example, on Apple Silicon:
 
-```bash
-./bin/mantl init           # Initialize configuration
-./bin/mantl status         # Check platform health
-./bin/mantl dashboards     # Open dashboards
-./bin/mantl deploy <app>   # Deploy applications
+```sh
+mkdir cli
+tar -xzf mantl_0.4.0_darwin_arm64.tar.gz -C cli
+./cli/mantl --version
 ```
 
-## Manual Deployment
+Replace that filename on other hosts. Expected version: `0.4.0` and the commit
+above. You can keep using `./cli/mantl`, place it in a directory on your PATH, or
+install a verified Linux DEB/RPM through your distribution's package manager.
+There is no Windows CLI asset.
 
-If you prefer manual control or need to customize the deployment:
+## Generate configuration offline
 
-### Prerequisites
+Save the small [README specification](../README.md#a-small-example) as
+`platform.yaml` in this directory; it does not require a repository checkout.
+Then run:
 
-- Kubernetes cluster 1.27+ (EKS, GKE, AKS, DOKS, LKE, or kind for local)
-- `kubectl` configured for your cluster
-- Git repository access (GitHub, GitLab, etc.)
-
-### Manual Setup Steps
-
-### 1. Install ArgoCD
-
-```bash
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+```sh
+./cli/mantl plan platform.yaml
+cat .mantl/build/terraform.tfvars.json
+cat .mantl/build/gitops/root-platform.yaml
+cat .mantl/build/tenants/payments.yaml
 ```
 
-Wait for ArgoCD to be ready:
-```bash
-kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
+Expect the six files listed in the README: variables, three Applications, a tenant
+index, and the tenant's namespace/RBAC/network/quota/limit manifests. Inspect the
+repository/revision/path references and admin identities before using them.
+`plan` only validates and writes files; it does not resolve Git paths, evaluate
+compliance, contact Kubernetes, or run Terraform.
+
+For more examples, obtain the **matching tagged source checkout** explicitly:
+
+```sh
+git clone --branch v0.4.0 --depth 1 https://github.com/somethingwithproof/mantl.git mantl-source
+./cli/mantl plan mantl-source/examples/mantl-spec.yaml
 ```
 
-### 2. Deploy Platform Stack
+That fuller example includes illustrative tenant identities and a local operator
+overlay; customize it before deployment. Generation reuses `.mantl/build`; use
+separate working directories to keep examples apart. See [planning](platform-planning.md)
+for file replacement behavior and spec fields.
 
-Deploy all platform components using the app-of-apps pattern:
+## Main-only planning features
 
-```bash
-kubectl apply -f clusters/production/platform-apps.yaml
+Build from main using [the contributor setup](../CONTRIBUTING.md#build-and-test).
+Main adds plan previews, JSON inventories, saved-plan comparisons, and reviewed
+`apply --plan` with preflight and scoped convergence. **v0.4.0 does not accept the
+new plan/apply flags**. Follow [preview and inventory](platform-planning.md#main-only-preview-and-inventory)
+for that separate workflow. Neither version's compiler plan is an infrastructure
+resource-change plan.
+
+## Deployment is a separate step
+
+The published v0.4.0 `apply` creates resources and modifies a cluster. It runs Terraform/OpenTofu apply
+without a saved Terraform plan approval step, installs pinned ArgoCD v3.5.3, submits
+the generated Applications, and polls reported application health. Review changes
+with your infrastructure tool and Git process before invoking it. Cloud deployment
+and recovery acceptance have not been established; use disposable environments
+for your own evaluation and account for cluster, network, compute, storage, and
+long-lived evidence-retention costs.
+
+Before cloud bootstrap you must:
+
+1. Verify and extract `mantl-platform_v0.4.0.tar.gz` into a source directory. Its
+   `infra/terraform/blueprints` supplies configurations; generated variables alone
+   cannot provision a cluster. Review the selected blueprint's required variables,
+   provider identity, private connectivity, state/backend configuration, and costs.
+2. Install OpenTofu or Terraform and `kubectl`. Mantl resolves kubectl from
+   `/usr/local/bin`, `/usr/bin`, or `/opt/homebrew/bin`; for a tool-manager install,
+   set `MANTL_KUBECTL_PATH` to its trusted absolute executable path. Supply cloud credentials through
+   the provider's runtime identity/credential chain, never committed files. Ensure
+   your explicit kube-context authenticates to the intended cluster once it exists;
+   Mantl does not install Terraform outputs into your kubeconfig.
+3. Use a Git repository you control containing the referenced platform paths and
+   reviewed overlays. Commit generated tenant files at `gitops.tenantPath`; the
+   local build directory is not an ArgoCD source. Configure ArgoCD repository access.
+4. Review tenant admin bindings and add required DNS/service egress rules. Confirm
+   your CNI enforces NetworkPolicy; choose a provider-supported Kubernetes version.
+5. If enabling compliance, supply a digest-pinned operator overlay, Kyverno reports,
+   evidence configuration, scoped collector identities, and a versioned AWS S3
+   Object Lock bucket. Follow [compliance installation](compliance-operations.md#install).
+
+After those preparations, the CLI shape is:
+
+```sh
+# Provisioning / cluster modification: replace context and paths for your environment.
+mantl --context YOUR_CONTEXT --source-dir /path/to/extracted/platform apply platform.yaml
+# Read-only observation after bootstrap:
+mantl --context YOUR_CONTEXT status platform.yaml --format json --require-healthy
 ```
 
-This deploys in dependency order (sync waves):
-- **Wave 1**: Cilium (CNI + service mesh)
-- **Wave 2**: cert-manager (TLS automation)
-- **Wave 3**: External Secrets, Kyverno, Crossplane (secrets + policy + IaC)
-- **Wave 4**: Prometheus, Loki, Tempo (observability backends)
-- **Wave 5**: OTel Collector, Falco (telemetry + security)
-- **Wave 6**: Harbor, External DNS (registry + DNS)
+The local `provider.kind: local` / `distribution: kind` path also changes your
+machine: it requires Docker, kind, and kubectl, creates `kind-<metadata.name>`,
+and downloads/installs platform components. It is not part of the offline quickstart.
 
-### 3. Monitor Deployment
-
-**Watch ArgoCD sync status:**
-```bash
-kubectl get applications -n argocd -w
-```
-
-**Access ArgoCD UI:**
-```bash
-# Get admin password
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-
-# Port forward to UI
-kubectl port-forward svc/argocd-server -n argocd 8080:443
-
-# Open https://localhost:8080
-# Username: admin
-# Password: (from command above)
-```
-
-### 4. Access Observability Stack
-
-**Grafana (metrics + dashboards):**
-```bash
-kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
-# Open http://localhost:3000
-# Default credentials: admin/prom-operator
-```
-
-**Tempo (distributed tracing):**
-```bash
-kubectl port-forward -n observability svc/tempo 3100:3100
-# Query via Grafana or directly at http://localhost:3100
-```
-
-**Prometheus (metrics):**
-```bash
-kubectl port-forward -n monitoring svc/prometheus-prometheus 9090:9090
-# Open http://localhost:9090
-```
-
-## Optional Configuration
-
-### DNS Automation (Cloud Providers)
-
-Choose one ExternalDNS configuration for your provider:
-
-```bash
-# AWS Route53
-kubectl apply -f clusters/production/apps/external-dns-aws.yaml
-
-# Google Cloud DNS
-kubectl apply -f clusters/production/apps/external-dns-gcp.yaml
-
-# Azure DNS
-kubectl apply -f clusters/production/apps/external-dns-azure.yaml
-
-# DigitalOcean
-kubectl apply -f clusters/production/apps/external-dns-digitalocean.yaml
-
-# Linode
-kubectl apply -f clusters/production/apps/external-dns-linode.yaml
-```
-
-### TLS Certificate Issuers
-
-Choose one DNS-01 ACME issuer for automated TLS:
-
-```bash
-# Cloudflare
-kubectl apply -f clusters/production/apps/cert-manager-issuer-dns-cloudflare.yaml
-
-# Route53
-kubectl apply -f clusters/production/apps/cert-manager-issuer-dns-route53.yaml
-
-# Google Cloud DNS
-kubectl apply -f clusters/production/apps/cert-manager-issuer-dns-gcp.yaml
-```
-
-### Secrets Management
-
-Configure External Secrets to sync from your cloud provider:
-
-1. **AWS Secrets Manager**: Set up IRSA for the external-secrets pod
-2. **GCP Secret Manager**: Configure Workload Identity
-3. **Azure Key Vault**: Set up Managed Identity
-4. **HashiCorp Vault**: Configure Vault authentication
-
-See `docs/secrets-and-issuers.md` for detailed configuration.
-
-## Verification
-
-### Check All Platform Components
-
-```bash
-# All applications should show "Healthy" and "Synced"
-kubectl get applications -n argocd
-
-# Check all platform pods are running
-kubectl get pods -A | grep -E "argocd|monitoring|observability|kube-system|cert-manager|kyverno|falco"
-```
-
-### Test Observability Stack
-
-**1. Generate test metrics:**
-```bash
-kubectl run test-pod --image=nginx --restart=Never
-kubectl delete pod test-pod
-```
-
-**2. Send test traces:**
-```bash
-# Port forward OTel Collector
-kubectl port-forward -n observability svc/otel-collector 4317:4317
-
-# Use any OTLP-compatible client to send traces to localhost:4317
-```
-
-**3. View in Grafana:**
-- Navigate to http://localhost:3000
-- Explore → Select "Prometheus" data source
-- Query: `up{job="kubernetes-pods"}`
-
-**4. View traces in Grafana:**
-- Navigate to http://localhost:3000
-- Explore → Select "Tempo" data source
-- Query for traces by service name or trace ID
-
-## Next Steps
-
-1. **Deploy your first application**: See `applications/templates/web-service/base/`
-2. **Configure ingress**: Deploy Gateway API resources in `platform/ingress/gateway-api/`
-3. **Set up CI/CD**: Configure ArgoCD webhooks or Image Updater for automated deployments
-4. **Review policies**: Check Kyverno policies in `policies/kyverno/`
-5. **Enable runtime security**: Review Falco alerts in Grafana
-
-## Troubleshooting
-
-**ArgoCD sync failures:**
-```bash
-# Get detailed sync status
-kubectl describe application <app-name> -n argocd
-
-# View application logs
-kubectl logs -n argocd deployment/argocd-application-controller
-```
-
-**Pod failures:**
-```bash
-# Check pod status
-kubectl get pods -A | grep -v Running
-
-# View pod logs
-kubectl logs -n <namespace> <pod-name>
-
-# Describe pod for events
-kubectl describe pod -n <namespace> <pod-name>
-```
-
-## Documentation
-
-- Platform Components: `docs/platform-apps.rst`
-- Architecture Decisions: `docs/ara/README.md`
-- Observability Stack: `docs/ara/ARA-0005-observability-stack.md`
-- Security Baseline: `docs/security.md`
-- Multi-Cloud Setup: `docs/multicloud.rst`
+Use [scoped status](platform-status.md) for the expected Application identities;
+its health gate does not assess compliance or nested workload/provider readiness.
+Continue with [operations](runbooks.md) and [troubleshooting](troubleshooting.md).

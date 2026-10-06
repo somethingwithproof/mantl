@@ -23,7 +23,11 @@ The release checks out the exact validated tag and publishes:
 - SHA256 checksums, SPDX SBOMs and keyless Cosign verification bundles;
 - a multiarchitecture operator image and OCI bundles.
 
-Download assets using `gh release download TAG --repo somethingwithproof/mantl`.
+For a complete installation walkthrough see [the release quickstart](quickstart-platform.md).
+Download all attached assets into a new directory using
+`gh release download TAG --repo somethingwithproof/mantl`. The full checksum check
+below requires every file listed in the signed manifest; a partial download needs
+verification of its exact selected entries instead.
 Authenticate `checksums.txt` using its Cosign bundle before trusting its hashes.
 Require the GitHub Actions OIDC issuer and this exact workflow identity:
 

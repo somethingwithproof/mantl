@@ -1,5 +1,11 @@
 # Disaster Recovery Runbook
 
+> Historical component-stack procedure examples. These commands and objectives
+> have not established acceptance for the current beta runtime. Use the maintained
+> [operations guide](../runbooks.md) and [maturity table](../../README.md#capabilities-and-maturity)
+> first. Any recovery objectives here are proposed targets, not measured guarantees.
+
+
 Complete disaster recovery procedures for mantl platform.
 
 ## Prerequisites

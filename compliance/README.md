@@ -1,120 +1,39 @@
-# Mantl Compliance-as-Code
+# Compliance content and runtime
 
-Automated compliance management for Kubernetes platforms. Define compliance requirements as code, enforce them automatically, and generate audit-ready evidence.
+Mantl's beta compliance operator reconciles configured control mappings,
+PolicyReport findings, evidence collection, and evaluations. Start with
+[compliance installation and operations](../docs/compliance-operations.md),
+[the runtime architecture](../docs/architecture-runtime.md), and
+[the evidence lifecycle diagram](../docs/architecture-diagram.md#evidence-lifecycle).
 
-## Supported Frameworks
+## Content is reviewed data
 
-| Framework | Status | Controls |
-|-----------|--------|----------|
-| SOC2 Type II | ✅ Production | 64 controls |
-| HIPAA | 🚧 Beta | 45 controls |
-| PCI-DSS v4.0 | 🚧 Beta | 78 controls |
-| CIS Kubernetes | ✅ Production | 124 controls |
-| NIST 800-53 | 📋 Planned | - |
-| FedRAMP | 📋 Planned | - |
-| ISO 27001 | 📋 Planned | - |
+[frameworks](frameworks) contains SOC2, HIPAA, PCI-DSS, and CIS Kubernetes catalog
+and profile YAML. A catalog entry or profile is not proof that its control has a
+working policy mapping, collector, complete coverage, or fresh evidence. Consult
+ControlEvaluation coverage and gaps; no framework certification is claimed.
+The built-in GitOps policy topology uses reviewed SOC2 content. Other framework
+assets do not establish equivalent end-to-end integration.
 
-## Quick Start
+[The bundle version](bundle-version.txt) identifies content independently of the
+CLI. `mantl bundle build`, `verify`, and `unpack` create/verify deterministic content
+manifests. Pin the verified content digest and a trusted OCI identity before
+mounting separate bundles; see [content and evaluations](../docs/architecture-runtime.md#content-and-evaluations).
 
-```bash
-# Install the compliance operator
-kubectl apply -k compliance/operator/
+## Current responsibilities
 
-# Enable SOC2 compliance
-kubectl apply -f compliance/frameworks/soc2/profile-standard.yaml
+ArgoCD applies reviewed policy content; the operator observes Kyverno
+`wgpolicyk8s.io/v1alpha2` reports. Scheduled AuditRuns use scoped collector Jobs
+for allowlisted Kubernetes resource snapshots. Unsupported log/metrics/query
+collectors are gaps, not passing checks. Exceptions require separate approval and
+annotate failures without resolving them.
 
-# Check compliance status
-mantl compliance status
+Raw evidence goes to versioned AWS S3 with Object Lock COMPLIANCE retention;
+Kubernetes stores references/status. [Export](../docs/compliance-operations.md#observe-and-export)
+retrieves exact versions and verifies hashes. Native GCS/Azure immutable backends
+and cloud recovery acceptance are not implemented/established.
 
-# Run an audit
-mantl compliance audit --framework soc2 --output report.pdf
-
-# View violations
-mantl compliance findings --severity critical,high
-```
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     Compliance Dashboard                         │
-│                   (Grafana / Custom UI)                          │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────────┐
-│                    Compliance Operator                           │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │  Framework  │  │   Audit     │  │     Remediation         │  │
-│  │  Controller │  │  Controller │  │     Controller          │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-         │                  │                    │
-         ▼                  ▼                    ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────────────────┐
-│   Kyverno   │    │   Evidence  │    │    Existing Resources   │
-│  (Enforce)  │    │   Store     │    │  (Auto-Remediation)     │
-└─────────────┘    └─────────────┘    └─────────────────────────┘
-         │                  ▲
-         │                  │
-         ▼                  │
-┌─────────────────────────────────────────────────────────────────┐
-│                    Evidence Collectors                           │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌───────┐  │
-│  │  Falco  │  │  Loki   │  │ Prometheus│ │  Harbor │  │ K8s   │  │
-│  │ Runtime │  │  Logs   │  │  Metrics  │ │  Scans  │  │ Audit │  │
-│  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └───────┘  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Key Concepts
-
-### ComplianceFramework
-Defines a compliance standard (SOC2, HIPAA, etc.) with all its controls.
-
-### ComplianceProfile
-A selection of controls relevant to your organization. Not every control applies to every company.
-
-### ControlMapping
-Links abstract compliance requirements to concrete Kubernetes policies and evidence collectors.
-
-### Evidence
-Proof of compliance: configuration snapshots, logs, metrics, scan results, and attestations.
-
-### Finding
-A compliance violation with severity, remediation guidance, and tracking.
-
-## Directory Structure
-
-```
-compliance/
-├── api/                    # CRD definitions
-│   └── v1alpha1/
-├── operator/               # Kubernetes operator
-│   ├── controllers/
-│   └── webhooks/
-├── frameworks/             # Compliance framework definitions
-│   ├── soc2/
-│   ├── hipaa/
-│   ├── pci-dss/
-│   └── cis-kubernetes/
-├── evidence/               # Evidence collection
-│   ├── collectors/
-│   └── store/
-├── reports/                # Report templates
-│   ├── templates/
-│   └── generators/
-└── cli/                    # mantl-compliance CLI
-```
-
-## How It Works
-
-1. **Enable a Framework**: Apply a `ComplianceProfile` that selects which controls to enforce
-2. **Policy Generation**: The operator generates Kyverno policies from control mappings
-3. **Continuous Monitoring**: Policies enforce compliance; violations create Findings
-4. **Evidence Collection**: Scheduled jobs collect proof of compliance
-5. **Audit Reports**: Generate auditor-ready reports on demand
-6. **Remediation**: Auto-fix or track manual remediation of findings
-
-## License
-
-Apache 2.0
+Use [deploy/operator](../deploy/operator) and verified release install assets.
+The older `compliance/operator`, Python `compliance/cli`, report/dashboard/API
+assets, and framework descriptions are not the supported Go installation or proof
+of an integrated dashboard, PDF audit command, or automatic remediation.

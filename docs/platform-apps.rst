@@ -1,3 +1,10 @@
+.. note::
+
+   Historical design/component reference. For the current Kubernetes compiler and
+   beta compliance runtime, start at ``docs/README.md`` and ``docs/quickstart-platform.md``.
+   Provider assets and proposed integrations here do not establish deployment,
+   failover, recovery, or native immutable-storage parity.
+
 Platform Apps via ArgoCD
 ========================
 

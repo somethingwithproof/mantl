@@ -2,7 +2,10 @@
 
 The new execution path and fleet service are beta. Local API and PostgreSQL
 integration tests exercise admission and isolation; no cloud deployment or
-recovery acceptance is claimed. ADR 008 defines the boundaries.
+recovery acceptance is claimed. [ADR 008](adr/008-compliance-platform-architecture.md) defines the boundaries.
+See [architecture diagrams](architecture-diagram.md) for configuration ownership
+and the evidence lifecycle, and [compliance concepts](compliance-operations.md#reading-compliance-results)
+for result/coverage/freshness distinctions.
 
 ## Durable collection
 

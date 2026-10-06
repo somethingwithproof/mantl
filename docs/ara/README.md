@@ -1,5 +1,11 @@
 # Architecture Rationale and Alternatives (ARA)
 
+These records describe platform design intentions and component choices. For current
+implemented boundaries and maturity, use [the documentation index](../README.md)
+and [project maturity table](../../README.md#capabilities-and-maturity). An accepted
+design does not establish deployment, provider parity, or end-to-end integration.
+
+
 Purpose: Capture key architectural decisions, rationale, and considered alternatives for Mantl 2026.
 
 ## Conventions
