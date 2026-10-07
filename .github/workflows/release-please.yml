@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release-please:
-    runs-on: ${{ vars.DO_RUNNERS_ENABLED == 'true' && (contains(fromJSON('["push","schedule","workflow_dispatch"]'), github.event_name) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted","Linux","X64","mantl-do"]') || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
@@ -25,31 +25,23 @@ jobs:
     steps:
       - name: Require protected main branch
         run: test "$GITHUB_REF" = refs/heads/main
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          tools: python
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
         id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-      - name: Dispatch CI for generated release PR
+      - name: Dispatch preflight only when the release PR has no eligible CI run
         if: steps.release.outputs.prs_created == 'true'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         env:
+          GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ fromJSON(steps.release.outputs.pr || '{}').number }}
-        with:
-          script: |
-            const pull_number = Number(process.env.PR_NUMBER);
-            if (!Number.isSafeInteger(pull_number) || pull_number < 1) {
-              throw new Error('Release Please did not return a valid PR number');
-            }
-            const { owner, repo } = context.repo;
-            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number });
-            if (pr.head.repo.full_name !== owner + '/' + repo) {
-              throw new Error('Release CI requires a branch in this repository');
-            }
-            await github.rest.actions.createWorkflowDispatch({
-              owner, repo, workflow_id: 'ci.yml', ref: pr.head.ref,
-              inputs: { 'pull-request': String(pull_number) }
-            });
+        run: mise exec -- python -m ci.release_pr_preflight
     timeout-minutes: 15
   publish:
     needs: release-please
