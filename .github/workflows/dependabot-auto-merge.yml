@@ -3,12 +3,6 @@
 # yamllint disable rule:line-length
 name: Dependabot Auto-Merge
 'on':
-  pull_request_target:
-    types:
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
   schedule:
     - cron: 17 * * * *
   workflow_dispatch: null
@@ -19,8 +13,6 @@ concurrency:
   cancel-in-progress: false
 jobs:
   merge:
-    # Verify the PR author's immutable Dependabot account ID.
-    if: github.event_name != 'pull_request_target' || github.event.pull_request.user.id == 49699333
     permissions:
       contents: write
       pull-requests: write
