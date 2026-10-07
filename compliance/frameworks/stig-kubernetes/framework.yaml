@@ -1,0 +1,887 @@
+# SPDX-License-Identifier: Apache-2.0
+# Mantl catalog structure and mappings; DISA requirement metadata from the cited US government source.
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceFramework
+metadata:
+  name: stig-kubernetes-v2r3
+spec:
+  displayName: DISA Kubernetes STIG V2R3 (experimental Mantl mappings)
+  version: '2.3'
+  authority: DISA
+  source:
+    url: https://dl.dod.cyber.mil/wp-content/uploads/stigs/zip/U_Kubernetes_V2R3_STIG.zip
+    archiveSHA256: 4078bb7035fbe0575696e594d2cd62af124c67857861f4aa85d009497af7eda9 # pragma: allowlist secret (public DISA source hash)
+    xccdfSHA256: d7a797f67a6835b9cf709d60bb13447e5d351a6e22830110e23ebcbd70d3372c # pragma: allowlist secret (public DISA source hash)
+    controlCount: 91
+  description: Pinned catalog with partial workload observations. Manual-review mappings remain unsupported
+    and prevent a passing full-control evaluation.
+  controls:
+    - id: V-242376
+      name: The Kubernetes Controller Manager must use TLS 1.2, at a minimum, to protect the confidentiality
+        of sensitive data during electronic dissemination.
+      severity: medium
+      stigId: CNTR-K8-000150
+      ruleId: SV-242376r960759_rule
+      cci:
+        - CCI-000068
+      mappings:
+        - type: manual-review
+    - id: V-242377
+      name: The Kubernetes Scheduler must use TLS 1.2, at a minimum, to protect the confidentiality
+        of sensitive data during electronic dissemination.
+      severity: medium
+      stigId: CNTR-K8-000160
+      ruleId: SV-242377r960759_rule
+      cci:
+        - CCI-000068
+      mappings:
+        - type: manual-review
+    - id: V-242378
+      name: The Kubernetes API Server must use TLS 1.2, at a minimum, to protect the confidentiality
+        of sensitive data during electronic dissemination.
+      severity: medium
+      stigId: CNTR-K8-000170
+      ruleId: SV-242378r960759_rule
+      cci:
+        - CCI-000068
+      mappings:
+        - type: manual-review
+    - id: V-242379
+      name: The Kubernetes etcd must use TLS to protect the confidentiality of sensitive data during
+        electronic dissemination.
+      severity: medium
+      stigId: CNTR-K8-000180
+      ruleId: SV-242379r960759_rule
+      cci:
+        - CCI-000068
+      mappings:
+        - type: manual-review
+    - id: V-242380
+      name: The Kubernetes etcd must use TLS to protect the confidentiality of sensitive data during
+        electronic dissemination.
+      severity: medium
+      stigId: CNTR-K8-000190
+      ruleId: SV-242380r960759_rule
+      cci:
+        - CCI-000068
+      mappings:
+        - type: manual-review
+    - id: V-242381
+      name: The Kubernetes Controller Manager must create unique service accounts for each work payload.
+      severity: high
+      stigId: CNTR-K8-000220
+      ruleId: SV-242381r1043176_rule
+      cci:
+        - CCI-000015
+      mappings:
+        - type: manual-review
+    - id: V-242382
+      name: The Kubernetes API Server must enable Node,RBAC as the authorization mode.
+      severity: medium
+      stigId: CNTR-K8-000270
+      ruleId: SV-242382r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242383
+      name: User-managed resources must be created in dedicated namespaces.
+      severity: high
+      stigId: CNTR-K8-000290
+      ruleId: SV-242383r960801_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242384
+      name: The Kubernetes Scheduler must have secure binding.
+      severity: medium
+      stigId: CNTR-K8-000300
+      ruleId: SV-242384r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242385
+      name: The Kubernetes Controller Manager must have secure binding.
+      severity: medium
+      stigId: CNTR-K8-000310
+      ruleId: SV-242385r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242386
+      name: The Kubernetes API server must have the insecure port flag disabled.
+      severity: high
+      stigId: CNTR-K8-000320
+      ruleId: SV-242386r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242387
+      name: The Kubernetes Kubelet must have the "readOnlyPort" flag disabled.
+      severity: high
+      stigId: CNTR-K8-000330
+      ruleId: SV-242387r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242388
+      name: The Kubernetes API server must have the insecure bind address not set.
+      severity: high
+      stigId: CNTR-K8-000340
+      ruleId: SV-242388r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242389
+      name: The Kubernetes API server must have the secure port set.
+      severity: medium
+      stigId: CNTR-K8-000350
+      ruleId: SV-242389r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242390
+      name: The Kubernetes API server must have anonymous authentication disabled.
+      severity: high
+      stigId: CNTR-K8-000360
+      ruleId: SV-242390r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242391
+      name: The Kubernetes Kubelet must have anonymous authentication disabled.
+      severity: high
+      stigId: CNTR-K8-000370
+      ruleId: SV-242391r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242392
+      name: The Kubernetes kubelet must enable explicit authorization.
+      severity: high
+      stigId: CNTR-K8-000380
+      ruleId: SV-242392r1069461_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242393
+      name: Kubernetes Worker Nodes must not have sshd service running.
+      severity: medium
+      stigId: CNTR-K8-000400
+      ruleId: SV-242393r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242394
+      name: Kubernetes Worker Nodes must not have the sshd service enabled.
+      severity: medium
+      stigId: CNTR-K8-000410
+      ruleId: SV-242394r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242395
+      name: Kubernetes dashboard must not be enabled.
+      severity: medium
+      stigId: CNTR-K8-000420
+      ruleId: SV-242395r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242396
+      name: Kubernetes Kubectl cp command must give expected access and results.
+      severity: medium
+      stigId: CNTR-K8-000430
+      ruleId: SV-242396r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242397
+      name: The Kubernetes kubelet staticPodPath must not enable static pods.
+      severity: high
+      stigId: CNTR-K8-000440
+      ruleId: SV-242397r1069464_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242398
+      name: Kubernetes DynamicAuditing must not be enabled.
+      severity: medium
+      stigId: CNTR-K8-000450
+      ruleId: SV-242398r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242399
+      name: Kubernetes DynamicKubeletConfig must not be enabled.
+      severity: medium
+      stigId: CNTR-K8-000460
+      ruleId: SV-242399r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242400
+      name: The Kubernetes API server must have Alpha APIs disabled.
+      severity: medium
+      stigId: CNTR-K8-000470
+      ruleId: SV-242400r960792_rule
+      cci:
+        - CCI-000213
+      mappings:
+        - type: manual-review
+    - id: V-242402
+      name: The Kubernetes API Server must have an audit log path set.
+      severity: medium
+      stigId: CNTR-K8-000610
+      ruleId: SV-242402r960888_rule
+      cci:
+        - CCI-001464
+      mappings:
+        - type: manual-review
+    - id: V-242403
+      name: Kubernetes API Server must generate audit records that identify what type of event has
+        occurred, identify the source of the event, contain the event results, identify any users,
+        and identify any containers associated with the event.
+      severity: medium
+      stigId: CNTR-K8-000700
+      ruleId: SV-242403r986135_rule
+      cci:
+        - CCI-000018
+        - CCI-000130
+        - CCI-000131
+        - CCI-000132
+        - CCI-000133
+        - CCI-000134
+        - CCI-000135
+        - CCI-000172
+        - CCI-001403
+        - CCI-001404
+        - CCI-001487
+        - CCI-002264
+      mappings:
+        - type: manual-review
+    - id: V-242404
+      name: Kubernetes Kubelet must deny hostname override.
+      severity: medium
+      stigId: CNTR-K8-000850
+      ruleId: SV-242404r960960_rule
+      cci:
+        - CCI-001499
+      mappings:
+        - type: manual-review
+    - id: V-242405
+      name: The Kubernetes manifests must be owned by root.
+      severity: medium
+      stigId: CNTR-K8-000860
+      ruleId: SV-242405r960960_rule
+      cci:
+        - CCI-001499
+      mappings:
+        - type: manual-review
+    - id: V-242406
+      name: The Kubernetes KubeletConfiguration file must be owned by root.
+      severity: medium
+      stigId: CNTR-K8-000880
+      ruleId: SV-242406r960960_rule
+      cci:
+        - CCI-001499
+      mappings:
+        - type: manual-review
+    - id: V-242407
+      name: The Kubernetes KubeletConfiguration files must have file permissions set to 644 or more
+        restrictive.
+      severity: medium
+      stigId: CNTR-K8-000890
+      ruleId: SV-242407r960960_rule
+      cci:
+        - CCI-001499
+      mappings:
+        - type: manual-review
+    - id: V-242408
+      name: The Kubernetes manifest files must have least privileges.
+      severity: medium
+      stigId: CNTR-K8-000900
+      ruleId: SV-242408r960960_rule
+      cci:
+        - CCI-001499
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242409
+      name: Kubernetes Controller Manager must disable profiling.
+      severity: medium
+      stigId: CNTR-K8-000910
+      ruleId: SV-242409r960963_rule
+      cci:
+        - CCI-000381
+      mappings:
+        - type: manual-review
+    - id: V-242410
+      name: The Kubernetes API Server must enforce ports, protocols, and services (PPS) that adhere
+        to the Ports, Protocols, and Services Management Category Assurance List (PPSM CAL).
+      severity: medium
+      stigId: CNTR-K8-000920
+      ruleId: SV-242410r1043177_rule
+      cci:
+        - CCI-000382
+      mappings:
+        - type: manual-review
+    - id: V-242411
+      name: The Kubernetes Scheduler must enforce ports, protocols, and services (PPS) that adhere
+        to the Ports, Protocols, and Services Management Category Assurance List (PPSM CAL).
+      severity: medium
+      stigId: CNTR-K8-000930
+      ruleId: SV-242411r1043177_rule
+      cci:
+        - CCI-000382
+      mappings:
+        - type: manual-review
+    - id: V-242412
+      name: The Kubernetes Controllers must enforce ports, protocols, and services (PPS) that adhere
+        to the Ports, Protocols, and Services Management Category Assurance List (PPSM CAL).
+      severity: medium
+      stigId: CNTR-K8-000940
+      ruleId: SV-242412r1043177_rule
+      cci:
+        - CCI-000382
+      mappings:
+        - type: manual-review
+    - id: V-242413
+      name: The Kubernetes etcd must enforce ports, protocols, and services (PPS) that adhere to
+        the Ports, Protocols, and Services Management Category Assurance List (PPSM CAL).
+      severity: medium
+      stigId: CNTR-K8-000950
+      ruleId: SV-242413r1043177_rule
+      cci:
+        - CCI-000382
+      mappings:
+        - type: manual-review
+    - id: V-242414
+      name: The Kubernetes cluster must use non-privileged host ports for user pods.
+      severity: medium
+      stigId: CNTR-K8-000960
+      ruleId: SV-242414r1043177_rule
+      cci:
+        - CCI-000382
+      mappings:
+        - type: policy
+          policyRef:
+            template: stig-restrict-privileged-host-ports
+            mode: audit
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: 0 0 * * *
+            resources:
+              - pods
+            retentionDays: 2557
+        - type: manual-review
+    - id: V-242415
+      name: Secrets in Kubernetes must not be stored as environment variables.
+      severity: high
+      stigId: CNTR-K8-001160
+      ruleId: SV-242415r1069466_rule
+      cci:
+        - CCI-004062
+        - CCI-000196
+      mappings:
+        - type: policy
+          policyRef:
+            template: stig-disallow-secret-env
+            mode: audit
+        - type: evidence
+          evidenceCollector:
+            type: config-snapshot
+            schedule: 0 0 * * *
+            resources:
+              - pods
+            retentionDays: 2557
+        - type: manual-review
+    - id: V-242417
+      name: Kubernetes must separate user functionality.
+      severity: medium
+      stigId: CNTR-K8-001360
+      ruleId: SV-242417r961095_rule
+      cci:
+        - CCI-001082
+      mappings:
+        - type: manual-review
+    - id: V-242418
+      name: The Kubernetes API server must use approved cipher suites.
+      severity: medium
+      stigId: CNTR-K8-001400
+      ruleId: SV-242418r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242419
+      name: Kubernetes API Server must have the SSL Certificate Authority set.
+      severity: medium
+      stigId: CNTR-K8-001410
+      ruleId: SV-242419r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242420
+      name: Kubernetes Kubelet must have the SSL Certificate Authority set.
+      severity: medium
+      stigId: CNTR-K8-001420
+      ruleId: SV-242420r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242421
+      name: Kubernetes Controller Manager must have the SSL Certificate Authority set.
+      severity: medium
+      stigId: CNTR-K8-001430
+      ruleId: SV-242421r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242422
+      name: Kubernetes API Server must have a certificate for communication.
+      severity: medium
+      stigId: CNTR-K8-001440
+      ruleId: SV-242422r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242423
+      name: Kubernetes etcd must enable client authentication to secure service.
+      severity: medium
+      stigId: CNTR-K8-001450
+      ruleId: SV-242423r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242424
+      name: Kubernetes Kubelet must enable tlsPrivateKeyFile for client authentication to secure
+        service.
+      severity: medium
+      stigId: CNTR-K8-001460
+      ruleId: SV-242424r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242425
+      name: Kubernetes Kubelet must enable tlsCertFile for client authentication to secure service.
+      severity: medium
+      stigId: CNTR-K8-001470
+      ruleId: SV-242425r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242426
+      name: Kubernetes etcd must enable client authentication to secure service.
+      severity: medium
+      stigId: CNTR-K8-001480
+      ruleId: SV-242426r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242427
+      name: Kubernetes etcd must have a key file for secure communication.
+      severity: medium
+      stigId: CNTR-K8-001490
+      ruleId: SV-242427r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242428
+      name: Kubernetes etcd must have a certificate for communication.
+      severity: medium
+      stigId: CNTR-K8-001500
+      ruleId: SV-242428r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242429
+      name: Kubernetes etcd must have the SSL Certificate Authority set.
+      severity: medium
+      stigId: CNTR-K8-001510
+      ruleId: SV-242429r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242430
+      name: Kubernetes etcd must have a certificate for communication.
+      severity: medium
+      stigId: CNTR-K8-001520
+      ruleId: SV-242430r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242431
+      name: Kubernetes etcd must have a key file for secure communication.
+      severity: medium
+      stigId: CNTR-K8-001530
+      ruleId: SV-242431r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242432
+      name: Kubernetes etcd must have peer-cert-file set for secure communication.
+      severity: medium
+      stigId: CNTR-K8-001540
+      ruleId: SV-242432r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242433
+      name: Kubernetes etcd must have a peer-key-file set for secure communication.
+      severity: medium
+      stigId: CNTR-K8-001550
+      ruleId: SV-242433r1043178_rule
+      cci:
+        - CCI-001184
+      mappings:
+        - type: manual-review
+    - id: V-242434
+      name: Kubernetes Kubelet must enable kernel protection.
+      severity: high
+      stigId: CNTR-K8-001620
+      ruleId: SV-242434r961131_rule
+      cci:
+        - CCI-001084
+      mappings:
+        - type: manual-review
+    - id: V-242436
+      name: The Kubernetes API server must have the ValidatingAdmissionWebhook enabled.
+      severity: high
+      stigId: CNTR-K8-002000
+      ruleId: SV-242436r961359_rule
+      cci:
+        - CCI-002263
+      mappings:
+        - type: manual-review
+    - id: V-242437
+      name: Kubernetes must have a pod security policy set.
+      severity: high
+      stigId: CNTR-K8-002010
+      ruleId: SV-242437r961359_rule
+      cci:
+        - CCI-002263
+      mappings:
+        - type: manual-review
+    - id: V-242438
+      name: Kubernetes API Server must configure timeouts to limit attack surface.
+      severity: medium
+      stigId: CNTR-K8-002600
+      ruleId: SV-242438r961620_rule
+      cci:
+        - CCI-002415
+      mappings:
+        - type: manual-review
+    - id: V-242442
+      name: Kubernetes must remove old components after updated versions have been installed.
+      severity: medium
+      stigId: CNTR-K8-002700
+      ruleId: SV-242442r961677_rule
+      cci:
+        - CCI-002647
+      mappings:
+        - type: manual-review
+    - id: V-242443
+      name: Kubernetes must contain the latest updates as authorized by IAVMs, CTOs, DTMs, and STIGs.
+      severity: medium
+      stigId: CNTR-K8-002720
+      ruleId: SV-242443r961683_rule
+      cci:
+        - CCI-002635
+      mappings:
+        - type: manual-review
+    - id: V-242444
+      name: The Kubernetes component manifests must be owned by root.
+      severity: medium
+      stigId: CNTR-K8-003110
+      ruleId: SV-242444r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242445
+      name: The Kubernetes component etcd must be owned by etcd.
+      severity: medium
+      stigId: CNTR-K8-003120
+      ruleId: SV-242445r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242446
+      name: The Kubernetes conf files must be owned by root.
+      severity: medium
+      stigId: CNTR-K8-003130
+      ruleId: SV-242446r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242447
+      name: The Kubernetes Kube Proxy kubeconfig must have file permissions set to 644 or more restrictive.
+      severity: medium
+      stigId: CNTR-K8-003140
+      ruleId: SV-242447r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242448
+      name: The Kubernetes Kube Proxy kubeconfig must be owned by root.
+      severity: medium
+      stigId: CNTR-K8-003150
+      ruleId: SV-242448r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242449
+      name: The Kubernetes Kubelet certificate authority file must have file permissions set to 644
+        or more restrictive.
+      severity: medium
+      stigId: CNTR-K8-003160
+      ruleId: SV-242449r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242450
+      name: The Kubernetes Kubelet certificate authority must be owned by root.
+      severity: medium
+      stigId: CNTR-K8-003170
+      ruleId: SV-242450r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242451
+      name: The Kubernetes component PKI must be owned by root.
+      severity: medium
+      stigId: CNTR-K8-003180
+      ruleId: SV-242451r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242452
+      name: The Kubernetes kubelet KubeConfig must have file permissions set to 644 or more restrictive.
+      severity: medium
+      stigId: CNTR-K8-003190
+      ruleId: SV-242452r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242453
+      name: The Kubernetes kubelet KubeConfig file must be owned by root.
+      severity: medium
+      stigId: CNTR-K8-003200
+      ruleId: SV-242453r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242454
+      name: The Kubernetes kubeadm.conf must be owned by root.
+      severity: medium
+      stigId: CNTR-K8-003210
+      ruleId: SV-242454r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242455
+      name: The Kubernetes kubeadm.conf must have file permissions set to 644 or more restrictive.
+      severity: medium
+      stigId: CNTR-K8-003220
+      ruleId: SV-242455r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242456
+      name: The Kubernetes kubelet config must have file permissions set to 644 or more restrictive.
+      severity: medium
+      stigId: CNTR-K8-003230
+      ruleId: SV-242456r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242457
+      name: The Kubernetes kubelet config must be owned by root.
+      severity: medium
+      stigId: CNTR-K8-003240
+      ruleId: SV-242457r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242459
+      name: The Kubernetes etcd must have file permissions set to 644 or more restrictive.
+      severity: medium
+      stigId: CNTR-K8-003260
+      ruleId: SV-242459r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242460
+      name: The Kubernetes admin kubeconfig must have file permissions set to 644 or more restrictive.
+      severity: medium
+      stigId: CNTR-K8-003270
+      ruleId: SV-242460r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242461
+      name: Kubernetes API Server audit logs must be enabled.
+      severity: medium
+      stigId: CNTR-K8-003280
+      ruleId: SV-242461r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242462
+      name: The Kubernetes API Server must be set to audit log max size.
+      severity: medium
+      stigId: CNTR-K8-003290
+      ruleId: SV-242462r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242463
+      name: The Kubernetes API Server must be set to audit log maximum backup.
+      severity: medium
+      stigId: CNTR-K8-003300
+      ruleId: SV-242463r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242464
+      name: The Kubernetes API Server audit log retention must be set.
+      severity: medium
+      stigId: CNTR-K8-003310
+      ruleId: SV-242464r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242465
+      name: The Kubernetes API Server audit log path must be set.
+      severity: medium
+      stigId: CNTR-K8-003320
+      ruleId: SV-242465r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242466
+      name: The Kubernetes PKI CRT must have file permissions set to 644 or more restrictive.
+      severity: medium
+      stigId: CNTR-K8-003330
+      ruleId: SV-242466r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-242467
+      name: The Kubernetes PKI keys must have file permissions set to 600 or more restrictive.
+      severity: medium
+      stigId: CNTR-K8-003340
+      ruleId: SV-242467r961863_rule
+      cci:
+        - CCI-000366
+      mappings:
+        - type: manual-review
+    - id: V-245541
+      name: Kubernetes Kubelet must not disable timeouts.
+      severity: medium
+      stigId: CNTR-K8-001300
+      ruleId: SV-245541r1069469_rule
+      cci:
+        - CCI-001133
+      mappings:
+        - type: manual-review
+    - id: V-245542
+      name: Kubernetes API Server must disable basic authentication to protect information in transit.
+      severity: high
+      stigId: CNTR-K8-002620
+      ruleId: SV-245542r961632_rule
+      cci:
+        - CCI-002448
+      mappings:
+        - type: manual-review
+    - id: V-245543
+      name: Kubernetes API Server must disable token authentication to protect information in transit.
+      severity: high
+      stigId: CNTR-K8-002630
+      ruleId: SV-245543r961632_rule
+      cci:
+        - CCI-002448
+      mappings:
+        - type: manual-review
+    - id: V-245544
+      name: Kubernetes endpoints must use approved organizational certificate and key pair to protect
+        information in transit.
+      severity: high
+      stigId: CNTR-K8-002640
+      ruleId: SV-245544r961632_rule
+      cci:
+        - CCI-002448
+      mappings:
+        - type: manual-review
+    - id: V-254800
+      name: Kubernetes must have a Pod Security Admission control file configured.
+      severity: high
+      stigId: CNTR-K8-002011
+      ruleId: SV-254800r961359_rule
+      cci:
+        - CCI-002263
+      mappings:
+        - type: manual-review
+    - id: V-254801
+      name: Kubernetes must enable PodSecurity admission controller on static pods and Kubelets.
+      severity: high
+      stigId: CNTR-K8-002001
+      ruleId: SV-254801r961359_rule
+      cci:
+        - CCI-002263
+      mappings:
+        - type: manual-review

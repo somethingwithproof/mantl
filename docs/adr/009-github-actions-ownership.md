@@ -62,3 +62,26 @@ Sonar and the final CI check must explicitly accept only an intentionally
 unselected/skipped example matrix, and reject selected skipped, failed, or cancelled
 jobs. Markdown/RST reference edits do not select runtime/package checks, except
 framework and template content whose bytes are part of a delivered bundle.
+
+## Tool-aware selection and release preflight deduplication
+
+The core Go, Python, repository, Sonar and aggregate checks remain mandatory.
+Changes limited to known tool pins select additional components that consume
+those tools. Compare parsed `mise.toml` at the verified base and checked-out
+commit, including additions and removals. Unknown tools, unavailable/invalid
+configuration, or changes outside `[tools]` retain the complete component
+selection. Shared action and selector changes also retain full validation.
+Python runtime changes select every Python example; other known tool changes
+do not select that matrix. Main and standalone runs keep the full example baseline.
+
+Release Please's preflight remains advisory: manual dispatch does not satisfy
+required PR checks. Before dispatch, look for an existing `pull_request` CI run
+for the same repository PR, branch and head. Reuse that run regardless of its
+state; approve or rerun the eligible PR workflow when needed instead of starting
+a parallel manual run. A short bounded lookup allows PR-run creation to settle.
+Never dispatch after the PR closes or its head changes. Retain manual preflight
+as a fallback only when no matching PR run exists.
+
+Release Please and Dependabot auto-merge perform repository metadata operations
+on GitHub-hosted runners. Artifact publication retains its existing runner
+routing, exact-tag checks, permissions, signing and provenance requirements.

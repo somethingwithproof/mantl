@@ -23,6 +23,7 @@ proof of deployed capabilities.
 - [Runtime architecture](architecture-runtime.md): durable collection, identities, exceptions, fleet boundaries, and OSCAL limitations.
 - [Compliance operations](compliance-operations.md): control coverage, findings, freshness, evidence storage/retention, verification/export, and installation.
 - [Compliance content](../compliance/README.md): catalogs, profiles, policies, and content pins.
+- [DISA Kubernetes STIG](stig-kubernetes.md): pinned V2R3 catalog, opt-in audit policies, and explicit manual coverage gaps (source only).
 - [Provider scope](adr/005-cloud-parity-scope.md) and [acceptance limits](architecture-runtime.md#provider-acceptance-and-oscal): AWS/GCP/Azure static contracts; other providers experimental; AWS S3 evidence backend.
 - [Policy ownership](adr/006-policy-application-ownership.md) and [evidence storage contract](adr/003-evidence-storage-contract.md).
 

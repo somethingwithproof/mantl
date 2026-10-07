@@ -12,7 +12,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -42,7 +41,7 @@ func (r *EvaluationReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 		return ctrl.Result{}, err
 	}
-	index, err := buildPolicyIndex([]string{filepath.Join(r.FrameworkDir, "..", "policies", "runtime"), filepath.Join(r.FrameworkDir, profile.Spec.Framework, "policies")})
+	index, err := frameworkPolicyIndex(r.FrameworkDir, profile.Spec.Framework)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

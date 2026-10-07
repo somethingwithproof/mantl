@@ -40,3 +40,14 @@ var templateAliases = map[string]string{
 	"restrict-registries":          "restrict-image-registries",
 	"require-pod-security-context": "pss-restricted",
 }
+
+// frameworkPolicyIndex includes shared runtime policies, the selected framework's
+// canonical policy directory, and existing framework-local content. The framework
+// name has already been validated by LoadSelected before either caller reaches here.
+func frameworkPolicyIndex(dir, name string) (map[string]string, error) {
+	return buildPolicyIndex([]string{
+		filepath.Join(dir, "..", "policies", "runtime"),
+		filepath.Join(dir, "..", "policies", name),
+		filepath.Join(dir, name, "policies"),
+	})
+}
