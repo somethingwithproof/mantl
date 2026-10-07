@@ -137,13 +137,13 @@ kubectl apply -f clusters/production/platform-apps.yaml
 | Name | Version |
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
-| <a name="requirement_oci"></a> [oci](#requirement\_oci) | 5.0.0 |
+| <a name="requirement_oci"></a> [oci](#requirement\_oci) | 9.8.0 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_oci"></a> [oci](#provider\_oci) | 5.0.0 |
+| <a name="provider_oci"></a> [oci](#provider\_oci) | 9.8.0 |
 
 ## Modules
 
@@ -153,31 +153,31 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
-| [oci_containerengine_cluster.oke_cluster](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/containerengine_cluster) | resource |
-| [oci_containerengine_node_pool.system_pool](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/containerengine_node_pool) | resource |
-| [oci_containerengine_node_pool.workload_pool](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/containerengine_node_pool) | resource |
-| [oci_core_internet_gateway.oke_igw](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_internet_gateway) | resource |
-| [oci_core_nat_gateway.oke_nat](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_nat_gateway) | resource |
-| [oci_core_route_table.private_route_table](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_route_table) | resource |
-| [oci_core_route_table.public_route_table](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_route_table) | resource |
-| [oci_core_security_list.api_endpoint_seclist](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_security_list) | resource |
-| [oci_core_security_list.lb_seclist](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_security_list) | resource |
-| [oci_core_security_list.node_seclist](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_security_list) | resource |
-| [oci_core_service_gateway.oke_sg](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_service_gateway) | resource |
-| [oci_core_subnet.api_endpoint_subnet](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_subnet) | resource |
-| [oci_core_subnet.lb_subnet](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_subnet) | resource |
-| [oci_core_subnet.node_subnet](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_subnet) | resource |
-| [oci_core_vcn.oke_vcn](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/core_vcn) | resource |
-| [oci_kms_key.oke_encryption_key](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/kms_key) | resource |
-| [oci_kms_vault.oke_vault](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/kms_vault) | resource |
-| [oci_logging_log.cluster_audit_log](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/logging_log) | resource |
-| [oci_logging_log.vcn_flow_log](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/logging_log) | resource |
-| [oci_logging_log_group.vcn_flow_logs](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/logging_log_group) | resource |
-| [oci_objectstorage_bucket.backups](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/resources/objectstorage_bucket) | resource |
-| [oci_core_images.node_image](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/data-sources/core_images) | data source |
-| [oci_core_services.all_services](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/data-sources/core_services) | data source |
-| [oci_identity_availability_domains.ads](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/data-sources/identity_availability_domains) | data source |
-| [oci_objectstorage_namespace.ns](https://registry.terraform.io/providers/oracle/oci/5.0.0/docs/data-sources/objectstorage_namespace) | data source |
+| [oci_containerengine_cluster.oke_cluster](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/containerengine_cluster) | resource |
+| [oci_containerengine_node_pool.system_pool](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/containerengine_node_pool) | resource |
+| [oci_containerengine_node_pool.workload_pool](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/containerengine_node_pool) | resource |
+| [oci_core_internet_gateway.oke_igw](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_internet_gateway) | resource |
+| [oci_core_nat_gateway.oke_nat](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_nat_gateway) | resource |
+| [oci_core_route_table.private_route_table](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_route_table) | resource |
+| [oci_core_route_table.public_route_table](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_route_table) | resource |
+| [oci_core_security_list.api_endpoint_seclist](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_security_list) | resource |
+| [oci_core_security_list.lb_seclist](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_security_list) | resource |
+| [oci_core_security_list.node_seclist](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_security_list) | resource |
+| [oci_core_service_gateway.oke_sg](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_service_gateway) | resource |
+| [oci_core_subnet.api_endpoint_subnet](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_subnet) | resource |
+| [oci_core_subnet.lb_subnet](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_subnet) | resource |
+| [oci_core_subnet.node_subnet](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_subnet) | resource |
+| [oci_core_vcn.oke_vcn](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/core_vcn) | resource |
+| [oci_kms_key.oke_encryption_key](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/kms_key) | resource |
+| [oci_kms_vault.oke_vault](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/kms_vault) | resource |
+| [oci_logging_log.cluster_audit_log](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/logging_log) | resource |
+| [oci_logging_log.vcn_flow_log](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/logging_log) | resource |
+| [oci_logging_log_group.vcn_flow_logs](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/logging_log_group) | resource |
+| [oci_objectstorage_bucket.backups](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/resources/objectstorage_bucket) | resource |
+| [oci_core_images.node_image](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/data-sources/core_images) | data source |
+| [oci_core_services.all_services](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/data-sources/core_services) | data source |
+| [oci_identity_availability_domains.ads](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/data-sources/identity_availability_domains) | data source |
+| [oci_objectstorage_namespace.ns](https://registry.terraform.io/providers/oracle/oci/9.8.0/docs/data-sources/objectstorage_namespace) | data source |
 
 ## Inputs
 
