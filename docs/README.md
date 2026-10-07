@@ -32,6 +32,7 @@ proof of deployed capabilities.
 - [Operations, upgrades, backup, recovery](runbooks.md): operator procedures and required environment-specific validation.
 - [Troubleshooting](troubleshooting.md): generation, GitOps, findings, storage, and diagnostic boundaries.
 - [Contributing](../CONTRIBUTING.md) and [testing](testing.md): pinned toolchain, scoped checks, locks, devcontainers, and disposable integration fixtures.
+- [Repository cleanup audit](repository-cleanup.md): removed residue, retained assets, and local-state exclusions.
 - [GitHub Actions inventory](../.github/workflows/README.md), [required checks](ci-required-checks.md), and [SonarCloud](sonarcloud.md).
 - [License declarations and maintenance](licensing.md): SPDX headers, generated files and upstream exceptions.
 - [Security reporting](../SECURITY.md), [architecture decisions](adr), and [roadmap/design specs](superpowers/specs).

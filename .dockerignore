@@ -38,3 +38,10 @@ coverage
 .vagrant
 
 .git/
+
+# Local assistant state and transient tooling output
+.omc
+err
+.ruff_cache
+.bootstrap-logs
+.bootstrap-backups
