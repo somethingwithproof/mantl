@@ -75,3 +75,14 @@ crash.*.log
 /coverage-products.xml
 /coverage-batch.xml
 /coverage-ml.xml
+
+# Local assistant state and transient tooling output
+/err
+/.pytest_cache/
+/.ruff_cache/
+/.bootstrap-logs/
+/.bootstrap-backups/
+
+# Local assistant sessions and isolated worktrees
+.omc/
+.worktrees/
