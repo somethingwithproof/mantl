@@ -7,13 +7,13 @@
 | Name | Version |
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
-| <a name="requirement_openstack"></a> [openstack](#requirement\_openstack) | 1.54.0 |
+| <a name="requirement_openstack"></a> [openstack](#requirement\_openstack) | 3.4.0 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_openstack"></a> [openstack](#provider\_openstack) | 1.54.0 |
+| <a name="provider_openstack"></a> [openstack](#provider\_openstack) | 3.4.0 |
 
 ## Modules
 
@@ -23,23 +23,23 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
-| [openstack_containerinfra_cluster_v1.k8s_cluster](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/containerinfra_cluster_v1) | resource |
-| [openstack_containerinfra_clustertemplate_v1.k8s_template](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/containerinfra_clustertemplate_v1) | resource |
-| [openstack_identity_application_credential_v3.backup_credentials](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/identity_application_credential_v3) | resource |
-| [openstack_networking_network_v2.cluster_network](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_network_v2) | resource |
-| [openstack_networking_router_interface_v2.cluster_router_interface](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_router_interface_v2) | resource |
-| [openstack_networking_router_v2.cluster_router](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_router_v2) | resource |
-| [openstack_networking_secgroup_rule_v2.http](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_secgroup_rule_v2) | resource |
-| [openstack_networking_secgroup_rule_v2.https](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_secgroup_rule_v2) | resource |
-| [openstack_networking_secgroup_rule_v2.intra_cluster](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_secgroup_rule_v2) | resource |
-| [openstack_networking_secgroup_rule_v2.kube_api](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_secgroup_rule_v2) | resource |
-| [openstack_networking_secgroup_rule_v2.outbound](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_secgroup_rule_v2) | resource |
-| [openstack_networking_secgroup_rule_v2.ssh](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_secgroup_rule_v2) | resource |
-| [openstack_networking_secgroup_v2.cluster_nodes](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_secgroup_v2) | resource |
-| [openstack_networking_subnet_v2.cluster_subnet](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/networking_subnet_v2) | resource |
-| [openstack_objectstorage_container_v1.backups](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/resources/objectstorage_container_v1) | resource |
-| [openstack_containerinfra_clustertemplate_v1.k8s_template](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/data-sources/containerinfra_clustertemplate_v1) | data source |
-| [openstack_networking_network_v2.external](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/1.54.0/docs/data-sources/networking_network_v2) | data source |
+| [openstack_containerinfra_cluster_v1.k8s_cluster](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/containerinfra_cluster_v1) | resource |
+| [openstack_containerinfra_clustertemplate_v1.k8s_template](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/containerinfra_clustertemplate_v1) | resource |
+| [openstack_identity_application_credential_v3.backup_credentials](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/identity_application_credential_v3) | resource |
+| [openstack_networking_network_v2.cluster_network](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_network_v2) | resource |
+| [openstack_networking_router_interface_v2.cluster_router_interface](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_router_interface_v2) | resource |
+| [openstack_networking_router_v2.cluster_router](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_router_v2) | resource |
+| [openstack_networking_secgroup_rule_v2.http](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_secgroup_rule_v2) | resource |
+| [openstack_networking_secgroup_rule_v2.https](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_secgroup_rule_v2) | resource |
+| [openstack_networking_secgroup_rule_v2.intra_cluster](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_secgroup_rule_v2) | resource |
+| [openstack_networking_secgroup_rule_v2.kube_api](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_secgroup_rule_v2) | resource |
+| [openstack_networking_secgroup_rule_v2.outbound](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_secgroup_rule_v2) | resource |
+| [openstack_networking_secgroup_rule_v2.ssh](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_secgroup_rule_v2) | resource |
+| [openstack_networking_secgroup_v2.cluster_nodes](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_secgroup_v2) | resource |
+| [openstack_networking_subnet_v2.cluster_subnet](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/networking_subnet_v2) | resource |
+| [openstack_objectstorage_container_v1.backups](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/resources/objectstorage_container_v1) | resource |
+| [openstack_containerinfra_clustertemplate_v1.k8s_template](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/data-sources/containerinfra_clustertemplate_v1) | data source |
+| [openstack_networking_network_v2.external](https://registry.terraform.io/providers/terraform-provider-openstack/openstack/3.4.0/docs/data-sources/networking_network_v2) | data source |
 
 ## Inputs
 
