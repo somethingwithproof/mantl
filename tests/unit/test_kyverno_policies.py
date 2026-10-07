@@ -6,9 +6,11 @@ for image registries and signature verification.
 """
 
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 # Test fixtures
 
@@ -55,46 +57,25 @@ def create_test_pod(image: str, namespace: str = "default") -> dict:
 
 
 def validate_policy_syntax(policy_file: Path) -> bool:
-    """Validate Kyverno policy syntax using kyverno CLI."""
-    try:
-        result = subprocess.run(
-            ["kyverno", "validate", str(policy_file)],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        return result.returncode == 0
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        # If kyverno CLI not installed, skip validation
-        pytest.skip("kyverno CLI not available")
-        return False
+    """Smoke-load policy offline; this does not verify registry signatures."""
+    result = run_policy_against_pod(policy_file, create_test_pod("docker.io/library/nginx:alpine"))
+    return result["returncode"] == 0 and "error: 0" in result["stdout"]
 
 
 # Not a test: a helper invoked by the parametrized cases below. The `test_`
 # prefix made pytest collect it as a test and fail with a missing-fixture error.
 def run_policy_against_pod(policy_file: Path, pod_manifest: dict) -> dict:
-    """Apply a policy against a pod manifest using the kyverno CLI."""
+    """Apply a policy locally without cluster or registry access."""
     try:
-        # Write pod manifest to temp file
-        import tempfile
-
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            import yaml
-
-            yaml.dump(pod_manifest, f)
-            pod_file = f.name
-
-        # Run kyverno apply
-        result = subprocess.run(
-            ["kyverno", "apply", str(policy_file), "--resource", pod_file],
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
-
-        # Cleanup
-        Path(pod_file).unlink()
-
+        with tempfile.TemporaryDirectory(prefix="kyverno-test-") as temporary:
+            pod_file = Path(temporary) / "pod.yaml"
+            pod_file.write_text(yaml.safe_dump(pod_manifest))
+            result = subprocess.run(
+                ["kyverno", "apply", str(policy_file), "--resource", str(pod_file)],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
         return {
             "returncode": result.returncode,
             "stdout": result.stdout,
@@ -102,7 +83,6 @@ def run_policy_against_pod(policy_file: Path, pod_manifest: dict) -> dict:
         }
     except FileNotFoundError:
         pytest.skip("kyverno CLI not available")
-        return {}
 
 
 # Policy syntax tests
@@ -131,9 +111,7 @@ def test_verify_signatures_policy_syntax(verify_signatures_policy: Path):
         "ghcr.io/kyverno/kyverno:latest",
         "ghcr.io/cilium/cilium:v1.14.0",
         "docker.io/library/nginx:alpine",
-        "docker.io/bitnami/postgresql:15",
-        "quay.io/prometheus/prometheus:latest",
-        "quay.io/jetstack/cert-manager-controller:v1.13.0",
+        "ghcr.io/randomuser/app:latest",
         "gcr.io/project-123/kube-state-metrics:v2.10.0",
     ],
 )
@@ -144,7 +122,9 @@ def test_allowed_registries_pass(restrict_registries_policy: Path, allowed_image
 
     # Policy should pass (returncode 0) or skip if CLI not available
     if result:
-        assert result["returncode"] == 0, f"Image {allowed_image} should be allowed"
+        assert result["returncode"] == 0, result
+        assert "pass: 1" in result["stdout"], result
+        assert "error: 0" in result["stdout"], result
 
 
 @pytest.mark.parametrize(
@@ -154,7 +134,10 @@ def test_allowed_registries_pass(restrict_registries_policy: Path, allowed_image
         "random-registry.io/unknown/image:tag",
         "public.ecr.aws/random/image:latest",
         "index.docker.io/randomuser/app:v1",
-        "ghcr.io/randomuser/unauthorized:latest",
+        "docker.io/bitnami/postgresql:15",
+        "quay.io/prometheus/prometheus:latest",
+        "quay.io/jetstack/cert-manager-controller:v1.13.0",
+        "docker.io/library-lookalike/nginx:alpine",
         "quay.io/random/unauthorized:latest",
     ],
 )
@@ -165,7 +148,9 @@ def test_blocked_registries_fail(restrict_registries_policy: Path, blocked_image
 
     # Policy should fail (returncode != 0) or skip if CLI not available
     if result:
-        assert result["returncode"] != 0, f"Image {blocked_image} should be blocked"
+        assert result["returncode"] == 1, result
+        assert "fail: 1" in result["stdout"], result
+        assert "error: 0" in result["stdout"], result
 
 
 # Image signature tests
@@ -220,9 +205,11 @@ def test_system_namespaces_excluded(verify_signatures_policy: Path):
     with open(verify_signatures_policy) as f:
         policy = yaml.safe_load(f)
 
-    # exclude is a match block with an `any`/`all` list, not a bare list.
-    # The real policy uses `exclude.any[0].resources.namespaces`.
-    excluded_namespaces = policy["spec"]["exclude"]["any"][0]["resources"]["namespaces"]
+    # Exclusions belong to a rule; Kyverno has no policy-level spec.exclude.
+    assert "exclude" not in policy["spec"]
+    rule = policy["spec"]["rules"][0]
+    assert rule["name"] == "verify-keyless-gha"
+    excluded_namespaces = rule["exclude"]["any"][0]["resources"]["namespaces"]
     required_exclusions = [
         "kube-system",
         "kube-public",
@@ -233,8 +220,7 @@ def test_system_namespaces_excluded(verify_signatures_policy: Path):
         "kyverno",
     ]
 
-    for ns in required_exclusions:
-        assert ns in excluded_namespaces, f"Namespace {ns} should be excluded"
+    assert excluded_namespaces == required_exclusions
 
 
 # Integration tests

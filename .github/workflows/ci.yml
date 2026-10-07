@@ -69,9 +69,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$BASE" ] || [[ "$BASE" =~ ^0+$ ]]; then
-            git ls-files -z | mise exec -- python ci/changed_components.py >> "$GITHUB_OUTPUT"
+            git ls-files -z | mise exec -- python -m ci.changed_components >> "$GITHUB_OUTPUT"
           else
-            git diff --name-only -z "$BASE" "$HEAD" | mise exec -- python ci/changed_components.py >> "$GITHUB_OUTPUT"
+            git diff --name-only -z "$BASE" "$HEAD" | mise exec -- python -m ci.changed_components >> "$GITHUB_OUTPUT"
           fi
   go:
     name: Go tests and coverage
@@ -120,7 +120,7 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup
         with:
-          tools: python terraform kubectl kustomize uv
+          tools: python terraform kubectl kustomize uv aqua:kyverno/kyverno
       - name: Verify Python dependency locks
         run: mise exec -- python -m ci.lock_python_dependencies --check
       - name: Test infrastructure contracts and release tools

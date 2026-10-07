@@ -9,7 +9,8 @@ PolicyReport findings, evidence collection, and evaluations. Start with
 
 ## Content is reviewed data
 
-[frameworks](frameworks) contains SOC2, HIPAA, PCI-DSS, and CIS Kubernetes catalog
+[frameworks](frameworks) contains SOC2, HIPAA, PCI-DSS, CIS Kubernetes, and
+[experimental DISA Kubernetes STIG](../docs/stig-kubernetes.md) catalog
 and profile YAML. A catalog entry or profile is not proof that its control has a
 working policy mapping, collector, complete coverage, or fresh evidence. Consult
 ControlEvaluation coverage and gaps; no framework certification is claimed.

@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - stig-disallow-secret-env.yaml
+  - stig-restrict-privileged-host-ports.yaml

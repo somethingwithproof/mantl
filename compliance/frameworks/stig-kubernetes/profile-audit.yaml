@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: Apache-2.0
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceProfile
+metadata:
+  name: stig-kubernetes-audit
+  namespace: mantl-compliance-system
+spec:
+  framework: stig-kubernetes
+  version: "2.3"
+  namespaces: [team-a]
+  maxEvidenceAgeSeconds: 86400
+---
+apiVersion: compliance.mantl.io/v1alpha1
+kind: ComplianceAudit
+metadata:
+  name: stig-kubernetes-daily
+  namespace: mantl-compliance-system
+spec:
+  profile: stig-kubernetes-audit
+  frequency: daily
