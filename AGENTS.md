@@ -208,5 +208,6 @@ the task explicitly targets legacy maintenance. Keep `.omc/`, local worktrees,
 compiler output and credentials out of commits. Read `docs/ci-required-checks.md`
 and `.github/workflows/README.md` before changing workflow selection or gates;
 repository settings are not authorized merely by an instruction-file change.
+Exclude local worktrees from both Git and Docker contexts when reviewing ignore rules.
 Report local/static checks separately from cluster/cloud acceptance. Do not
 publish tags/releases or run infrastructure apply as part of an offline review.

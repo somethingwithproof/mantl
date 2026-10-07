@@ -45,3 +45,4 @@ err
 .ruff_cache
 .bootstrap-logs
 .bootstrap-backups
+.worktrees
