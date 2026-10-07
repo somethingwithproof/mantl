@@ -37,8 +37,11 @@ def test_tool_selection_keeps_content_checks():
     result = changed_components.select(
         ["mise.toml", "infra/terraform/blueprints/aws-eks/main.tf"], tools={"aqua:kyverno/kyverno"}
     )
-    assert result["charts"] and result["runtime"] and result["infrastructure"]
-    assert not result["frontend"] and not result["python_examples"]
+    assert result["charts"]
+    assert result["runtime"]
+    assert result["infrastructure"]
+    assert not result["frontend"]
+    assert not result["python_examples"]
 
 
 def test_full_examples_and_helper_changes_remain_complete():
@@ -152,7 +155,8 @@ def test_missing_pr_run_dispatches_exact_branch_once(release_pr):
         )
         == "advisory-preflight-dispatched"
     )
-    assert len(calls) == 1 and waits == [5, 5]
+    assert len(calls) == 1
+    assert waits == [5, 5]
     assert calls[0][-4:] == [
         "--ref",
         "release-please--branches--main",
@@ -209,6 +213,7 @@ def test_fork_is_rejected_before_dispatch(release_pr):
         ("bad/repo/extra", 339),
         ("somethingwithproof/mantl", "--help"),
         ("somethingwithproof/mantl", 0),
+        ("somethingwithproof/mantl", "3٣9"),
     ],
 )
 def test_invalid_identity_never_calls_github(repository, number):
@@ -248,7 +253,8 @@ def test_api_read_is_bounded_and_dispatch_uses_exact_args(release_pr, monkeypatc
     assert release_pr_preflight.read_json("repos/somethingwithproof/mantl/actions/runs") == {
         "workflow_runs": []
     }
-    assert calls[0][0][:2] == ["gh", "api"] and calls[0][1]["timeout"] == 30
+    assert calls[0][0][:2] == ["gh", "api"]
+    assert calls[0][1]["timeout"] == 30
 
     def read(endpoint):
         return release_pr if "/pulls/" in endpoint else {"workflow_runs": []}
