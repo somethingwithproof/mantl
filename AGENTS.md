@@ -75,7 +75,7 @@ cmd/
   evidence-collector/    # isolated Job entrypoint
   mantl-fleet/           # optional fleet HTTPS service
 compliance/
-  frameworks/            # soc2, hipaa, pci-dss, cis-kubernetes (framework + profile YAML)
+  frameworks/            # framework catalogs/profiles, including stig-kubernetes
   operator/              # legacy deployment assets; use deploy/operator/ below
   evidence/, reports/, dashboards/, cli/, api/
 policies/
@@ -191,3 +191,22 @@ Report vulnerabilities through GitHub Security Advisories, not public issues. Se
 - ArgoCD owns policy changes. Remediation produces reviewed Git changes, not direct
   policy application. Release artifacts come from an exact validated tag; content
   version reuse must not replace published bytes.
+
+## Compiler, evidence and release review priorities
+
+A platform specification generates variables, GitOps manifests and plans;
+generation is not infrastructure provisioning. Inspect `docs/platform-planning.md`
+and `docs/quickstart-platform.md` before documenting CLI examples.
+Evidence storage implemented in `pkg/evidence/store.go` is S3-backed; do not claim
+native AWS/GCP/Azure storage parity. Missing or stale evidence is not a passing
+result, approved exceptions remain distinct from passes, and control mappings
+or evidence exports are not certification. STIG catalog content is not complete
+host hardening or end-to-end framework acceptance.
+
+Preserve the legacy `master` branch. Work on the Kubernetes default branch unless
+the task explicitly targets legacy maintenance. Keep `.omc/`, local worktrees,
+compiler output and credentials out of commits. Read `docs/ci-required-checks.md`
+and `.github/workflows/README.md` before changing workflow selection or gates;
+repository settings are not authorized merely by an instruction-file change.
+Report local/static checks separately from cluster/cloud acceptance. Do not
+publish tags/releases or run infrastructure apply as part of an offline review.
