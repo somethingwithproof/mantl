@@ -2,7 +2,7 @@
 # Getting started with Mantl
 
 Start by generating reviewable configuration offline. The commands below target
-published **v0.4.0**, not an unreleased build. This workflow needs no cloud account,
+release **v0.5.0**. This workflow needs no cloud account,
 Kubernetes cluster, Terraform/OpenTofu, Docker, or Go.
 
 ## Install a verified release
@@ -10,17 +10,19 @@ Kubernetes cluster, Terraform/OpenTofu, Docker, or Go.
 Prerequisites: a shell, `tar`, [GitHub CLI](https://cli.github.com/) (`gh`) for download,
 [Cosign](https://github.com/sigstore/cosign) (the repository pins 3.1.3), and
 `sha256sum` on Linux or `shasum` on macOS. A browser can download the same assets
-from [the release page](https://github.com/somethingwithproof/mantl/releases/tag/v0.4.0)
+from [the release page](https://github.com/somethingwithproof/mantl/releases/tag/v0.5.0)
 if `gh` is unavailable. Keep the complete set together for the checksum command.
 
 Create a new directory, download all attached release assets, and authenticate
 `checksums.txt` **before** using it:
 
 ```sh
-mkdir mantl-v0.4.0
-cd mantl-v0.4.0
-gh release download v0.4.0 --repo somethingwithproof/mantl
-cosign verify-blob checksums.txt --bundle checksums.sigstore.json   --certificate-oidc-issuer https://token.actions.githubusercontent.com   --certificate-identity https://github.com/somethingwithproof/mantl/.github/workflows/release.yml@refs/heads/main
+mkdir mantl-v0.5.0
+cd mantl-v0.5.0
+gh release download v0.5.0 --repo somethingwithproof/mantl
+cosign verify-blob checksums.txt --bundle checksums.sigstore.json \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity https://github.com/somethingwithproof/mantl/.github/workflows/release.yml@refs/heads/main
 ```
 
 Then verify the signed manifest's listed files:
@@ -33,24 +35,24 @@ shasum -a 256 -c checksums.txt
 ```
 
 Require successful signature and checksum verification. `release-identity.json`
-records source commit `06208514ee4a134f802e5022f67e2047fc58d532` for v0.4.0 and
-the pinned operator image. See [release verification](releases.md) for provenance,
+records the exact source commit for the release and the pinned operator image.
+Compare that commit with the source tag and provenance. See [release verification](releases.md) for provenance,
 SBOMs (software bills of materials), container identities, and package details.
 
 Select the archive matching your OS/architecture:
-`mantl_0.4.0_linux_amd64.tar.gz`, `mantl_0.4.0_linux_arm64.tar.gz`,
-`mantl_0.4.0_darwin_amd64.tar.gz`, or `mantl_0.4.0_darwin_arm64.tar.gz`.
+`mantl_0.5.0_linux_amd64.tar.gz`, `mantl_0.5.0_linux_arm64.tar.gz`,
+`mantl_0.5.0_darwin_amd64.tar.gz`, or `mantl_0.5.0_darwin_arm64.tar.gz`.
 `uname -s` and `uname -m` identify the host; `x86_64` means amd64 and
 `aarch64`/Apple `arm64` means arm64. For example, on Apple Silicon:
 
 ```sh
 mkdir cli
-tar -xzf mantl_0.4.0_darwin_arm64.tar.gz -C cli
+tar -xzf mantl_0.5.0_darwin_arm64.tar.gz -C cli
 ./cli/mantl --version
 ```
 
-Replace that filename on other hosts. Expected version: `0.4.0` and the commit
-above. You can keep using `./cli/mantl`, place it in a directory on your PATH, or
+Replace that filename on other hosts. Expected version: `0.5.0`, with the commit
+matching `release-identity.json`. You can keep using `./cli/mantl`, place it in a directory on your PATH, or
 install a verified Linux DEB/RPM through your distribution's package manager.
 There is no Windows CLI asset.
 
@@ -76,7 +78,7 @@ compliance, contact Kubernetes, or run Terraform.
 For more examples, obtain the **matching tagged source checkout** explicitly:
 
 ```sh
-git clone --branch v0.4.0 --depth 1 https://github.com/somethingwithproof/mantl.git mantl-source
+git clone --branch v0.5.0 --depth 1 https://github.com/somethingwithproof/mantl.git mantl-source
 ./cli/mantl plan mantl-source/examples/mantl-spec.yaml
 ```
 
@@ -85,18 +87,23 @@ overlay; customize it before deployment. Generation reuses `.mantl/build`; use
 separate working directories to keep examples apart. See [planning](platform-planning.md)
 for file replacement behavior and spec fields.
 
-## Main-only planning features
+## Preview and review before deployment
 
-Build from main using [the contributor setup](../CONTRIBUTING.md#build-and-test).
-Main adds plan previews, JSON inventories, saved-plan comparisons, and reviewed
-`apply --plan` with preflight and scoped convergence. **v0.4.0 does not accept the
-new plan/apply flags**. Follow [preview and inventory](platform-planning.md#main-only-preview-and-inventory)
-for that separate workflow. Neither version's compiler plan is an infrastructure
-resource-change plan.
+The v0.5.0 CLI supports plan previews, JSON inventories, saved-plan comparisons,
+and reviewed `apply --plan` with preflight and scoped convergence. Try the offline
+preview against the file you saved above:
+
+```sh
+./cli/mantl plan platform.yaml --dry-run --format json
+```
+
+Follow [preview and inventory](platform-planning.md#preview-and-inventory)
+to save and compare reviewed inputs. **v0.4.0 does not accept these plan/apply
+flags**. A compiler plan is not an infrastructure resource-change plan.
 
 ## Deployment is a separate step
 
-The published v0.4.0 `apply` creates resources and modifies a cluster. It runs Terraform/OpenTofu apply
+The v0.5.0 `apply` creates resources and modifies a cluster. It runs Terraform/OpenTofu apply
 without a saved Terraform plan approval step, installs pinned ArgoCD v3.5.3, submits
 the generated Applications, and polls reported application health. Review changes
 with your infrastructure tool and Git process before invoking it. Cloud deployment
@@ -106,7 +113,7 @@ long-lived evidence-retention costs.
 
 Before cloud bootstrap you must:
 
-1. Verify and extract `mantl-platform_v0.4.0.tar.gz` into a source directory. Its
+1. Verify and extract `mantl-platform_v0.5.0.tar.gz` into a source directory. Its
    `infra/terraform/blueprints` supplies configurations; generated variables alone
    cannot provision a cluster. Review the selected blueprint's required variables,
    provider identity, private connectivity, state/backend configuration, and costs.

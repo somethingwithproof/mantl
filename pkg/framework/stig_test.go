@@ -32,42 +32,16 @@ func TestSTIGCatalogSurvivesVerifiedBundle(t *testing.T) {
 	if len(fw.Controls) != 91 || fw.ContentDigest != manifest.Digest() {
 		t.Fatalf("catalog count or content identity changed: %d %s", len(fw.Controls), fw.ContentDigest)
 	}
-	profile := &api.ComplianceProfile{Spec: api.ComplianceProfileSpec{Namespaces: []string{"team-a"}}}
-	audit := &api.ComplianceAudit{Spec: api.ComplianceAuditSpec{Frequency: "daily"}}
 	now := time.Now().UTC()
-	plan := auditplan.Build(fw, profile, audit, now)
-	if len(plan.Tasks) != 2 || len(plan.Gaps) != 0 {
-		t.Fatalf("unexpected workload collection scope: %+v", plan)
-	}
-	for _, task := range plan.Tasks {
-		if task.Namespace != "team-a" || task.Resource != "pods" {
-			t.Fatalf("unexpected resource scope: %+v", task)
-		}
-	}
+	assertSTIGCollectionScope(t, fw, now)
 	index := map[string]string{}
 	for _, name := range []string{"stig-disallow-secret-env", "stig-restrict-privileged-host-ports"} {
 		index[name] = filepath.Join(dest, "policies", "stig-kubernetes", name+".yaml")
 	}
 	mapped := 0
 	for _, control := range fw.Controls {
-		expected, unsupported, evidenceRequired, err := evaluation.MappingExpectations(control, []string{"team-a"}, index, nil)
-		if err != nil || !unsupported {
-			t.Fatalf("%s lost its manual-review gap: %v %v", control.ID, unsupported, err)
-		}
-		in := evaluation.Input{Expected: expected, Unsupported: unsupported, EvidenceRequired: evidenceRequired, EvidenceAt: &now, EvidenceURI: "s3://example/version", Now: now, MaxAge: time.Hour}
-		for _, key := range expected {
-			in.Observations = append(in.Observations, evaluation.Observation{Key: key, Result: "pass", At: now, Resource: "Pod/team-a/app"})
-		}
-		result := evaluation.Assess(in)
-		if result.Result != "unknown" || result.Coverage != "partial" {
-			t.Fatalf("%s incorrectly passed incomplete STIG evidence: %+v", control.ID, result)
-		}
-		if len(expected) > 0 {
+		if assertSTIGControlCoverage(t, control, index, now) {
 			mapped++
-			in.Observations[0].Result = "fail"
-			if evaluation.Assess(in).Result != "fail" {
-				t.Fatalf("%s hid a workload violation", control.ID)
-			}
 		}
 	}
 	if mapped != 2 {
@@ -79,4 +53,43 @@ func TestSTIGCatalogSurvivesVerifiedBundle(t *testing.T) {
 	if _, err = framework.Load(filepath.Join(dest, "frameworks"), "stig-kubernetes", "2.4"); err == nil {
 		t.Fatal("accepted an unshipped STIG revision")
 	}
+}
+
+func assertSTIGCollectionScope(t *testing.T, fw *framework.Framework, now time.Time) {
+	t.Helper()
+	profile := &api.ComplianceProfile{Spec: api.ComplianceProfileSpec{Namespaces: []string{"team-a"}}}
+	audit := &api.ComplianceAudit{Spec: api.ComplianceAuditSpec{Frequency: "daily"}}
+	plan := auditplan.Build(fw, profile, audit, now)
+	if len(plan.Tasks) != 2 || len(plan.Gaps) != 0 {
+		t.Fatalf("unexpected workload collection scope: %+v", plan)
+	}
+	for _, task := range plan.Tasks {
+		if task.Namespace != "team-a" || task.Resource != "pods" {
+			t.Fatalf("unexpected resource scope: %+v", task)
+		}
+	}
+}
+
+func assertSTIGControlCoverage(t *testing.T, control framework.Control, index map[string]string, now time.Time) bool {
+	t.Helper()
+	expected, unsupported, evidenceRequired, err := evaluation.MappingExpectations(control, []string{"team-a"}, index, nil)
+	if err != nil || !unsupported {
+		t.Fatalf("%s lost its manual-review gap: %v %v", control.ID, unsupported, err)
+	}
+	in := evaluation.Input{Expected: expected, Unsupported: unsupported, EvidenceRequired: evidenceRequired, EvidenceAt: &now, EvidenceURI: "s3://example/version", Now: now, MaxAge: time.Hour}
+	for _, key := range expected {
+		in.Observations = append(in.Observations, evaluation.Observation{Key: key, Result: "pass", At: now, Resource: "Pod/team-a/app"})
+	}
+	result := evaluation.Assess(in)
+	if result.Result != "unknown" || result.Coverage != "partial" {
+		t.Fatalf("%s incorrectly passed incomplete STIG evidence: %+v", control.ID, result)
+	}
+	if len(expected) == 0 {
+		return false
+	}
+	in.Observations[0].Result = "fail"
+	if evaluation.Assess(in).Result != "fail" {
+		t.Fatalf("%s hid a workload violation", control.ID)
+	}
+	return true
 }
