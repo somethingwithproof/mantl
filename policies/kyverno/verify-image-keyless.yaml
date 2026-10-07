@@ -10,23 +10,23 @@ metadata:
 spec:
   validationFailureAction: Enforce
   background: true
-  exclude:
-    any:
-      - resources:
-          namespaces:
-            - kube-system
-            - kube-public
-            - kube-node-lease
-            - cert-manager
-            - external-dns
-            - argocd
-            - kyverno
   rules:
     - name: verify-keyless-gha
       match:
         any:
           - resources:
               kinds: [Pod]
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - cert-manager
+                - external-dns
+                - argocd
+                - kyverno
       verifyImages:
         - imageReferences:
             - "ghcr.io/*/*"
