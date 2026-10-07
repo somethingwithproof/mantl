@@ -20,6 +20,22 @@ Terraform modernization and hardening across cloud modules:
   - Add modern worker and edge VM resources under the same flag; reminder to set legacy counts to 0 when enabling.
 
 See PRs: #31, #32, #33, #34, #35, #36, #37.
+## [0.5.0](https://github.com/somethingwithproof/mantl/compare/v0.4.0...v0.5.0) (2026-10-07)
+
+
+### Features
+
+* add Kubernetes STIG support and target CI runs ([#351](https://github.com/somethingwithproof/mantl/issues/351)) ([5b62143](https://github.com/somethingwithproof/mantl/commit/5b6214303b1ca6eae63771c4d657ff50ea5895a7))
+* preview platform plans with hashed artifact inventories ([#338](https://github.com/somethingwithproof/mantl/issues/338)) ([28159d5](https://github.com/somethingwithproof/mantl/commit/28159d5e4c6fd2ad74adf8f49e0641b0b95b7c3f))
+* report limited effects of accepted platform inputs ([#345](https://github.com/somethingwithproof/mantl/issues/345)) ([bfb54e8](https://github.com/somethingwithproof/mantl/commit/bfb54e8c99c09e83550e4e8f0e0e440fd14193aa))
+* verify reviewed platform plans before apply ([#340](https://github.com/somethingwithproof/mantl/issues/340)) ([a744971](https://github.com/somethingwithproof/mantl/commit/a7449717d01d741ca8f6d8e9f18132e795db9932))
+* verify unsigned release candidates and include quickstart assets ([#344](https://github.com/somethingwithproof/mantl/issues/344)) ([0a9c685](https://github.com/somethingwithproof/mantl/commit/0a9c685d3c9d3ebd5cc105f7c399d559cf1e8d5d))
+
+
+### Bug Fixes
+
+* verify hash-addressed finding history through local lifecycle ([#343](https://github.com/somethingwithproof/mantl/issues/343)) ([2230ece](https://github.com/somethingwithproof/mantl/commit/2230eceaaf6a22407a80aa73ab4381782dd9dc1b))
+
 ## [0.4.0](https://github.com/somethingwithproof/mantl/compare/v0.3.1...v0.4.0) (2026-10-06)
 
 

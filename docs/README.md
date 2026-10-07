@@ -5,14 +5,14 @@
 
 Use this index for the current Kubernetes compiler and beta compliance runtime.
 The [project README](../README.md#capabilities-and-maturity) has the single capability
-and maturity table. Published CLI examples target **v0.4.0**; main-only features are
-identified in their guides. Design records and framework/chart assets are not
+and maturity table. Release CLI examples target **v0.5.0**; experimental features
+retain their maturity labels. Design records and framework/chart assets are not
 proof of deployed capabilities.
 
 ## Evaluate and get started
 
 - [Release quickstart](quickstart-platform.md): verify a download and generate configuration offline.
-- [Platform specification and planning](platform-planning.md): fields, examples, generated outputs, and main-only previews, saved plans, comparisons, and reviewed apply.
+- [Platform specification and planning](platform-planning.md): fields, examples, generated outputs, previews, saved plans, comparisons, and reviewed apply.
 - [Release assets and verification](releases.md): archives, DEB/RPM, signatures, SBOMs, provenance, and install manifests.
 - [Bootstrap prerequisites](quickstart-platform.md#deployment-is-a-separate-step): infrastructure, credentials, Git publication, cluster access, and costs.
 - [Platform status](platform-status.md): scoped Application identities, JSON output, and the health gate.
@@ -23,7 +23,7 @@ proof of deployed capabilities.
 - [Runtime architecture](architecture-runtime.md): durable collection, identities, exceptions, fleet boundaries, and OSCAL limitations.
 - [Compliance operations](compliance-operations.md): control coverage, findings, freshness, evidence storage/retention, verification/export, and installation.
 - [Compliance content](../compliance/README.md): catalogs, profiles, policies, and content pins.
-- [DISA Kubernetes STIG](stig-kubernetes.md): pinned V2R3 catalog, opt-in audit policies, and explicit manual coverage gaps (source only).
+- [DISA Kubernetes STIG](stig-kubernetes.md): experimental pinned V2R3 catalog, opt-in audit policies, and explicit manual coverage gaps.
 - [Provider scope](adr/005-cloud-parity-scope.md) and [acceptance limits](architecture-runtime.md#provider-acceptance-and-oscal): AWS/GCP/Azure static contracts; other providers experimental; AWS S3 evidence backend.
 - [Policy ownership](adr/006-policy-application-ownership.md) and [evidence storage contract](adr/003-evidence-storage-contract.md).
 

@@ -5,15 +5,16 @@ Release Please manages SemVer and changelogs. Its release-created output invokes
 the reusable release workflow directly; publishing does not depend on another
 workflow being triggered by a GITHUB_TOKEN-created release event.
 
-## Published baseline and next-release changes
+## Release v0.5.0
 
-[v0.4.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.4.0) is the
-current published CLI baseline. It includes scoped JSON platform status and the
-optional `--require-healthy` application gate. Its 29 downloadable assets include
-CLI archives/packages, signed checksums, SBOMs, provenance and installation assets.
-The next CLI release adds [offline planning, saved-plan apply and artifact comparisons](platform-planning.md).
-These plan/apply flags are not available in the v0.4.0 binaries. Saved inventories
-use `mantl.io/plan/v1alpha2`; regenerate earlier v1alpha1 inventories before use.
+[v0.5.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.5.0) adds
+[offline previews, saved-plan apply and artifact comparisons](platform-planning.md),
+limited-effect input notices, and verified finding-history export. It retains
+scoped JSON platform status and the optional `--require-healthy` application gate.
+The release also includes the experimental [DISA Kubernetes STIG catalog and
+opt-in audit policies](stig-kubernetes.md), with explicit manual coverage gaps.
+The new plan/apply flags are absent from v0.4.0. Saved inventories use
+`mantl.io/plan/v1alpha2`; regenerate earlier v1alpha1 inventories before use.
 
 The release checks out the exact validated tag and publishes:
 

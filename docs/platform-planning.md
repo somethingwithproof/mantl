@@ -5,7 +5,7 @@
 ArgoCD Applications, and tenant manifests. It neither provisions resources nor
 resolves the referenced Git content.
 
-## Published v0.4.0 generation
+## Release generation
 
 Save [the README example](../README.md#a-small-example) as `platform.yaml`, or obtain
 `examples/mantl-spec.yaml` through the tagged clone in [the quickstart](quickstart-platform.md#generate-configuration-offline).
@@ -62,22 +62,22 @@ Add reviewed traffic rules and confirm CNI enforcement before running workloads.
 Keeping tenantPath after removing the last tenant permits reconciliation of an
 empty desired set; pruning can delete namespaces and workloads.
 
-## Main-only preview and inventory
+## Preview and inventory
 
-These flags are implemented on main and are **absent from published v0.4.0**.
-Build using [the contributor instructions](../CONTRIBUTING.md#build-and-test).
-From a source checkout, preview without creating files, contacting a cluster,
-or running Terraform:
+These flags are available in **v0.5.0** and absent from v0.4.0. Install the
+[verified release](quickstart-platform.md#install-a-verified-release) and obtain
+the tagged example checkout as described in the quickstart. From that checkout,
+preview without creating files, contacting a cluster, or running Terraform:
 
 ```sh
-/tmp/mantl-main plan examples/mantl-spec.yaml --dry-run
-/tmp/mantl-main plan examples/mantl-spec.yaml --dry-run --format json
+mantl plan examples/mantl-spec.yaml --dry-run
+mantl plan examples/mantl-spec.yaml --dry-run --format json
 ```
 
 Generate the reviewed artifacts in a chosen directory:
 
 ```sh
-/tmp/mantl-main plan examples/mantl-spec.yaml --output-dir build/production --format json
+mantl plan examples/mantl-spec.yaml --output-dir build/production --format json
 ```
 
 The default directory remains `.mantl/build`. Text output lists artifact paths,
@@ -88,7 +88,7 @@ Artifact contents are omitted. Preview and generation report identical metadata
 for identical specs and compiler versions. JSON identifies the desired artifacts;
 use the command exit status to determine whether writing succeeded.
 
-Current source builds also report limited-effect fields in `notices`: profile
+The v0.5.0 CLI also reports limited-effect fields in `notices`: profile
 size labels do not size nodes, networking fields do not configure DNS/VPC/access,
 and a nonempty compliance profile does not install a `ComplianceProfile`. An AWS
 account ID does not override the runtime credential account. Experimental provider
@@ -114,14 +114,14 @@ moving revision such as `main` can resolve to different source contents later.
 Use `mantl status` for observed application health and the compliance commands
 for separately scoped compliance results. Runtime and cloud acceptance remain beta.
 
-## Save and compare reviewed plans (main only)
+## Save and compare reviewed plans
 
 Generate artifacts and save their inventory in a separate review location:
 
 ```sh
-/tmp/mantl-main plan examples/mantl-spec.yaml --output-dir build/production --save-plan reviewed-plan.json
-/tmp/mantl-main plan examples/mantl-spec.yaml --dry-run --compare reviewed-plan.json
-/tmp/mantl-main plan examples/mantl-spec.yaml --dry-run --compare reviewed-plan.json --format json --fail-on-change
+mantl plan examples/mantl-spec.yaml --output-dir build/production --save-plan reviewed-plan.json
+mantl plan examples/mantl-spec.yaml --dry-run --compare reviewed-plan.json
+mantl plan examples/mantl-spec.yaml --dry-run --compare reviewed-plan.json --format json --fail-on-change
 ```
 
 The comparison lists added, changed and removed artifact paths. JSON includes
@@ -142,7 +142,7 @@ identity or authenticity.
 Apply the reviewed inputs using an explicitly selected target:
 
 ```sh
-/tmp/mantl-main --context TARGET --source-dir PLATFORM_SOURCE apply examples/mantl-spec.yaml \
+mantl --context TARGET --source-dir PLATFORM_SOURCE apply examples/mantl-spec.yaml \
   --plan reviewed-plan.json --output-dir build/production --timeout 30m
 ```
 

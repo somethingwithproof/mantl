@@ -28,7 +28,7 @@ def read_json(endpoint):
 def preflight(repository, number, read=read_json, dispatch=None, sleep=time.sleep):
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
         raise ValueError("invalid repository")
-    if not re.fullmatch(r"[1-9][0-9]*", str(number)):
+    if not re.fullmatch(r"[1-9]\d*", str(number), flags=re.ASCII):
         raise ValueError("invalid release PR number")
     endpoint = f"repos/{repository}/pulls/{number}"
     pr = read(endpoint)
@@ -51,6 +51,11 @@ def preflight(repository, number, read=read_json, dispatch=None, sleep=time.slee
     current = read(endpoint)
     if current["state"] != "open" or current["head"]["sha"] != head:
         return "superseded"
+    dispatch_advisory(repository, pr["head"]["ref"], number, dispatch)
+    return "advisory-preflight-dispatched"
+
+
+def dispatch_advisory(repository, branch, number, dispatch):
     args = [
         "gh",
         "workflow",
@@ -59,7 +64,7 @@ def preflight(repository, number, read=read_json, dispatch=None, sleep=time.slee
         "--repo",
         repository,
         "--ref",
-        pr["head"]["ref"],
+        branch,
         "--field",
         f"pull-request={number}",
     ]
@@ -67,7 +72,6 @@ def preflight(repository, number, read=read_json, dispatch=None, sleep=time.slee
         subprocess.run(args, check=True, timeout=30)
     else:
         dispatch(args)
-    return "advisory-preflight-dispatched"
 
 
 def main():

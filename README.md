@@ -92,14 +92,14 @@ spec:
     security: true
   gitops:
     repository: https://github.com/somethingwithproof/mantl.git
-    revision: v0.4.0
+    revision: v0.5.0
     tenantPath: tenants/team-dev
   tenants:
     - name: payments
       admins: [payments-admin@example.com]
 ```
 
-With v0.4.0, `mantl plan platform.yaml` generates six files:
+With v0.5.0, `mantl plan platform.yaml` generates six files:
 
 ```text
 .mantl/build/
@@ -128,7 +128,7 @@ that enforces NetworkPolicy. See [specification and outputs](docs/platform-plann
 
 ## Getting started
 
-The current published baseline is [v0.4.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.4.0).
+This guide targets [v0.5.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.5.0).
 Downloadable CLI archives cover Linux/macOS on amd64/arm64; Linux also has DEB/RPM
 packages. Go, cloud credentials, Terraform, and a cluster are unnecessary for `plan`.
 
@@ -148,22 +148,22 @@ The result is local configuration to review. Nothing has been provisioned or app
 Continue with [bootstrap prerequisites](docs/quickstart-platform.md#deployment-is-a-separate-step)
 only when you have supplied environment-specific settings and understand the changes.
 
-**Main only:** main adds plan previews/inventories, saved plans and comparisons,
-and `apply --plan` verification with preflight and expected-Application convergence.
-These new plan/apply flags are absent from v0.4.0. [Build instructions](CONTRIBUTING.md#build-and-test)
-and the [planning guide](docs/platform-planning.md#main-only-preview-and-inventory)
-cover that path separately.
+**Review before deployment:** v0.5.0 also supports offline plan previews,
+saved inventories and comparisons, and `apply --plan` verification with preflight
+and expected-Application convergence. These flags are absent from v0.4.0.
+Follow the [planning guide](docs/platform-planning.md#preview-and-inventory)
+to review the generated inputs before applying them.
 
 ## Capabilities and maturity
 
 | Area | What exists | Maturity / validation boundary |
 | --- | --- | --- |
-| Configuration compiler | Strict spec parsing; Terraform variables; feature Applications; tenant RBAC, quotas, limits, isolation | Published v0.4.0; offline generation tested. Preview, saved-plan, and comparison flags are main only. |
-| Bootstrap and observation | OpenTofu/Terraform invocation, kind path, pinned ArgoCD installation; scoped `status` JSON and application gate | Beta. Main adds reviewed-input verification and scoped convergence. Application health is distinct from compliance; bootstrap success is not cloud acceptance. |
+| Configuration compiler | Strict spec parsing; Terraform variables; feature Applications; tenant RBAC, quotas, limits, isolation; previews, saved inventories and comparisons | Available in v0.5.0; offline generation tested. Compiler inventories describe generated configuration, not infrastructure resource changes. |
+| Bootstrap and observation | OpenTofu/Terraform invocation, kind path, pinned ArgoCD installation; reviewed-input verification; scoped `status` JSON and application gate | Beta. Local tests cover preflight and scoped convergence. Application health is distinct from compliance; bootstrap success is not cloud acceptance. |
 | AWS EKS, GCP GKE, Azure AKS | Blueprints and a common static hardening contract | Static validation exists; deployment, identity, upgrade, audit delivery, and recovery acceptance remain unestablished. |
 | Other providers | DOKS, LKE, OKE, IKS, and OpenStack assets/parser options | Experimental; assets do not establish a working deployment path. |
 | Compliance runtime | Profiles, PolicyReport findings, scheduled AuditRuns/collector Jobs, evaluations, exception approval, history | Beta. Resource snapshots are implemented; unsupported log/metrics/query collectors remain coverage gaps. |
-| Framework content | SOC2, HIPAA, PCI-DSS, CIS Kubernetes catalogs/profiles; reviewed SOC2 policy topology; [DISA Kubernetes STIG V2R3](docs/stig-kubernetes.md) catalog and opt-in workload audit policies on main | STIG integration is experimental and source only, with explicit manual coverage gaps. Content and mappings are not proof of complete or end-to-end framework coverage. Evidence supports audits, not certification. |
+| Framework content | SOC2, HIPAA, PCI-DSS, CIS Kubernetes catalogs/profiles; reviewed SOC2 policy topology; [DISA Kubernetes STIG V2R3](docs/stig-kubernetes.md) catalog and opt-in workload audit policies | STIG integration is experimental, with explicit manual coverage gaps. Content and mappings are not proof of complete or end-to-end framework coverage. Evidence supports audits, not certification. |
 | Evidence | AWS S3 versioned objects, Object Lock COMPLIANCE retention, hash/version verification, archive export | AWS S3 backend for all cluster providers; native GCS/Azure WORM backends are not implemented. |
 | Fleet and exchange | Optional mTLS fleet metadata service, PostgreSQL tenant isolation/replay; bounded OSCAL catalog exchange | Beta; requires operator overlays. No fleet UI; OSCAL exchange covers IDs/titles, not complete assessment interchange. |
 | Release distribution | Signed checksums, CLI archives/DEB/RPM, pinned install manifests, control/platform bundles, SBOMs and provenance | Published assets; package validation does not establish cloud deployment or version-to-version upgrade acceptance. |
