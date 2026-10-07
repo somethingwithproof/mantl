@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-# Official mise 2026.10.2 Debian image; tool versions come from mise.toml.
-FROM ghcr.io/jdx/mise@sha256:f349d8fe8c0da612d9d0132f83c1d779a72a49ee110248091cbbbd5caea2f0dd
+# Official mise 2026.10.3 Debian image; tool versions come from mise.toml.
+FROM ghcr.io/jdx/mise@sha256:58c4c847f5518a9a87a9a582886a485443dbca5eb024426577f58d586a0990c6
 
 RUN sed -i 's|^URIs:.*deb.debian.org/|URIs: https://deb.debian.org/|' /etc/apt/sources.list.d/debian.sources \
     && apt-get update \
