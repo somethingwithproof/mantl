@@ -6,8 +6,10 @@
 Repeatable Kubernetes platform configuration with traceable compliance evidence.
 
 [![Mantl CI](https://github.com/somethingwithproof/mantl/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/somethingwithproof/mantl/actions/workflows/ci.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=somethingwithproof_mantl&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=somethingwithproof_mantl)
 [![GitHub release](https://img.shields.io/github/v/release/somethingwithproof/mantl)](https://github.com/somethingwithproof/mantl/releases/latest)
 [![License: Apache-2.0](https://img.shields.io/github/license/somethingwithproof/mantl)](LICENSE)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/somethingwithproof/mantl/badge)](https://scorecard.dev/viewer/?uri=github.com/somethingwithproof/mantl)
 [![Go toolchain: 1.26.7](https://img.shields.io/badge/Go_toolchain-1.26.7-00ADD8?logo=go)](mise.toml)
 [![Documentation](https://img.shields.io/badge/docs-in_repository-2563eb)](docs/README.md)
 
