@@ -103,7 +103,7 @@ jobs:
           git diff --exit-code
           mise exec -- go run ./cmd/mantl plan examples/mantl-spec.yaml
       - name: Retain Go coverage
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: go-coverage
           path: coverage.out
@@ -137,7 +137,7 @@ jobs:
           mise exec -- .venv-ci/bin/python -m coverage combine --append
           mise exec -- .venv-ci/bin/python -m coverage xml -o coverage-python.xml
       - name: Retain Python coverage
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: python-coverage
           path: coverage-python.xml
@@ -170,7 +170,7 @@ jobs:
           mise exec -- .venv-ci/bin/python -m pip install --only-binary :all: --require-hashes -r requirements-test.txt -r "$EXAMPLE_SOURCE/requirements.txt"
           mise exec -- .venv-ci/bin/python -m pytest tests/examples/ --cov="$EXAMPLE_SOURCE" --cov-report="xml:coverage-${MANTL_TEST_EXAMPLE}.xml"
       - name: Retain example coverage
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: python-example-${{ matrix.example.name }}-coverage
           path: coverage-${{ matrix.example.name }}.xml

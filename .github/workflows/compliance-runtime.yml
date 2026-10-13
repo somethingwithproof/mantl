@@ -106,7 +106,7 @@ jobs:
       - name: Verify native DEB and RPM package lifecycles
         run: ci/verify-cli-packages.sh dist
       - name: Retain package validation artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: package-snapshot
           path: |-
