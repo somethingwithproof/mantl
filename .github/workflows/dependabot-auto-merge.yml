@@ -31,9 +31,29 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          failed=0
           gh pr list --repo "$GITHUB_REPOSITORY" --state open --author app/dependabot \
-            --json number,isDraft,headRefOid --jq '.[] | select(.isDraft == false) | [.number, .headRefOid] | @tsv' |
+            --json number,isDraft,headRefOid --jq '.[] | select(.isDraft == false) | [.number, .headRefOid] | @tsv' > /tmp/dependabot-prs.tsv
           while read -r pr head; do
-            gh pr merge "$pr" --repo "$GITHUB_REPOSITORY" --auto --squash --match-head-commit "$head"
-          done
+            for attempt in 1 2 3; do
+              if gh pr merge "$pr" --repo "$GITHUB_REPOSITORY" --auto --squash --match-head-commit "$head"; then
+                break
+              fi
+              if ! current=$(gh pr view "$pr" --repo "$GITHUB_REPOSITORY" --json state,isDraft,headRefOid); then
+                failed=1
+                break
+              fi
+              if jq -e '.state != "OPEN" or .isDraft' <<< "$current" > /dev/null; then
+                break
+              fi
+              next_head=$(jq -r '.headRefOid' <<< "$current")
+              if test "$next_head" = "$head" || test "$attempt" = 3; then
+                echo "::error::Could not enable protected auto-merge for PR #$pr"
+                failed=1
+                break
+              fi
+              head=$next_head
+            done
+          done < /tmp/dependabot-prs.tsv
+          exit "$failed"
     timeout-minutes: 10

@@ -5,6 +5,13 @@ Release Please manages SemVer and changelogs. Its release-created output invokes
 the reusable release workflow directly; publishing does not depend on another
 workflow being triggered by a GITHUB_TOKEN-created release event.
 
+Release builds require the tag's commit to equal the triggering workflow commit.
+For manual publication or recovery of an older release, dispatch `release.yml`
+with the tag as both the workflow ref and the `tag` input:
+`gh workflow run release.yml --repo somethingwithproof/mantl --ref TAG -f tag=TAG`.
+The tag must already contain this workflow and remain an ancestor of main.
+Dispatching on a newer main commit for an older tag fails before publication.
+
 ## Release v0.5.0
 
 [v0.5.0](https://github.com/somethingwithproof/mantl/releases/tag/v0.5.0) adds
@@ -31,12 +38,20 @@ Download all attached assets into a new directory using
 below requires every file listed in the signed manifest; a partial download needs
 verification of its exact selected entries instead.
 Authenticate `checksums.txt` using its Cosign bundle before trusting its hashes.
-Require the GitHub Actions OIDC issuer and this exact workflow identity:
+Require the GitHub Actions OIDC issuer and the exact workflow identity for the
+publication path. Release Please's reusable call signs from `refs/heads/main`;
+a published-release event or manual tag dispatch signs from `refs/tags/TAG`.
+Choose the corresponding exact ref from the release run, rather than accepting
+an arbitrary branch or tag with a broad identity pattern:
 
 ```sh
+set -eu
+SIGNER_REF=refs/heads/main
+# For a published-release event or manual tag dispatch instead:
+# SIGNER_REF=refs/tags/v0.5.0  # replace with the exact release tag
 cosign verify-blob checksums.txt --bundle checksums.sigstore.json \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity https://github.com/somethingwithproof/mantl/.github/workflows/release.yml@refs/heads/main
+  --certificate-identity "https://github.com/somethingwithproof/mantl/.github/workflows/release.yml@$SIGNER_REF"
 sha256sum -c checksums.txt
 ```
 
