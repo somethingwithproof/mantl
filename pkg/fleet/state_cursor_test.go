@@ -11,7 +11,7 @@ import (
 )
 
 func TestStateQueryPagesByResourceIdentity(t *testing.T) {
-	if strings.Contains(stateListQuery, "id>$3") || !strings.Contains(stateListQuery, "(cluster_id,kind,resource_uid)") {
+	if strings.Contains(stateListQuery, "id>$3") || !strings.Contains(stateListQuery, `cluster_id COLLATE "C"`) {
 		t.Fatal("state page still follows mutable event ids")
 	}
 	if !stateCursorBefore("a/Finding/a", "a./Finding/z") || "a/Finding/a" < "a./Finding/z" {

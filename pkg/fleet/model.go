@@ -22,11 +22,11 @@ var digestPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 var stateCursorPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}/(Finding|ControlEvaluation|AuditRun)/[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$`)
 
 const stateListQuery = `SELECT cluster_id,payload,source FROM (
- SELECT DISTINCT ON(cluster_id,kind,resource_uid) cluster_id,payload,source,kind,resource_uid
+ SELECT DISTINCT ON(cluster_id COLLATE "C",kind COLLATE "C",resource_uid COLLATE "C") cluster_id,payload,source,kind,resource_uid
  FROM mantl_events WHERE tenant_id=$1 AND ($2='' OR cluster_id=$2)
- ORDER BY cluster_id,kind,resource_uid,observed_at DESC,id DESC) current_state
- WHERE $3='' OR (cluster_id,kind,resource_uid) > (split_part($3,'/',1), split_part($3,'/',2), split_part($3,'/',3))
- ORDER BY cluster_id,kind,resource_uid LIMIT $4`
+ ORDER BY cluster_id COLLATE "C",kind COLLATE "C",resource_uid COLLATE "C",observed_at DESC,id DESC) current_state
+ WHERE $3='' OR (cluster_id COLLATE "C",kind COLLATE "C",resource_uid COLLATE "C") > (split_part($3,'/',1) COLLATE "C", split_part($3,'/',2) COLLATE "C", split_part($3,'/',3) COLLATE "C")
+ ORDER BY cluster_id COLLATE "C",kind COLLATE "C",resource_uid COLLATE "C" LIMIT $4`
 
 // StateCursor identifies one current resource. It does not change when a newer
 // observation replaces that resource's event id.
