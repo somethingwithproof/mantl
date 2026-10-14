@@ -156,6 +156,12 @@ and expected-Application convergence. These flags are absent from v0.4.0.
 Follow the [planning guide](docs/platform-planning.md#preview-and-inventory)
 to review the generated inputs before applying them.
 
+Current source also adds `mantl plan verify` for saved artifact integrity checks
+and `mantl plan diff` for comparing two saved inventories without their original
+specs. Both run offline, support JSON reports and leave files unchanged; diff
+offers a CI change gate. These commands are not in the published v0.5.0 CLI.
+See [offline saved-plan review](docs/platform-planning.md#review-saved-artifacts-offline).
+
 ## Capabilities and maturity
 
 | Area | What exists | Maturity / validation boundary |

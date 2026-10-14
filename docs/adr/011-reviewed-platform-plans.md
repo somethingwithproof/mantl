@@ -20,6 +20,12 @@ are deterministic. Earlier v1alpha1 inventories must be regenerated.
 writes a saved plan. `--compare` reports added, changed and removed artifact
 identities; a read-only change gate may return a failure after printing the diff.
 
+`plan verify` checks saved artifact integrity with the same bounded, root-bound
+reader used by apply. It does not recompile or establish reviewer authenticity.
+`plan diff` compares two saved inventories without needing their specs or artifact
+directories. Both are read-only; their versioned reports distinguish verification
+from metadata comparison. The diff change gate prints its report before failing.
+
 `apply --plan` requires the current compiler/spec to reproduce the entire saved
 inventory. All listed regular files must match their sizes and hashes. Root-bound
 file reads reject escaping paths and symlinked artifacts. Verified bytes are
