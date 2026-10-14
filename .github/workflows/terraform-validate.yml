@@ -96,7 +96,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Scan infrastructure (existing findings informational)
-        uses: bridgecrewio/checkov-action@7b1bd992e2c40a3404e3511944aeb8d014703d9a
+        uses: bridgecrewio/checkov-action@c13aafd679d3814a25067d10fcaf98c4f7594931
         with:
           directory: infra/terraform/
           framework: terraform
@@ -105,7 +105,7 @@ jobs:
           soft_fail: true
       - name: Retain security report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: terraform-security-sarif
           path: checkov-results.sarif
@@ -113,6 +113,6 @@ jobs:
           retention-days: 14
       - name: Publish SARIF when enabled
         if: always() && vars.ENABLE_CODE_SCANNING_SARIF == 'true' && github.event.pull_request.head.repo.fork != true
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d
         with:
           sarif_file: checkov-results.sarif
