@@ -70,7 +70,7 @@ func (c *Client) State(ctx context.Context) ([]Entry, error) {
 	var all []Entry
 	after := ""
 	for page := 0; page < 200; page++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.URL+"/v1/state?limit=500&after="+after, nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.URL+"/v1/state?limit=500&after="+url.QueryEscape(after), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -92,8 +92,8 @@ func (c *Client) State(ctx context.Context) ([]Entry, error) {
 		if len(entries) < 500 {
 			return all, nil
 		}
-		next := entries[len(entries)-1].Event.ID
-		if !digestPattern.MatchString(next) || next <= after {
+		next := StateCursor(entries[len(entries)-1].Scope.Cluster, entries[len(entries)-1].Event.Kind, entries[len(entries)-1].Event.ResourceUID)
+		if !ValidStateCursor(next) || after != "" && !stateCursorBefore(after, next) {
 			return nil, fmt.Errorf("invalid fleet pagination cursor")
 		}
 		after = next

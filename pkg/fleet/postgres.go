@@ -87,10 +87,9 @@ func (p *Postgres) List(ctx context.Context, scope Scope, limit int, after strin
 	defer func() { _ = tx.Rollback() }()
 	query := `SELECT cluster_id,payload,source FROM mantl_events WHERE tenant_id=$1 AND ($2='' OR cluster_id=$2) AND id>$3 ORDER BY id LIMIT $4`
 	if state {
-		query = `SELECT cluster_id,payload,source FROM (
- SELECT DISTINCT ON(cluster_id,kind,resource_uid) cluster_id,payload,source,id,observed_at
- FROM mantl_events WHERE tenant_id=$1 AND ($2='' OR cluster_id=$2)
- ORDER BY cluster_id,kind,resource_uid,observed_at DESC,id DESC) current_state WHERE id>$3 ORDER BY id LIMIT $4`
+		// Page by resource identity. The latest event id changes when a resource
+		// is observed again, so an id cursor skips or repeats current state.
+		query = stateListQuery
 	}
 	rows, err := tx.QueryContext(ctx, query, scope.Tenant, scope.Cluster, after, limit)
 	if err != nil {

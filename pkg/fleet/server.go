@@ -121,11 +121,12 @@ func (s *Server) list(w http.ResponseWriter, r *http.Request, scope Scope) {
 		limit = n
 	}
 	after := r.URL.Query().Get("after")
-	if after != "" && !digestPattern.MatchString(after) {
+	state := r.URL.Path == "/v1/state"
+	if (state && !ValidStateCursor(after)) || (!state && after != "" && !digestPattern.MatchString(after)) {
 		http.Error(w, "invalid cursor", http.StatusBadRequest)
 		return
 	}
-	entries, err := s.Index.List(r.Context(), scope, limit, after, r.URL.Path == "/v1/state")
+	entries, err := s.Index.List(r.Context(), scope, limit, after, state)
 	if err != nil {
 		http.Error(w, "index unavailable", http.StatusServiceUnavailable)
 		return
