@@ -1,10 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-# Official mise 2026.10.3 Debian image; tool versions come from mise.toml.
-FROM ghcr.io/jdx/mise@sha256:07fc362c08135a926cbb1466470d9af10e89c9aa92859831c0ded2f2249bae7d
+# Keep mise's binary update separate from the Debian development environment.
+FROM ghcr.io/jdx/mise@sha256:07fc362c08135a926cbb1466470d9af10e89c9aa92859831c0ded2f2249bae7d AS mise
+FROM debian:trixie-slim@sha256:a29215f6a35e51e22adffa17f89e9d2ef06214e64a2bad10d765c46aea49f11f
+COPY --from=mise /usr/local/bin/mise /usr/local/bin/mise
 
-RUN sed -i 's|^URIs:.*deb.debian.org/|URIs: https://deb.debian.org/|' /etc/apt/sources.list.d/debian.sources \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends make=4.4.1-2 \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl git xz-utils unzip make=4.4.1-2 \
+    && sed -i 's|^URIs:.*deb.debian.org/|URIs: https://deb.debian.org/|' /etc/apt/sources.list.d/debian.sources \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -u 10001 -s /bin/bash mantl \
     && mkdir -p /home/mantl/.config/mise /workspace \
