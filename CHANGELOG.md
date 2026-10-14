@@ -20,6 +20,20 @@ Terraform modernization and hardening across cloud modules:
   - Add modern worker and edge VM resources under the same flag; reminder to set legacy counts to 0 when enabling.
 
 See PRs: #31, #32, #33, #34, #35, #36, #37.
+## [0.6.0](https://github.com/somethingwithproof/mantl/compare/v0.5.0...v0.6.0) (2026-10-14)
+
+
+### Features
+
+* **cli:** verify artifacts and compare saved plans offline ([#364](https://github.com/somethingwithproof/mantl/issues/364)) ([baa6869](https://github.com/somethingwithproof/mantl/commit/baa6869fb74eb22648b2fec53cd0e534a073e287))
+* **cli:** wait for generated application health ([#365](https://github.com/somethingwithproof/mantl/issues/365)) ([c10c084](https://github.com/somethingwithproof/mantl/commit/c10c084a0823b28c954c66a4696518d28668c331))
+
+
+### Bug Fixes
+
+* **ci:** bind release provenance and recover Dependabot races ([#363](https://github.com/somethingwithproof/mantl/issues/363)) ([64fcf18](https://github.com/somethingwithproof/mantl/commit/64fcf18907a63012d6eeb7568b65465facc8509e))
+* require a reviewed plan before apply ([#366](https://github.com/somethingwithproof/mantl/issues/366)) ([359c9f5](https://github.com/somethingwithproof/mantl/commit/359c9f5e9feef63924d7833eaaccdf3d0b337b04))
+
 ## [0.5.0](https://github.com/somethingwithproof/mantl/compare/v0.4.0...v0.5.0) (2026-10-07)
 
 
