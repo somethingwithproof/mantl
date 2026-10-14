@@ -104,8 +104,16 @@ func renderTenantTopology(cluster *v1alpha1.MantlCluster, outputDir string) erro
 		return err
 	}
 	names := []string{}
+	environment := ""
+	if len(cluster.Spec.Tenants) > 0 {
+		var err error
+		environment, err = environmentName(cluster)
+		if err != nil {
+			return err
+		}
+	}
 	for _, tenant := range cluster.Spec.Tenants {
-		if err := renderTenant(tenantsDir, tenant, tenantEnvironment(cluster)); err != nil {
+		if err := renderTenant(tenantsDir, tenant, environment, cluster.Spec.ControlNamespace); err != nil {
 			return err
 		}
 		names = append(names, tenant.Name+".yaml")
@@ -118,8 +126,8 @@ func renderTenantTopology(cluster *v1alpha1.MantlCluster, outputDir string) erro
 }
 
 // renderTenant generates Namespace and RBAC RoleBindings for a tenant.
-func renderTenant(outputDir string, tenant v1alpha1.TenantSpec, environment string) error {
-	data, err := tenantManifest(tenant, environment)
+func renderTenant(outputDir string, tenant v1alpha1.TenantSpec, environment, controlNamespace string) error {
+	data, err := tenantManifest(tenant, environment, controlNamespace)
 	if err != nil {
 		return err
 	}
@@ -161,17 +169,7 @@ func renderAppSource(outputDir, name, path, repository, revision string) error {
 	return os.WriteFile(filepath.Join(outputDir, name+".yaml"), data, 0600)
 }
 
-func tenantEnvironment(cluster *v1alpha1.MantlCluster) string {
-	if cluster.Spec.Environment != "" {
-		return cluster.Spec.Environment
-	}
-	return map[string]string{"small": "dev", "medium": "staging", "full": "production"}[cluster.Spec.Profile.Size]
-}
-
-func tenantManifest(tenant v1alpha1.TenantSpec, environment string) ([]byte, error) {
-	if environment == "" {
-		environment = "dev"
-	}
+func tenantManifest(tenant v1alpha1.TenantSpec, environment, controlNamespace string) ([]byte, error) {
 	if environment != "dev" && environment != "staging" && environment != "production" {
 		return nil, fmt.Errorf("invalid tenant environment")
 	}
@@ -181,6 +179,9 @@ func tenantManifest(tenant v1alpha1.TenantSpec, environment string) ([]byte, err
 	ns := tenant.Namespace
 	if ns == "" {
 		ns = tenant.Name
+	}
+	if reservedNamespace(ns) || (controlNamespace != "" && ns == controlNamespace) {
+		return nil, fmt.Errorf("tenant namespace %q is reserved", ns)
 	}
 
 	// Create Namespace

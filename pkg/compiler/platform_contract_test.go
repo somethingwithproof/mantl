@@ -91,6 +91,38 @@ func TestSpecRejectsTenantFilenameCollisions(t *testing.T) {
 		}
 	}
 }
+func TestSpecRejectsReservedTenantNamespaces(t *testing.T) {
+	for _, ns := range []string{"kube-system", "kube-public", "kube-node-lease", "default", "argocd", "mantl-compliance-system"} {
+		for _, tenant := range []api.TenantSpec{{Name: "payments", Namespace: ns}, {Name: ns}} {
+			cluster := newTestCluster("small")
+			cluster.Spec.GitOps.TenantPath = "tenants/dev"
+			cluster.Spec.Tenants = []api.TenantSpec{tenant}
+			err := Validate(cluster)
+			if err == nil || !strings.Contains(err.Error(), "reserved") {
+				t.Fatalf("reserved namespace accepted: %+v: %v", tenant, err)
+			}
+		}
+	}
+}
+
+func TestSpecRejectsConfiguredControlNamespace(t *testing.T) {
+	cluster := newTestCluster("small")
+	cluster.Spec.GitOps.TenantPath = "tenants/dev"
+	cluster.Spec.ControlNamespace = "Not_A_Label"
+	if err := Validate(cluster); err == nil || !strings.Contains(err.Error(), "controlNamespace") {
+		t.Fatalf("invalid control namespace accepted: %v", err)
+	}
+	cluster.Spec.ControlNamespace = "compliance-system"
+	cluster.Spec.Tenants = []api.TenantSpec{{Name: "payments", Namespace: "compliance-system"}}
+	if err := Validate(cluster); err == nil || !strings.Contains(err.Error(), "reserved") {
+		t.Fatalf("configured control namespace accepted as a tenant: %v", err)
+	}
+	cluster.Spec.Tenants = []api.TenantSpec{{Name: "payments"}}
+	if err := Validate(cluster); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSpecRejectsUnsafeTenantAndProvider(t *testing.T) {
 	cluster := newTestCluster("small")
 	cluster.Spec.Tenants = []api.TenantSpec{{Name: "../escape"}}

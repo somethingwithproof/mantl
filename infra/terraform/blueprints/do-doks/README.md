@@ -134,7 +134,7 @@ kubectl get nodes
 | **Core Configuration** |
 | `cluster_name` | string | `"mantl-doks"` | Name of the Kubernetes cluster |
 | `region` | string | `"nyc3"` | DigitalOcean region (nyc1, nyc3, sfo3, etc.) |
-| `environment` | string | `"production"` | Environment name (production, staging, dev) |
+| `environment` | string | `"production"` | Environment name (dev, development, staging, prod, production). dev and prod map to DigitalOcean project values. |
 | `kubernetes_version` | string | `"1.31.3-do.0"` | Kubernetes version |
 | `tags` | list(string) | `["mantl", "kubernetes"]` | Additional resource tags |
 | **Networking** |
@@ -434,7 +434,7 @@ For issues and questions:
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_digitalocean"></a> [digitalocean](#provider\_digitalocean) | 2.104.0 |
+| <a name="provider_digitalocean"></a> [digitalocean](#provider\_digitalocean) | 2.106.0 |
 
 ## Modules
 
@@ -487,7 +487,7 @@ For issues and questions:
 | <a name="input_enable_security_dashboard"></a> [enable\_security\_dashboard](#input\_enable\_security\_dashboard) | Enable Grafana dashboard for security monitoring | `bool` | `true` | no |
 | <a name="input_enable_spot_pool"></a> [enable\_spot\_pool](#input\_enable\_spot\_pool) | Enable spot instances node pool for cost savings | `bool` | `false` | no |
 | <a name="input_enable_tailscale"></a> [enable\_tailscale](#input\_enable\_tailscale) | Enable Tailscale VPN for secure cluster access (replaces missing private endpoint) | `bool` | `false` | no |
-| <a name="input_environment"></a> [environment](#input\_environment) | Environment name used for tags; unsupported DigitalOcean project values map to development | `string` | `"production"` | no |
+| <a name="input_environment"></a> [environment](#input\_environment) | Environment name used for tags. dev and development, prod and production, and staging are accepted. dev and prod are mapped to DigitalOcean project values. | `string` | `"production"` | no |
 | <a name="input_falco_ui_enabled"></a> [falco\_ui\_enabled](#input\_falco\_ui\_enabled) | Enable Falco UI for alert visualization | `bool` | `false` | no |
 | <a name="input_falco_webhook_url"></a> [falco\_webhook\_url](#input\_falco\_webhook\_url) | Webhook URL for Falco alerts (e.g., Slack, PagerDuty) | `string` | `""` | no |
 | <a name="input_hubble_ui_hosts"></a> [hubble\_ui\_hosts](#input\_hubble\_ui\_hosts) | Hostnames for Hubble UI ingress | `list(string)` | `[]` | no |

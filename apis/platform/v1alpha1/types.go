@@ -30,6 +30,10 @@ type MantlClusterSpec struct {
 
 	GitOps GitOpsSpec `json:"gitops,omitempty"`
 
+	// ControlNamespace is the compliance operator namespace. Tenants cannot use it.
+	// +optional
+	ControlNamespace string `json:"controlNamespace,omitempty"`
+
 	// Tenants to onboard to the cluster
 	Tenants []TenantSpec `json:"tenants,omitempty"`
 }

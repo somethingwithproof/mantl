@@ -13,9 +13,14 @@ variable "region" {
 }
 
 variable "environment" {
-  description = "Environment name used for tags; unsupported DigitalOcean project values map to development"
+  description = "Environment name used for tags. dev and development, prod and production, and staging are accepted. dev and prod are mapped to DigitalOcean project values."
   type        = string
   default     = "production"
+
+  validation {
+    condition     = contains(["dev", "development", "staging", "prod", "production"], var.environment)
+    error_message = "environment must be dev, development, staging, prod, or production."
+  }
 }
 
 variable "enable_platform_security" {
