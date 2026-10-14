@@ -33,7 +33,7 @@ repos:
       - id: trivy-config
         name: trivy-config
         # Terraform module fetches must not inherit the committing worktree's index.
-        entry: env -u GIT_INDEX_FILE -u GIT_DIR -u GIT_WORK_TREE trivy config --severity HIGH,CRITICAL .
+        entry: env -u GIT_INDEX_FILE -u GIT_DIR -u GIT_WORK_TREE trivy config --timeout 15m --severity HIGH,CRITICAL .
         language: system
         pass_filenames: false
 
