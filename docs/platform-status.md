@@ -36,6 +36,41 @@ credential-plugin stderr. A query failure is reported as `Unknown`; normal
 observation mode still succeeds so callers can inspect the result. Invalid input,
 cancellation, output errors, and a failed explicit health gate return an error.
 
+## Wait for application health
+
+Current source adds a read-only deployment gate that polls until every generated
+application satisfies the same strict identity, sync and health checks:
+
+```sh
+mantl --context staging status wait examples/mantl-spec.yaml
+mantl --context staging status wait examples/mantl-spec.yaml \
+  --timeout 15m --interval 5s --query-timeout 5s --format json
+```
+
+This subcommand is not included in the published v0.5.0 CLI. It does not apply
+resources or change the current kube-context. The default overall deadline is
+ten minutes; `--timeout` accepts a positive duration up to two hours. Each pair of
+queries has a separate `--query-timeout` (five seconds by default, at most one
+minute), bounded by the remaining overall deadline. `--interval` pauses between
+observations, defaults to five seconds and accepts one second through one minute.
+Unlike one-shot status, the wait command's `--timeout` governs the entire poll.
+
+Transient query failures, missing applications, unknown status and degraded
+applications are retried until the deadline. Missing or mismatched identities
+cannot satisfy the gate merely because some other application is healthy. A
+successful exit requires every expected application to be synced and healthy.
+Policy counts are included for observation but do not determine wait success;
+missing policy permissions or failed policy results cannot become a compliance
+verdict. The scope remains the directly generated applications described above.
+
+The command writes one final report in the existing status schema, without
+streaming intermediate JSON objects. On timeout or cancellation after an
+observation, it prints the last observation and returns a nonzero exit status.
+Invalid input or cancellation before any query produces no observation report.
+Check the command exit status as well as the application state; a timeout or
+cancellation cannot establish success. External errors remain sanitized, and
+each response retains the same size and process-pipe bounds as one-shot status.
+
 ## JSON contract
 
 The schema version is `mantl.io/status/v1alpha1`. The report contains `observedAt`

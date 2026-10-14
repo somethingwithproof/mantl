@@ -44,6 +44,12 @@ Bootstrap receives the compiler's desired Application topology, applies only its
 named manifests, and uses the same source-identity and health evaluation as
 `mantl status`. Missing or mismatched Applications cannot establish convergence.
 
+`status wait` polls this same observation contract without applying resources.
+An overall deadline bounds retries, per-observation deadlines bound query pairs,
+and cancellation stops polling. Only the final observation is emitted; callers
+must check exit status. Policy report counts remain separate from application
+health and do not turn a successful wait into a compliance verdict.
+
 ## Limits
 
 Local inventories are integrity records, not authenticated approvals or signatures.

@@ -162,6 +162,12 @@ specs. Both run offline, support JSON reports and leave files unchanged; diff
 offers a CI change gate. These commands are not in the published v0.5.0 CLI.
 See [offline saved-plan review](docs/platform-planning.md#review-saved-artifacts-offline).
 
+Current source also adds `mantl status wait` to poll the generated applications
+until they are synced and healthy, with configurable query and overall deadlines and a
+final JSON report for deployment gates. It performs read-only observations and
+does not assess compliance or provision resources. See [waiting for application
+health](docs/platform-status.md#wait-for-application-health).
+
 ## Capabilities and maturity
 
 | Area | What exists | Maturity / validation boundary |
