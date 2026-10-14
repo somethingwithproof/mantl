@@ -47,6 +47,12 @@ jobs:
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]
           test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")"
           git merge-base --is-ancestor HEAD origin/main
+          # The provenance generator records the triggering workflow commit.
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA" || {
+            echo "Release tag must match the workflow commit; dispatch on the tag ref."
+            exit 1
+          }
+          test "$GITHUB_REF" = refs/heads/main || test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca
