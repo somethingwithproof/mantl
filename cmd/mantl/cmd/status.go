@@ -51,22 +51,7 @@ func newStatusCommand(query statusQuery, now func() time.Time) *cobra.Command {
 			}
 			ctx, cancel := context.WithTimeout(command.Context(), timeout)
 			defer cancel()
-			apps, appErr := query(ctx, kubectlArgs("get", "applications.argoproj.io", "-n", "argocd", "-o", "json")...)
-			policies, policyErr := query(ctx, kubectlArgs("get", "policyreports,clusterpolicyreports", "-A", "-o", "json")...)
-			report := platformstatus.Report{
-				SchemaVersion: "mantl.io/status/v1alpha1", ObservedAt: now().UTC(), Platform: cluster.Name, Context: kubeContext,
-				Applications: platformstatus.InterpretApplications(compiler.GitOpsApplications(cluster), apps),
-				Policies:     platformstatus.InterpretPolicies(policies),
-			}
-			// External stderr may contain credential-plugin output. Publish only a stable
-			// query failure reason, never raw command errors or application source specs.
-			if appErr != nil {
-				report.Applications.State = platformstatus.Unknown
-				report.Applications.Reason = "application query failed"
-			}
-			if policyErr != nil {
-				report.Policies = platformstatus.Policies{Scope: "all-readable-policy-reports", State: platformstatus.Unknown, Reason: "policy query failed"}
-			}
+			report := observePlatformStatus(ctx, query, now, cluster.Name, compiler.GitOpsApplications(cluster))
 			if err := writeStatus(command.OutOrStdout(), format, report); err != nil {
 				return fmt.Errorf("write status: %w", err)
 			}
@@ -82,7 +67,28 @@ func newStatusCommand(query statusQuery, now func() time.Time) *cobra.Command {
 	command.Flags().StringVar(&format, "format", "text", "Output format: text or json")
 	command.Flags().BoolVar(&requireHealthy, "require-healthy", false, "Exit unsuccessfully unless all generated applications are synced and healthy")
 	command.Flags().DurationVar(&timeout, "timeout", statusCheckTimeout, "Total cluster query deadline (maximum 1m)")
+	command.AddCommand(newStatusWaitCommand(query, now, waitStatusInterval))
 	return command
+}
+
+func observePlatformStatus(ctx context.Context, query statusQuery, now func() time.Time, platform string, expected []compiler.GitOpsApplication) platformstatus.Report {
+	apps, appErr := query(ctx, kubectlArgs("get", "applications.argoproj.io", "-n", "argocd", "-o", "json")...)
+	policies, policyErr := query(ctx, kubectlArgs("get", "policyreports,clusterpolicyreports", "-A", "-o", "json")...)
+	report := platformstatus.Report{
+		SchemaVersion: "mantl.io/status/v1alpha1", ObservedAt: now().UTC(), Platform: platform, Context: kubeContext,
+		Applications: platformstatus.InterpretApplications(expected, apps),
+		Policies:     platformstatus.InterpretPolicies(policies),
+	}
+	// External errors may contain credential-plugin output. Only stable query
+	// failure reasons enter reports, never raw errors or application source specs.
+	if appErr != nil {
+		report.Applications.State = platformstatus.Unknown
+		report.Applications.Reason = "application query failed"
+	}
+	if policyErr != nil {
+		report.Policies = platformstatus.Policies{Scope: "all-readable-policy-reports", State: platformstatus.Unknown, Reason: "policy query failed"}
+	}
+	return report
 }
 
 func writeStatus(writer io.Writer, format string, report platformstatus.Report) error {
