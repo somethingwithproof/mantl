@@ -139,6 +139,49 @@ be combined with `--dry-run`. Its parent directory must already exist. Keep the
 inventory in a trusted review location: checksums establish integrity, not reviewer
 identity or authenticity.
 
+## Review saved artifacts offline
+
+The following subcommands are available in current source and are not included
+in the published v0.5.0 CLI. They use the same bounded inventory and artifact
+validation as reviewed apply, without needing the original specification,
+kubectl, Terraform, cloud credentials or a running cluster.
+
+Verify that the listed files still match a saved inventory before handing a
+build to another operator or an apply pipeline:
+
+```sh
+mantl plan verify reviewed-plan.json --output-dir build/production
+mantl plan verify reviewed-plan.json --output-dir build/production --format json
+```
+
+Missing files, changed sizes or hashes, symlinked artifact files, escaping paths
+and unsupported inventory schemas return an error without a success report.
+Unlisted files are ignored and remain unverified. Verification does not modify
+files or recompile the spec. A successful JSON report uses
+`mantl.io/plan-verification/v1alpha1`, identifies its scope as `artifact-integrity`,
+and includes `verified: true` plus the inventory metadata. Artifact contents are
+omitted. Integrity verification does not authenticate approval, prove that the
+current spec matches, or establish infrastructure health or deployment acceptance.
+
+Compare a baseline and candidate inventory even when their specs and generated
+directories are unavailable:
+
+```sh
+mantl plan diff reviewed-plan.json candidate-plan.json
+mantl plan diff reviewed-plan.json candidate-plan.json --format json --fail-on-change
+```
+
+Generate the candidate with `plan --save-plan` into a separate output directory
+first. The diff reports full-spec hash changes and added, changed or removed
+artifact identities; it does not read or verify the artifact files. JSON uses
+`mantl.io/plan-comparison/v1alpha1` and includes before/after platform/spec
+identities and a `comparison` object. `--fail-on-change` prints the complete report
+before returning a failure for any input or artifact difference, so CI can retain
+the report. An unchanged comparison succeeds. Both subcommands leave inventories
+and generated files untouched. Check the exit status as well as the report.
+
+## Apply reviewed inputs
+
 Apply the reviewed inputs using an explicitly selected target:
 
 ```sh

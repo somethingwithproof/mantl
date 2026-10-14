@@ -41,6 +41,7 @@ func newPlanCommand() *cobra.Command {
 	command.Flags().StringVar(&options.saveFile, "save-plan", "", "Save an inventory outside the generated artifact directory")
 	command.Flags().StringVar(&options.baseline, "compare", "", "Compare generated artifact identities with a saved inventory")
 	command.Flags().BoolVar(&options.failOnChange, "fail-on-change", false, "Fail after printing changes (requires --compare and --dry-run)")
+	command.AddCommand(newPlanVerifyCommand(), newPlanDiffCommand())
 	return command
 }
 
