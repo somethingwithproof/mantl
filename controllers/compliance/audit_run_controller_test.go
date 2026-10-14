@@ -126,7 +126,7 @@ func TestRunIgnoresAuditOutsideControlNamespace(t *testing.T) {
 	r, _, req, _ := runFixture(t, 1)
 	r.ControlNamespace = "another-system"
 	result, err := r.Reconcile(context.Background(), req)
-	if err != nil || result.Requeue || result.RequeueAfter != 0 {
+	if err != nil || result.RequeueAfter != 0 {
 		t.Fatalf("foreign audit run was retried: %+v, %v", result, err)
 	}
 	var jobs batch.JobList

@@ -168,7 +168,7 @@ func (d *ExecutionDAG) argoCDManifest() (string, error) {
 		return "", fmt.Errorf("inspect Argo CD install manifest: %w", err)
 	}
 	if !info.Mode().IsRegular() {
-		return "", fmt.Errorf("Argo CD install manifest must be a regular file")
+		return "", fmt.Errorf("the Argo CD install manifest must be a regular file")
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -176,7 +176,7 @@ func (d *ExecutionDAG) argoCDManifest() (string, error) {
 	}
 	sum := sha256.Sum256(data)
 	if hex.EncodeToString(sum[:]) != argoCDInstallSHA256 {
-		return "", fmt.Errorf("Argo CD install manifest digest does not match v3.5.3")
+		return "", fmt.Errorf("the Argo CD install manifest digest does not match v3.5.3")
 	}
 	directory, err := os.MkdirTemp("", "mantl-argocd-*")
 	if err != nil {
