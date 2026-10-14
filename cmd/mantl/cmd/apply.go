@@ -43,7 +43,7 @@ func newApplyCommand(factory applyFactory) *cobra.Command {
 		},
 	}
 	command.Flags().StringVar(&options.outputDir, "output-dir", ".mantl/build", "Generated or reviewed artifact directory")
-	command.Flags().StringVar(&options.planFile, "plan", "", "Saved inventory to verify before any bootstrap changes")
+	command.Flags().StringVar(&options.planFile, "plan", "", "Required saved inventory to verify before any bootstrap changes")
 	command.Flags().DurationVar(&options.timeout, "timeout", 30*time.Minute, "Total apply deadline (maximum 2h)")
 	return command
 }
@@ -101,7 +101,7 @@ func executeApply(command *cobra.Command, specFile string, options applyOptions,
 
 func reviewedApplyPlan(current compiler.Plan, options applyOptions) (compiler.Plan, error) {
 	if options.planFile == "" {
-		return current, nil
+		return compiler.Plan{}, fmt.Errorf("apply requires --plan")
 	}
 	reviewed, err := compiler.ReadPlan(options.planFile)
 	if err != nil {

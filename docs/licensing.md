@@ -40,6 +40,7 @@ fallback for an unknown chart path.
 | External Secrets and Bitwarden SDK server chart | Apache-2.0 | [v0.12.1](https://github.com/external-secrets/external-secrets/blob/v0.12.1/LICENSE), [SDK server v0.3.1](https://github.com/external-secrets/bitwarden-sdk-server/blob/v0.3.1/LICENSE) |
 | Falco and bundled charts | Apache-2.0 | [Falco chart 4.15.0 source license](https://github.com/falcosecurity/charts/blob/falco-4.15.0/LICENSE) and existing file headers |
 | Kyverno and bundled wrappers | Apache-2.0 | [3.3.3 chart-source license](https://github.com/kyverno/kyverno/blob/kyverno-chart-3.3.3/LICENSE) |
+| Argo CD install manifest | Apache-2.0 | [v3.5.3 license](https://github.com/argoproj/argo-cd/blob/v3.5.3/LICENSE) |
 
 These declarations describe the files in this checkout. Referenced container images
 and deployed software retain their own licenses; a chart license does not assign

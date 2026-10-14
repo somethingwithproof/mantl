@@ -6,9 +6,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/thomasvincent/mantl/pkg/toolcommand"
 )
 
 // Preflight checks local prerequisites without provisioning or contacting a
@@ -38,7 +39,7 @@ func (d *ExecutionDAG) Preflight(ctx context.Context, provider, clusterName stri
 	if !info.IsDir() {
 		return fmt.Errorf("terraform blueprint must be a directory")
 	}
-	if _, err := terraformExecutable(); err != nil {
+	if _, err := toolcommand.OpenTofuOrTerraform(); err != nil {
 		return err
 	}
 	command := d.command(ctx, "kubectl", "config", "get-contexts", d.KubeContext, "-o", "name")
@@ -52,25 +53,15 @@ func (d *ExecutionDAG) Preflight(ctx context.Context, provider, clusterName stri
 	return nil
 }
 
-func terraformExecutable() (string, error) {
-	if path, err := exec.LookPath("tofu"); err == nil {
-		return path, nil
-	}
-	path, err := exec.LookPath("terraform")
-	if err != nil {
-		return "", fmt.Errorf("neither tofu nor terraform binary found in PATH: %w", err)
-	}
-	return path, nil
-}
-
 func (d *ExecutionDAG) preflightLocal(ctx context.Context, clusterName string) error {
 	if !validKindClusterNameRe.MatchString(clusterName) || len(clusterName) > 63 {
 		return fmt.Errorf("invalid kind cluster name")
 	}
-	if _, err := exec.LookPath("kind"); err != nil {
-		return fmt.Errorf("preflight kind: %w", err)
+	kind := d.command(ctx, "kind", "get", "clusters")
+	if kind.Err != nil {
+		return fmt.Errorf("preflight kind: %w", kind.Err)
 	}
-	if err := d.command(ctx, "kind", "get", "clusters").Run(); err != nil {
+	if err := kind.Run(); err != nil {
 		return fmt.Errorf("preflight kind container runtime: %w", err)
 	}
 	return nil

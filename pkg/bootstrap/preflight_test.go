@@ -29,7 +29,10 @@ printf '%s\n' "$PREFLIGHT_CONTEXT"
 			t.Fatal(err)
 		}
 	}
-	t.Setenv("PATH", tools)
+	t.Setenv("PATH", t.TempDir())
+	t.Setenv("MANTL_TOFU_PATH", "")
+	t.Setenv("MANTL_TERRAFORM_PATH", filepath.Join(tools, "terraform"))
+	t.Setenv("MANTL_KIND_PATH", filepath.Join(tools, "kind"))
 	t.Setenv("PREFLIGHT_CONTEXT", "fixture")
 	t.Setenv("PREFLIGHT_FAIL", "false")
 	source := t.TempDir()
@@ -84,10 +87,12 @@ func invalidatePreflightFixture(t *testing.T, dag *ExecutionDAG, missing string,
 			t.Fatal(err)
 		}
 	case "terraform":
-		t.Setenv("PATH", t.TempDir())
+		missingTool := filepath.Join(t.TempDir(), "missing")
+		t.Setenv("MANTL_TOFU_PATH", missingTool)
+		t.Setenv("MANTL_TERRAFORM_PATH", missingTool)
 	case "kind":
 		*provider = "local"
-		t.Setenv("PATH", t.TempDir())
+		t.Setenv("MANTL_KIND_PATH", filepath.Join(t.TempDir(), "missing"))
 	case "kubectl":
 		t.Setenv("MANTL_KUBECTL_PATH", filepath.Join(t.TempDir(), "missing"))
 	case "local-name":

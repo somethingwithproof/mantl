@@ -26,13 +26,16 @@ reader used by apply. It does not recompile or establish reviewer authenticity.
 directories. Both are read-only; their versioned reports distinguish verification
 from metadata comparison. The diff change gate prints its report before failing.
 
-`apply --plan` requires the current compiler/spec to reproduce the entire saved
+`apply` requires `--plan`. The current compiler/spec must reproduce the entire saved
 inventory. All listed regular files must match their sizes and hashes. Root-bound
 file reads reject escaping paths and symlinked artifacts. Verified bytes are
 copied into a private temporary build directory before execution; later changes
 to reviewed files cannot alter the bytes passed to bootstrap. Extra build files
-are not executed. Apply without a saved plan remains available and uses the same
-private execution snapshot, but does not claim prior review.
+are not executed. Apply without a saved plan stops before preflight.
+
+Argo CD is installed from `deploy/argocd/install.yaml` after the file's SHA-256
+matches the v3.5.3 manifest vendored in this source tree. Apply does not fetch
+that manifest, and the inventory does not cover it.
 
 Preflight validates tools, source blueprint availability and an explicit cloud
 kube-context before generating files or provisioning. The local provider derives

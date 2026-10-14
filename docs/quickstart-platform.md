@@ -103,10 +103,12 @@ flags**. A compiler plan is not an infrastructure resource-change plan.
 
 ## Deployment is a separate step
 
-The v0.5.0 `apply` creates resources and modifies a cluster. It runs Terraform/OpenTofu apply
-without a saved Terraform plan approval step, installs pinned ArgoCD v3.5.3, submits
-the generated Applications, and polls reported application health. Review changes
-with your infrastructure tool and Git process before invoking it. Cloud deployment
+The v0.5.0 `apply` creates resources and modifies a cluster. Current source requires
+a saved Mantl inventory via `--plan` before it runs Terraform/OpenTofu apply. That
+inventory is not a Terraform resource plan. Apply installs Argo CD from the vendored
+v3.5.3 manifest, submits the generated Applications, and polls reported application
+health. Review changes with your infrastructure tool and Git process before invoking
+it. Cloud deployment
 and recovery acceptance have not been established; use disposable environments
 for your own evaluation and account for cluster, network, compute, storage, and
 long-lived evidence-retention costs.
@@ -117,9 +119,11 @@ Before cloud bootstrap you must:
    `infra/terraform/blueprints` supplies configurations; generated variables alone
    cannot provision a cluster. Review the selected blueprint's required variables,
    provider identity, private connectivity, state/backend configuration, and costs.
-2. Install OpenTofu or Terraform and `kubectl`. Mantl resolves kubectl from
-   `/usr/local/bin`, `/usr/bin`, or `/opt/homebrew/bin`; for a tool-manager install,
-   set `MANTL_KUBECTL_PATH` to its trusted absolute executable path. Supply cloud credentials through
+2. Install OpenTofu or Terraform, kind for a local cluster, and `kubectl`. Mantl resolves
+   those tools from `/usr/local/bin`, `/usr/bin`, or `/opt/homebrew/bin`. For a tool-manager
+   install, set `MANTL_KUBECTL_PATH`, `MANTL_KIND_PATH`, `MANTL_TOFU_PATH`, or
+   `MANTL_TERRAFORM_PATH` to the trusted absolute executable path. An explicit path does not
+   fall back to another binary. Supply cloud credentials through
    the provider's runtime identity/credential chain, never committed files. Ensure
    your explicit kube-context authenticates to the intended cluster once it exists;
    Mantl does not install Terraform outputs into your kubeconfig.
@@ -136,14 +140,14 @@ After those preparations, the CLI shape is:
 
 ```sh
 # Provisioning / cluster modification: replace context and paths for your environment.
-mantl --context YOUR_CONTEXT --source-dir /path/to/extracted/platform apply platform.yaml
+mantl --context YOUR_CONTEXT --source-dir /path/to/extracted/platform apply platform.yaml --plan reviewed-plan.json
 # Read-only observation after bootstrap:
 mantl --context YOUR_CONTEXT status platform.yaml --format json --require-healthy
 ```
 
 The local `provider.kind: local` / `distribution: kind` path also changes your
 machine: it requires Docker, kind, and kubectl, creates `kind-<metadata.name>`,
-and downloads/installs platform components. It is not part of the offline quickstart.
+and installs the vendored Argo CD manifest plus generated Applications. It is not part of the offline quickstart.
 
 Use [scoped status](platform-status.md) for the expected Application identities;
 its health gate does not assess compliance or nested workload/provider readiness.
