@@ -210,9 +210,8 @@ stage stops subsequent stages and preserves its underlying error. Ctrl+C and
 SIGTERM cancel the CLI context, stop managed child commands and run snapshot cleanup. Partial changes
 remain available for diagnosis and recovery; rollback is an operator decision.
 
-Apply without `--plan` generates fresh inputs after preflight and uses the same
-private execution snapshot. Prior review is established only by the saved-plan
-workflow. Bootstrap applies the expected Applications only and verifies every
+Prior review is established only by the saved-plan workflow. Bootstrap applies
+the expected Applications only and verifies every
 expected source identity and explicit Synced/Healthy status, sharing the contract
 with `mantl status`. Removed live Applications need a reviewed GitOps cleanup;
 comparison removals alone do not delete them. Tenant removals continue through
