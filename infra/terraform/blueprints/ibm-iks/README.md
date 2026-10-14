@@ -173,13 +173,13 @@ kubectl apply -f clusters/production/platform-apps.yaml
 | Name | Version |
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
-| <a name="requirement_ibm"></a> [ibm](#requirement\_ibm) | 2.6.2 |
+| <a name="requirement_ibm"></a> [ibm](#requirement\_ibm) | 2.7.0 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_ibm"></a> [ibm](#provider\_ibm) | 2.6.2 |
+| <a name="provider_ibm"></a> [ibm](#provider\_ibm) | 2.7.0 |
 
 ## Modules
 
@@ -189,30 +189,30 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
-| [ibm_container_vpc_cluster.iks_cluster](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/container_vpc_cluster) | resource |
-| [ibm_container_vpc_worker_pool.spot_pool](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/container_vpc_worker_pool) | resource |
-| [ibm_container_vpc_worker_pool.workload_pool](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/container_vpc_worker_pool) | resource |
-| [ibm_cos_bucket.backups](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/cos_bucket) | resource |
-| [ibm_cos_bucket.flow_logs](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/cos_bucket) | resource |
-| [ibm_is_flow_log.vpc_flow_logs](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_flow_log) | resource |
-| [ibm_is_public_gateway.pgw](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_public_gateway) | resource |
-| [ibm_is_security_group.cluster_nodes](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_security_group) | resource |
-| [ibm_is_security_group_rule.inbound_http](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_security_group_rule) | resource |
-| [ibm_is_security_group_rule.inbound_https](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_security_group_rule) | resource |
-| [ibm_is_security_group_rule.inbound_ssh](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_security_group_rule) | resource |
-| [ibm_is_security_group_rule.inbound_vpc](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_security_group_rule) | resource |
-| [ibm_is_security_group_rule.outbound_all](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_security_group_rule) | resource |
-| [ibm_is_subnet.iks_subnet](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_subnet) | resource |
-| [ibm_is_vpc.iks_vpc](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_vpc) | resource |
-| [ibm_is_vpc_address_prefix.zone_prefix](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/is_vpc_address_prefix) | resource |
-| [ibm_kms_key.root_key](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/kms_key) | resource |
-| [ibm_resource_instance.backup_cos](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/resource_instance) | resource |
-| [ibm_resource_instance.cos_instance](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/resource_instance) | resource |
-| [ibm_resource_instance.key_protect](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/resource_instance) | resource |
-| [ibm_resource_instance.log_analysis](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/resource_instance) | resource |
-| [ibm_resource_instance.monitoring](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/resources/resource_instance) | resource |
-| [ibm_is_zones.zones](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/data-sources/is_zones) | data source |
-| [ibm_resource_group.resource_group](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.6.2/docs/data-sources/resource_group) | data source |
+| [ibm_container_vpc_cluster.iks_cluster](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/container_vpc_cluster) | resource |
+| [ibm_container_vpc_worker_pool.spot_pool](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/container_vpc_worker_pool) | resource |
+| [ibm_container_vpc_worker_pool.workload_pool](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/container_vpc_worker_pool) | resource |
+| [ibm_cos_bucket.backups](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/cos_bucket) | resource |
+| [ibm_cos_bucket.flow_logs](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/cos_bucket) | resource |
+| [ibm_is_flow_log.vpc_flow_logs](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_flow_log) | resource |
+| [ibm_is_public_gateway.pgw](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_public_gateway) | resource |
+| [ibm_is_security_group.cluster_nodes](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_security_group) | resource |
+| [ibm_is_security_group_rule.inbound_http](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_security_group_rule) | resource |
+| [ibm_is_security_group_rule.inbound_https](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_security_group_rule) | resource |
+| [ibm_is_security_group_rule.inbound_ssh](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_security_group_rule) | resource |
+| [ibm_is_security_group_rule.inbound_vpc](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_security_group_rule) | resource |
+| [ibm_is_security_group_rule.outbound_all](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_security_group_rule) | resource |
+| [ibm_is_subnet.iks_subnet](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_subnet) | resource |
+| [ibm_is_vpc.iks_vpc](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_vpc) | resource |
+| [ibm_is_vpc_address_prefix.zone_prefix](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/is_vpc_address_prefix) | resource |
+| [ibm_kms_key.root_key](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/kms_key) | resource |
+| [ibm_resource_instance.backup_cos](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/resource_instance) | resource |
+| [ibm_resource_instance.cos_instance](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/resource_instance) | resource |
+| [ibm_resource_instance.key_protect](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/resource_instance) | resource |
+| [ibm_resource_instance.log_analysis](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/resource_instance) | resource |
+| [ibm_resource_instance.monitoring](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/resources/resource_instance) | resource |
+| [ibm_is_zones.zones](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/data-sources/is_zones) | data source |
+| [ibm_resource_group.resource_group](https://registry.terraform.io/providers/IBM-Cloud/ibm/2.7.0/docs/data-sources/resource_group) | data source |
 
 ## Inputs
 
