@@ -104,6 +104,8 @@ func TestMetadataListValidatesPaginationAndIndexFailures(t *testing.T) {
 		{"/v1/events?limit=501", false, http.StatusBadRequest},
 		{"/v1/events?limit=invalid", false, http.StatusBadRequest},
 		{"/v1/events?after=invalid", false, http.StatusBadRequest},
+		{"/v1/state?after=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", false, http.StatusBadRequest},
+		{"/v1/state?after=cluster-a/Finding/uid", false, http.StatusOK},
 		{"/v1/events", true, http.StatusServiceUnavailable},
 	} {
 		t.Run(test.path, func(t *testing.T) {

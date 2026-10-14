@@ -29,7 +29,7 @@ type Input struct {
 
 func ActiveException(exception api.ComplianceException, profile, control, resource string, now time.Time) bool {
 	s := exception.Status
-	return s.Approved && s.ApprovedBy != "" && s.ApprovedAt != nil && s.ApprovedGeneration == exception.Generation && s.ApprovedAt.Time.Before(now.Add(time.Second)) && exception.Spec.Owner != "" && exception.Spec.Justification != "" && exception.Spec.ExpiresAt.After(now) && exception.Spec.Profile == profile && exception.Spec.Control == control && (exception.Spec.Resource == "" || exception.Spec.Resource == resource)
+	return s.Approved && s.ApprovedBy != "" && s.ApprovedBy != exception.Spec.Owner && s.ApprovedAt != nil && s.ApprovedGeneration == exception.Generation && s.ApprovedAt.Time.Before(now.Add(time.Second)) && exception.Spec.Owner != "" && exception.Spec.Justification != "" && exception.Spec.ExpiresAt.After(now) && exception.Spec.Profile == profile && exception.Spec.Control == control && (exception.Spec.Resource == "" || exception.Spec.Resource == resource)
 }
 func Assess(in Input) api.ControlEvaluationStatus {
 	result := api.ControlEvaluationStatus{Result: "unknown", Coverage: "complete", Freshness: "current", EvidenceURI: in.EvidenceURI}

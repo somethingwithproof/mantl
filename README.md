@@ -150,10 +150,13 @@ The result is local configuration to review. Nothing has been provisioned or app
 Continue with [bootstrap prerequisites](docs/quickstart-platform.md#deployment-is-a-separate-step)
 only when you have supplied environment-specific settings and understand the changes.
 
-**Review before deployment:** v0.5.0 also supports offline plan previews,
-saved inventories and comparisons, and `apply --plan` verification with preflight
-and expected-Application convergence. These flags are absent from v0.4.0.
-Follow the [planning guide](docs/platform-planning.md#preview-and-inventory)
+**Review before deployment:** Current source requires `apply --plan`. Save an
+inventory, review it, then apply that file. Apply stops before preflight when
+the inventory is missing or does not match. Argo CD v3.5.3 is installed from
+the vendored `deploy/argocd/install.yaml` after a digest check, not fetched
+during apply. v0.5.0 supports offline plan previews, saved inventories,
+comparisons, and optional `apply --plan` verification; those flags are absent
+from v0.4.0. Follow the [planning guide](docs/platform-planning.md#preview-and-inventory)
 to review the generated inputs before applying them.
 
 Current source also adds `mantl plan verify` for saved artifact integrity checks

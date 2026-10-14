@@ -12,12 +12,55 @@ import (
 	"github.com/thomasvincent/mantl/pkg/evidence"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 )
 
 var ErrConflict = errors.New("event identity already has different content")
 var scopePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$`)
 var digestPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
+var stateCursorPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}/(Finding|ControlEvaluation|AuditRun)/[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$`)
+
+const stateListQuery = `SELECT cluster_id,payload,source FROM (
+ SELECT DISTINCT ON(cluster_id COLLATE "C",kind COLLATE "C",resource_uid COLLATE "C") cluster_id,payload,source,kind,resource_uid
+ FROM mantl_events WHERE tenant_id=$1 AND ($2='' OR cluster_id=$2)
+ ORDER BY cluster_id COLLATE "C",kind COLLATE "C",resource_uid COLLATE "C",observed_at DESC,id DESC) current_state
+ WHERE $3='' OR (cluster_id COLLATE "C",kind COLLATE "C",resource_uid COLLATE "C") > (split_part($3,'/',1) COLLATE "C", split_part($3,'/',2) COLLATE "C", split_part($3,'/',3) COLLATE "C")
+ ORDER BY cluster_id COLLATE "C",kind COLLATE "C",resource_uid COLLATE "C" LIMIT $4`
+
+// StateCursor identifies one current resource. It does not change when a newer
+// observation replaces that resource's event id.
+func StateCursor(cluster, kind, resourceUID string) string {
+	return cluster + "/" + kind + "/" + resourceUID
+}
+
+func ValidStateCursor(cursor string) bool {
+	return cursor == "" || stateCursorPattern.MatchString(cursor)
+}
+
+func stateCursorBefore(left, right string) bool {
+	lc, lk, lu, lok := splitStateCursor(left)
+	rc, rk, ru, rok := splitStateCursor(right)
+	if !lok || !rok {
+		return false
+	}
+	if lc != rc {
+		return lc < rc
+	}
+	if lk != rk {
+		return lk < rk
+	}
+	return lu < ru
+}
+
+func splitStateCursor(cursor string) (string, string, string, bool) {
+	cluster, rest, ok := strings.Cut(cursor, "/")
+	kind, resource, ok2 := strings.Cut(rest, "/")
+	if !ok || !ok2 || strings.Contains(resource, "/") {
+		return "", "", "", false
+	}
+	return cluster, kind, resource, true
+}
 
 type Scope struct {
 	Tenant  string `json:"tenant"`

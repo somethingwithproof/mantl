@@ -12,7 +12,8 @@ exclude: |
     .*/templates/.*|
     examples/.*/(src|node_modules|build)/.*|
     docs/legacy/.*|
-    .*/zz_generated\..*
+    .*/zz_generated\..*|
+    deploy/argocd/install\.yaml
   )$
 
 repos:
@@ -45,7 +46,7 @@ repos:
         # All batches share one baseline; serialize updates to avoid lost line numbers.
         require_serial: true
         args: ['--baseline', '.secrets.baseline']
-        exclude: package-lock\.json|go\.sum
+        exclude: package-lock\.json|go\.sum|deploy/argocd/install\.yaml
 
   # Python formatting
   - repo: https://github.com/psf/black
@@ -73,7 +74,7 @@ repos:
     hooks:
       - id: end-of-file-fixer
         # Release Please owns this generated file and writes JSON without a newline.
-        exclude: ^\.release-please-manifest\.json$
+        exclude: ^(\.release-please-manifest\.json|deploy/argocd/install\.yaml)$
       - id: trailing-whitespace
       - id: check-yaml
         args: ['--unsafe']

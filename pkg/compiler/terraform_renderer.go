@@ -40,27 +40,9 @@ func terraformManifest(cluster *v1alpha1.MantlCluster) ([]byte, error) {
 		return nil, fmt.Errorf("cluster must not be nil")
 	}
 
-	// 1. Prepare variables based on the spec
-	// Map profile size to environment name
-	envMap := map[string]string{
-		"small":  "dev",
-		"medium": "staging",
-		"full":   "prod",
-	}
-	environment := envMap[cluster.Spec.Profile.Size]
-	if environment == "" {
-		return nil, fmt.Errorf("unsupported profile size %q: expected one of small, medium, full", cluster.Spec.Profile.Size)
-	}
-
-	if cluster.Spec.Environment != "" {
-		switch cluster.Spec.Environment {
-		case "dev", "staging":
-			environment = cluster.Spec.Environment
-		case "production":
-			environment = "prod"
-		default:
-			return nil, fmt.Errorf("unsupported environment %q", cluster.Spec.Environment)
-		}
+	environment, err := environmentName(cluster)
+	if err != nil {
+		return nil, err
 	}
 	vars := TFVars{"cluster_name": cluster.Name, "kubernetes_version": cluster.Spec.Kubernetes.Version, "environment": environment}
 	switch cluster.Spec.Provider.Kind {
@@ -81,4 +63,31 @@ func terraformManifest(cluster *v1alpha1.MantlCluster) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+// environmentName is the one environment vocabulary for Terraform variables and
+// tenant labels: dev, staging, production. Profile size supplies it when the
+// spec does not.
+func environmentName(cluster *v1alpha1.MantlCluster) (string, error) {
+	if cluster == nil {
+		return "", fmt.Errorf("cluster must not be nil")
+	}
+	if cluster.Spec.Environment != "" {
+		switch cluster.Spec.Environment {
+		case "dev", "staging", "production":
+			return cluster.Spec.Environment, nil
+		default:
+			return "", fmt.Errorf("unsupported environment %q", cluster.Spec.Environment)
+		}
+	}
+	switch cluster.Spec.Profile.Size {
+	case "small":
+		return "dev", nil
+	case "medium":
+		return "staging", nil
+	case "full":
+		return "production", nil
+	default:
+		return "", fmt.Errorf("unsupported profile size %q: expected one of small, medium, full", cluster.Spec.Profile.Size)
+	}
 }

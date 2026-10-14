@@ -122,13 +122,27 @@ func TestRunRejectsChangedScope(t *testing.T) {
 	}
 }
 
+func TestRunIgnoresAuditOutsideControlNamespace(t *testing.T) {
+	r, _, req, _ := runFixture(t, 1)
+	r.ControlNamespace = "another-system"
+	result, err := r.Reconcile(context.Background(), req)
+	if err != nil || result.RequeueAfter != 0 {
+		t.Fatalf("foreign audit run was retried: %+v, %v", result, err)
+	}
+	var jobs batch.JobList
+	requireNoError(t, r.List(context.Background(), &jobs))
+	if len(jobs.Items) != 0 {
+		t.Fatal("foreign audit run launched a job")
+	}
+}
+
 func TestRunCannotSelectAnotherNamespaceOrCollectorIdentity(t *testing.T) {
-	for _, attack := range []string{"namespace", "cluster", "image"} {
+	for _, attack := range []string{"unconfigured", "cluster", "image"} {
 		t.Run(attack, func(t *testing.T) {
 			r, run, req, _ := runFixture(t, 1)
 			switch attack {
-			case "namespace":
-				r.ControlNamespace = "another-system"
+			case "unconfigured":
+				r.ControlNamespace = ""
 			case "cluster":
 				r.ClusterID = "another-cluster"
 			case "image":

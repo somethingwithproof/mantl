@@ -407,3 +407,9 @@ path = "infra/terraform/vsphere/**"
 precedence = "closest"
 SPDX-License-Identifier = "Apache-2.0"
 SPDX-FileComment = "Preserve unvalidated legacy/reference assets byte-for-byte; this declaration does not establish a working example."
+
+[[annotations]]
+path = "deploy/argocd/install.yaml"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileComment = "Unmodified Argo CD v3.5.3 install manifest from https://github.com/argoproj/argo-cd. Apache-2.0."

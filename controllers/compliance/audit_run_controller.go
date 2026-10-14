@@ -37,7 +37,12 @@ func (r *AuditRunReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err := r.Get(ctx, req.NamespacedName, &run); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if r.ControlNamespace == "" || run.Namespace != r.ControlNamespace || r.ClusterID == "" || run.Spec.ClusterID != r.ClusterID {
+	// A namespaced AuditRun outside the control namespace is ignored. Returning
+	// an error would retry a run this operator must not execute.
+	if r.ControlNamespace != "" && run.Namespace != r.ControlNamespace {
+		return ctrl.Result{}, nil
+	}
+	if r.ControlNamespace == "" || r.ClusterID == "" || run.Spec.ClusterID != r.ClusterID {
 		return ctrl.Result{}, fmt.Errorf("audit run is outside the trusted control namespace or cluster")
 	}
 	if run.Status.EndTime != nil {

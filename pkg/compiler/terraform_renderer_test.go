@@ -45,7 +45,7 @@ func TestRenderTerraform_MappedSizes(t *testing.T) {
 	}{
 		{"small", "dev"},
 		{"medium", "staging"},
-		{"full", "prod"},
+		{"full", "production"},
 	}
 
 	for _, tt := range tests {
@@ -72,6 +72,38 @@ func TestRenderTerraform_MappedSizes(t *testing.T) {
 				t.Errorf("environment = %q, want %q", got, tt.wantEnv)
 			}
 		})
+	}
+}
+
+func TestEnvironmentNameIsShared(t *testing.T) {
+	full := newTestCluster("full")
+	override := newTestCluster("small")
+	override.Spec.Environment = "production"
+	for _, cluster := range []*v1alpha1.MantlCluster{full, override} {
+		dir := t.TempDir()
+		cluster.Spec.GitOps.TenantPath = "tenants/app"
+		cluster.Spec.Tenants = []v1alpha1.TenantSpec{{Name: "payments"}}
+		if err := RenderTerraform(cluster, dir); err != nil {
+			t.Fatal(err)
+		}
+		if err := RenderGitOps(cluster, dir); err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(dir, "terraform.tfvars.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var vars map[string]interface{}
+		if err := json.Unmarshal(data, &vars); err != nil {
+			t.Fatal(err)
+		}
+		if vars["environment"] != "production" {
+			t.Fatalf("terraform environment = %v, want production", vars["environment"])
+		}
+		tenant, err := os.ReadFile(filepath.Join(dir, "tenants/payments.yaml"))
+		if err != nil || !strings.Contains(string(tenant), "environment: production") {
+			t.Fatalf("tenant label is not production: %v\n%s", err, tenant)
+		}
 	}
 }
 

@@ -38,8 +38,8 @@ func init() {
 		if err = json.Unmarshal(identity, &subject); err != nil {
 			return err
 		}
-		if subject.Status.UserInfo.Username == "" {
-			return fmt.Errorf("authenticated approver identity unavailable")
+		if err = distinctApprover(exception.Spec.Owner, subject.Status.UserInfo.Username); err != nil {
+			return err
 		}
 		patch, err := json.Marshal([]map[string]interface{}{
 			{"op": "test", "path": "/metadata/resourceVersion", "value": exception.ResourceVersion},
@@ -57,4 +57,11 @@ func init() {
 	}}
 	command.AddCommand(approve)
 	complianceCmd.AddCommand(command)
+}
+
+func distinctApprover(owner, approver string) error {
+	if approver == "" || approver == owner {
+		return fmt.Errorf("exception approver must differ from the owner")
+	}
+	return nil
 }

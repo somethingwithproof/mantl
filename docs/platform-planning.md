@@ -37,14 +37,15 @@ not a reconciled platform provisioning controller; do not assume that applying a
 | `provider.kind`, `kubernetes.distribution` | Valid pairs: local/kind, aws/eks, gcp/gke, azure/aks, do/doks, linode/lke, oci/oke, ibm/iks, openstack/kubernetes. Validation is not provider acceptance. |
 | `provider.region`, `kubernetes.version` | Required strings. Local generation also requires them; no live provider version lookup occurs. |
 | `provider.accountId` | Required for GCP project or Azure resource group. AWS account selection comes from credentials, not this field. |
-| `profile.size` | Required: small, medium, full; labels map to dev, staging, production (Terraform uses prod). |
+| `profile.size` | Required: small, medium, full. Both tenant labels and Terraform use dev, staging, production. |
 | `environment` | Optional override: dev, staging, production. |
 | `networking.domain` | Required input; domain/exposure/vpcId are not wired into the generated Terraform variables. |
 | `features` | Boolean selections generate feature Applications at the paths below; omitted values are false. |
 | `gitops.repository`, `revision` | Optional; defaults to this Mantl repository and main. Explicit HTTPS repository URLs must omit credentials. Pin a reviewed revision. |
 | `gitops.operatorPath` | Overrides the compliance Application source path; use an environment-specific overlay. |
 | `gitops.tenantPath` | Required when tenants exist; relative path in the Git repository where generated files must be committed. |
-| `tenants` | Unique DNS-label names/namespaces; namespace defaults to name. Admin strings become Kubernetes User subjects bound to namespace admin. |
+| `controlNamespace` | Optional DNS label for the compliance operator namespace. Tenants cannot use it. kube-system, kube-public, kube-node-lease, default, argocd, and mantl-compliance-system are always refused. |
+| `tenants` | Unique DNS-label names/namespaces; namespace defaults to name. The namespaces above, and `controlNamespace` when set, are refused. Admin strings become Kubernetes User subjects bound to namespace admin. |
 | `profile.compliance` | Present in the API but not used to select/install a compliance profile by the compiler. Configure ComplianceProfile resources separately. |
 
 Feature paths are `observability` → `platform/observability/prometheus/overlays/dev`,
@@ -189,8 +190,8 @@ mantl --context TARGET --source-dir PLATFORM_SOURCE apply examples/mantl-spec.ya
   --plan reviewed-plan.json --output-dir build/production --timeout 30m
 ```
 
-Apply recompiles the current spec and requires its full inventory to match the
-saved plan. Every listed regular artifact must match its size and SHA256. Missing,
+Apply requires `--plan` and recompiles the current spec. The full inventory must match the
+saved plan. Apply without that file stops before preflight. Every listed regular artifact must match its size and SHA256. Missing,
 tampered, symlinked or escaping files stop apply before preflight or provisioning.
 Verified bytes are copied into a private temporary directory for execution, so
 later changes to reviewed files cannot change execution inputs. Extra YAML files
@@ -209,9 +210,8 @@ stage stops subsequent stages and preserves its underlying error. Ctrl+C and
 SIGTERM cancel the CLI context, stop managed child commands and run snapshot cleanup. Partial changes
 remain available for diagnosis and recovery; rollback is an operator decision.
 
-Apply without `--plan` generates fresh inputs after preflight and uses the same
-private execution snapshot. Prior review is established only by the saved-plan
-workflow. Bootstrap applies the expected Applications only and verifies every
+Prior review is established only by the saved-plan workflow. Bootstrap applies
+the expected Applications only and verifies every
 expected source identity and explicit Synced/Healthy status, sharing the contract
 with `mantl status`. Removed live Applications need a reviewed GitOps cleanup;
 comparison removals alone do not delete them. Tenant removals continue through

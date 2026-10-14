@@ -4,6 +4,8 @@ package bootstrap
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/thomasvincent/mantl/pkg/compiler"
 	"github.com/thomasvincent/mantl/pkg/toolcommand"
@@ -16,6 +18,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
+)
+
+const (
+	argoCDInstallRel    = "deploy/argocd/install.yaml"
+	argoCDInstallSHA256 = "7efe2d6bbc03f63623640f1e4198f16c84009d510fb810ef71e56df1b7614ba9" // pragma: allowlist secret
 )
 
 // ExecutionDAG defines the sequence of platform bring-up.
@@ -51,7 +58,7 @@ func (d *ExecutionDAG) ProvisionInfra(ctx context.Context, provider, clusterName
 		return fmt.Errorf("terraform blueprint %q not found at %s", blueprintName, blueprintPath)
 	}
 
-	tfPath, err := terraformExecutable()
+	tfPath, err := toolcommand.OpenTofuOrTerraform()
 	if err != nil {
 		return err
 	}
@@ -117,8 +124,14 @@ func (d *ExecutionDAG) CreateLocalCluster(ctx context.Context, name string) erro
 	return nil
 }
 
-// InstallArgoCD installs ArgoCD into the current cluster.
+// InstallArgoCD installs ArgoCD into the current cluster from the vendored manifest.
 func (d *ExecutionDAG) InstallArgoCD(ctx context.Context) error {
+	staged, err := d.argoCDManifest()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(filepath.Dir(staged)) }()
+
 	slog.Info("installing ArgoCD")
 
 	// Apply a declarative namespace so installation is repeatable.
@@ -128,9 +141,7 @@ func (d *ExecutionDAG) InstallArgoCD(ctx context.Context) error {
 		return fmt.Errorf("ensure argocd namespace: %w", err)
 	}
 
-	// 2. Apply install manifest
-	installUrl := "https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.3/manifests/install.yaml"
-	cmd := d.command(ctx, "kubectl", "apply", "-n", "argocd", "-f", installUrl)
+	cmd := d.command(ctx, "kubectl", "apply", "-n", "argocd", "-f", staged)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -145,6 +156,38 @@ func (d *ExecutionDAG) InstallArgoCD(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (d *ExecutionDAG) argoCDManifest() (string, error) {
+	if d.SourceDir == "" {
+		return "", fmt.Errorf("source directory is required for the Argo CD install manifest")
+	}
+	path := filepath.Join(d.SourceDir, filepath.FromSlash(argoCDInstallRel))
+	info, err := os.Lstat(path)
+	if err != nil {
+		return "", fmt.Errorf("inspect Argo CD install manifest: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("the Argo CD install manifest must be a regular file")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read Argo CD install manifest: %w", err)
+	}
+	sum := sha256.Sum256(data)
+	if hex.EncodeToString(sum[:]) != argoCDInstallSHA256 {
+		return "", fmt.Errorf("the Argo CD install manifest digest does not match v3.5.3")
+	}
+	directory, err := os.MkdirTemp("", "mantl-argocd-*")
+	if err != nil {
+		return "", fmt.Errorf("create Argo CD install directory: %w", err)
+	}
+	staged := filepath.Join(directory, "install.yaml")
+	if err := os.WriteFile(staged, data, 0600); err != nil {
+		_ = os.RemoveAll(directory)
+		return "", fmt.Errorf("stage Argo CD install manifest: %w", err)
+	}
+	return staged, nil
 }
 
 // BootstrapGitOps applies the root application to the cluster.
@@ -174,6 +217,11 @@ func (d *ExecutionDAG) command(ctx context.Context, name string, args ...string)
 			args = append([]string{"--context", d.KubeContext}, args...)
 		}
 		command := toolcommand.Kubectl(ctx, args...)
+		command.WaitDelay = time.Second
+		return command
+	}
+	if name == "kind" {
+		command := toolcommand.Kind(ctx, args...)
 		command.WaitDelay = time.Second
 		return command
 	}

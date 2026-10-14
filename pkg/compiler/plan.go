@@ -92,8 +92,16 @@ func (plan *Plan) compileTenants(cluster *v1alpha1.MantlCluster) error {
 		return nil
 	}
 	names := []string{}
+	environment := ""
+	if len(cluster.Spec.Tenants) > 0 {
+		var err error
+		environment, err = environmentName(cluster)
+		if err != nil {
+			return err
+		}
+	}
 	for _, tenant := range cluster.Spec.Tenants {
-		data, err := tenantManifest(tenant, tenantEnvironment(cluster))
+		data, err := tenantManifest(tenant, environment, cluster.Spec.ControlNamespace)
 		if err != nil {
 			return err
 		}

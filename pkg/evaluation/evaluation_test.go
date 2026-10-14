@@ -50,6 +50,16 @@ func TestExceptionExpiryAndApprovalRevision(t *testing.T) {
 	if ActiveException(e, "profile", "CC6.1", "", now) {
 		t.Fatal("expired waiver accepted")
 	}
+	e.Spec.ExpiresAt = metav1.NewTime(now.Add(time.Hour))
+	e.Status.ApprovedBy = e.Spec.Owner
+	if ActiveException(e, "profile", "CC6.1", "", now) {
+		t.Fatal("owner approved their own exception")
+	}
+	in.Exceptions[0].Status.ApprovedBy = in.Exceptions[0].Spec.Owner
+	got = Assess(in)
+	if got.Result != "fail" || len(got.ExceptionNames) != 0 {
+		t.Fatal("self-approval was recorded as an active exception")
+	}
 }
 
 func TestEveryResourceAndRuleMustBeEvaluated(t *testing.T) {

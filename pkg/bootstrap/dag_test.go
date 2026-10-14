@@ -8,6 +8,7 @@ import (
 	"github.com/thomasvincent/mantl/pkg/compiler"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -54,7 +55,7 @@ case "$*" in
 esac
 case "$KUBECTL_FIXTURE_FAIL" in
   namespace) exit 1 ;;
-  install) case "$*" in *"https://"*) exit 1 ;; esac ;;
+  install) case "$*" in *install.yaml*) exit 1 ;; esac ;;
   wait) case "$*" in *" wait "*) exit 1 ;; esac ;;
 esac
 `
@@ -72,7 +73,7 @@ func TestArgoCDInstallationKeepsContextAndStopsAtFailedPhase(t *testing.T) {
 		t.Run(phase, func(t *testing.T) {
 			logfile := fakeKubectl(t)
 			t.Setenv("KUBECTL_FIXTURE_FAIL", phase)
-			dag := &ExecutionDAG{KubeContext: "fixture"}
+			dag := &ExecutionDAG{KubeContext: "fixture", SourceDir: moduleRoot(t)}
 			err := dag.InstallArgoCD(context.Background())
 			if (phase == "") != (err == nil) {
 				t.Fatalf("installation phase %q: %v", phase, err)
@@ -92,6 +93,52 @@ func TestArgoCDInstallationKeepsContextAndStopsAtFailedPhase(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func moduleRoot(t *testing.T) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("module root unavailable")
+	}
+	return filepath.Join(filepath.Dir(file), "..", "..")
+}
+
+func TestArgoCDInstallRejectsUnreviewedManifest(t *testing.T) {
+	logfile := fakeKubectl(t)
+	root := moduleRoot(t)
+	manifest := filepath.Join(root, argoCDInstallRel)
+	source := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(source, "deploy/argocd"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	altered := filepath.Join(source, argoCDInstallRel)
+	if err := os.WriteFile(altered, append(append([]byte{}, data...), '\n'), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&ExecutionDAG{SourceDir: source}).InstallArgoCD(context.Background()); err == nil || !strings.Contains(err.Error(), "digest") {
+		t.Fatalf("altered manifest accepted: %v", err)
+	}
+	linked := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(linked, "deploy/argocd"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(manifest, filepath.Join(linked, argoCDInstallRel)); err != nil {
+		t.Fatal(err)
+	}
+	if err := (&ExecutionDAG{SourceDir: linked}).InstallArgoCD(context.Background()); err == nil || !strings.Contains(err.Error(), "regular file") {
+		t.Fatalf("symlinked manifest accepted: %v", err)
+	}
+	if err := (&ExecutionDAG{SourceDir: t.TempDir()}).InstallArgoCD(context.Background()); err == nil {
+		t.Fatal("missing manifest accepted")
+	}
+	if _, err := os.Stat(logfile); !os.IsNotExist(err) {
+		t.Fatal("unreviewed manifest reached kubectl")
 	}
 }
 

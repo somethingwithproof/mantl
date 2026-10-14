@@ -72,10 +72,11 @@ exclusions and enforcement modes before adoption. The matching release platform 
 needed for cloud `apply`. Tenant environment labels follow profile size by default
 (small/dev, medium/staging, full/production); `spec.environment` overrides this.
 
-Cloud bootstrap requires `--context` and accepts `--source-dir`. The target
+Cloud bootstrap requires `--context` and `--plan`, and accepts `--source-dir`. The target
 context must already authenticate to the provisioned cluster; Terraform outputs
 are not silently installed into the user's kubeconfig. Local bootstrap targets
-`kind-<cluster-name>`. ArgoCD is pinned to v3.5.3; repeated namespace installation
+`kind-<cluster-name>`. Argo CD v3.5.3 is installed from `deploy/argocd/install.yaml`
+after its digest matches the vendored file. Repeated namespace installation
 is declarative and the full apply has a 30-minute deadline.
 
 ## Observe and export

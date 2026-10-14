@@ -21,10 +21,16 @@ provider "kubernetes" {
 
 locals {
   name = var.cluster_name
-  project_environment = contains(
-    ["development", "staging", "production"],
-    var.environment,
-  ) ? var.environment : "development"
+  # DigitalOcean project environments are development, staging, and production.
+  # Compiler and existing tfvars also use dev and prod.
+  project_environments = {
+    dev         = "development"
+    development = "development"
+    staging     = "staging"
+    prod        = "production"
+    production  = "production"
+  }
+  project_environment = local.project_environments[var.environment]
 
   common_tags = {
     managed_by  = "terraform"

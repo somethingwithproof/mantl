@@ -85,23 +85,27 @@ func assertPrivateApplyBuild(t *testing.T, executor *recordingApply, outputDir s
 }
 
 func TestApplyPreflightPrecedesWritesAndUsesPrivateInputs(t *testing.T) {
+	spec, outputDir, filename, plan := savedApplyFixture(t)
+	before, err := os.ReadFile(filepath.Join(outputDir, plan.Artifacts[0].Path))
+	if err != nil {
+		t.Fatal(err)
+	}
 	executor := &recordingApply{}
 	command := applyTestCommand(t, executor)
-	outputDir := filepath.Join(t.TempDir(), "generated")
 	executor.inspect = func(ctx context.Context, stage string) error {
 		if _, ok := ctx.Deadline(); !ok {
 			t.Fatal("total deadline missing")
 		}
-		if stage == "preflight" {
-			if _, err := os.Stat(outputDir); !os.IsNotExist(err) {
-				t.Fatal("output created before preflight")
-			}
-		} else {
+		data, err := os.ReadFile(filepath.Join(outputDir, plan.Artifacts[0].Path))
+		if err != nil || !bytes.Equal(data, before) {
+			t.Fatal("reviewed artifact rewritten during apply")
+		}
+		if stage != "preflight" {
 			assertPrivateApplyBuild(t, executor, outputDir)
 		}
 		return nil
 	}
-	command.SetArgs([]string{planSpec(t), "--output-dir", outputDir})
+	command.SetArgs([]string{spec, "--plan", filename, "--output-dir", outputDir})
 	if err := command.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -195,26 +199,33 @@ func TestReviewedApplyRejectsChangesBeforePreflight(t *testing.T) {
 }
 
 func TestApplyStopsOnEveryFailedStage(t *testing.T) {
+	spec, outputDir, filename, plan := savedApplyFixture(t)
+	artifact := filepath.Join(outputDir, plan.Artifacts[0].Path)
+	before, err := os.ReadFile(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
 	stages := []string{"preflight", "provision", "install", "bootstrap", "convergence"}
 	failure := errors.New("fixture stage failed")
 	for i, stage := range stages {
 		t.Run(stage, func(t *testing.T) {
 			executor := &recordingApply{failAt: stage, failure: failure}
 			command := applyTestCommand(t, executor)
-			outputDir := filepath.Join(t.TempDir(), "build")
-			command.SetArgs([]string{planSpec(t), "--output-dir", outputDir})
+			command.SetArgs([]string{spec, "--plan", filename, "--output-dir", outputDir})
 			if err := command.Execute(); !errors.Is(err, failure) {
 				t.Fatalf("underlying failure lost: %v", err)
 			}
 			if !reflect.DeepEqual(executor.calls, stages[:i+1]) {
 				t.Fatalf("continued after failed stage: %v", executor.calls)
 			}
-			if stage == "preflight" {
-				if _, err := os.Stat(outputDir); !os.IsNotExist(err) {
-					t.Fatal("failed preflight wrote generated output")
+			data, err := os.ReadFile(artifact)
+			if err != nil || !bytes.Equal(data, before) {
+				t.Fatal("failed apply rewrote reviewed artifacts")
+			}
+			if stage != "preflight" {
+				if _, err := os.Stat(executor.dag.BuildDir); !os.IsNotExist(err) {
+					t.Fatal("failed apply leaked its private snapshot")
 				}
-			} else if _, err := os.Stat(executor.dag.BuildDir); !os.IsNotExist(err) {
-				t.Fatal("failed apply leaked its private snapshot")
 			}
 		})
 	}
@@ -231,7 +242,8 @@ func TestApplyCancellationStopsNextStage(t *testing.T) {
 		}
 		return nil
 	}
-	command.SetArgs([]string{planSpec(t), "--output-dir", t.TempDir()})
+	spec, outputDir, filename, _ := savedApplyFixture(t)
+	command.SetArgs([]string{spec, "--plan", filename, "--output-dir", outputDir})
 	if err := command.ExecuteContext(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancellation lost: %v", err)
 	}
@@ -241,18 +253,23 @@ func TestApplyCancellationStopsNextStage(t *testing.T) {
 }
 
 func TestApplyRejectsInvalidOptionsAndMissingCloudContext(t *testing.T) {
-	for _, args := range [][]string{{"--timeout", "0"}, {"--timeout", "3h"}, {"--output-dir", ""}, {"--plan", "missing.json"}} {
+	for _, args := range [][]string{{"--timeout", "0"}, {"--timeout", "3h"}, {"--output-dir", ""}, {"--plan", "missing.json"}, {}} {
 		executor := &recordingApply{}
 		command := applyTestCommand(t, executor)
 		command.SetArgs(append([]string{planSpec(t)}, args...))
-		if err := command.Execute(); err == nil || len(executor.calls) != 0 {
+		err := command.Execute()
+		if err == nil || len(executor.calls) != 0 {
 			t.Fatalf("invalid options reached execution: %v", err)
 		}
+		if len(args) == 0 && !strings.Contains(err.Error(), "--plan") {
+			t.Fatalf("apply without a plan: %v", err)
+		}
 	}
+	spec, outputDir, filename, _ := savedApplyFixture(t)
 	executor := &recordingApply{}
 	command := applyTestCommand(t, executor)
 	kubeContext = ""
-	command.SetArgs([]string{planSpec(t)})
+	command.SetArgs([]string{spec, "--plan", filename, "--output-dir", outputDir})
 	if err := command.Execute(); err == nil || !strings.Contains(err.Error(), "--context") || len(executor.calls) != 0 {
 		t.Fatalf("implicit cloud context accepted: %v", err)
 	}
@@ -269,10 +286,19 @@ func TestLocalApplyDoesNotChangeGlobalContext(t *testing.T) {
 	if err := os.WriteFile(spec, data, 0600); err != nil {
 		t.Fatal(err)
 	}
+	parent := t.TempDir()
+	outputDir := filepath.Join(parent, "build")
+	filename := filepath.Join(parent, "reviewed.json")
+	planCommand := newPlanCommand()
+	planCommand.SetOut(&bytes.Buffer{})
+	planCommand.SetArgs([]string{spec, "--output-dir", outputDir, "--save-plan", filename})
+	if err := planCommand.Execute(); err != nil {
+		t.Fatal(err)
+	}
 	executor := &recordingApply{}
 	command := applyTestCommand(t, executor)
 	kubeContext = ""
-	command.SetArgs([]string{spec, "--output-dir", t.TempDir()})
+	command.SetArgs([]string{spec, "--plan", filename, "--output-dir", outputDir})
 	if err := command.Execute(); err != nil {
 		t.Fatal(err)
 	}
@@ -288,18 +314,24 @@ func TestApplyTotalDeadlineAndOutputFailure(t *testing.T) {
 		<-ctx.Done()
 		return ctx.Err()
 	}
-	outputDir := filepath.Join(t.TempDir(), "build")
-	command.SetArgs([]string{planSpec(t), "--output-dir", outputDir, "--timeout", "1ms"})
+	spec, outputDir, filename, plan := savedApplyFixture(t)
+	artifact := filepath.Join(outputDir, plan.Artifacts[0].Path)
+	before, err := os.ReadFile(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command.SetArgs([]string{spec, "--plan", filename, "--output-dir", outputDir, "--timeout", "1ms"})
 	if err := command.Execute(); !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("total deadline lost: %v", err)
 	}
-	if _, err := os.Stat(outputDir); !os.IsNotExist(err) {
-		t.Fatal("expired preflight wrote artifacts")
+	data, err := os.ReadFile(artifact)
+	if err != nil || !bytes.Equal(data, before) {
+		t.Fatal("expired preflight rewrote reviewed artifacts")
 	}
 	executor = &recordingApply{}
 	command = applyTestCommand(t, executor)
 	command.SetOut(failingPlanWriter{})
-	command.SetArgs([]string{planSpec(t), "--output-dir", t.TempDir()})
+	command.SetArgs([]string{spec, "--plan", filename, "--output-dir", outputDir})
 	if err := command.Execute(); err == nil || !reflect.DeepEqual(executor.calls, []string{"preflight"}) {
 		t.Fatalf("progress output failure reached provisioning: %v, %v", err, executor.calls)
 	}

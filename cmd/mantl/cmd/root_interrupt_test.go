@@ -39,7 +39,7 @@ func TestCLIInterruptFixture(t *testing.T) {
 		}
 		return nil
 	}
-	rootCmd.SetArgs([]string{os.Getenv("MANTL_TEST_INTERRUPT_SPEC"), "--output-dir", os.Getenv("MANTL_TEST_INTERRUPT_OUTPUT")})
+	rootCmd.SetArgs([]string{os.Getenv("MANTL_TEST_INTERRUPT_SPEC"), "--output-dir", os.Getenv("MANTL_TEST_INTERRUPT_OUTPUT"), "--plan", os.Getenv("MANTL_TEST_INTERRUPT_PLAN")})
 	Execute()
 	t.Fatal("interrupted CLI returned successfully")
 }
@@ -59,8 +59,17 @@ func verifyCLIInterrupt(t *testing.T, interrupt os.Signal) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	marker := filepath.Join(t.TempDir(), "started")
+	spec := planSpec(t)
+	outputDir := filepath.Join(t.TempDir(), "generated")
+	planFile := filepath.Join(t.TempDir(), "reviewed.json")
+	planCommand := newPlanCommand()
+	planCommand.SetOut(&bytes.Buffer{})
+	planCommand.SetArgs([]string{spec, "--output-dir", outputDir, "--save-plan", planFile})
+	if err := planCommand.Execute(); err != nil {
+		t.Fatal(err)
+	}
 	command := exec.CommandContext(ctx, binary, "-test.run=^TestCLIInterruptFixture$")
-	command.Env = append(os.Environ(), "MANTL_TEST_INTERRUPT_PROCESS=1", "MANTL_TEST_INTERRUPT_MARKER="+marker, "MANTL_TEST_INTERRUPT_SPEC="+planSpec(t), "MANTL_TEST_INTERRUPT_OUTPUT="+filepath.Join(t.TempDir(), "generated"))
+	command.Env = append(os.Environ(), "MANTL_TEST_INTERRUPT_PROCESS=1", "MANTL_TEST_INTERRUPT_MARKER="+marker, "MANTL_TEST_INTERRUPT_SPEC="+spec, "MANTL_TEST_INTERRUPT_OUTPUT="+outputDir, "MANTL_TEST_INTERRUPT_PLAN="+planFile)
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
 	command.WaitDelay = time.Second

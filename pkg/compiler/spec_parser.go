@@ -34,6 +34,18 @@ func ParseSpec(filePath string) (*v1alpha1.MantlCluster, error) {
 
 var dnsName = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
 
+// reservedNamespaces are control-plane or platform namespaces. A tenant admin
+// binding must not be rendered into them.
+var reservedNamespaces = map[string]struct{}{
+	"kube-system": {}, "kube-public": {}, "kube-node-lease": {},
+	"default": {}, "argocd": {}, "mantl-compliance-system": {},
+}
+
+func reservedNamespace(name string) bool {
+	_, ok := reservedNamespaces[name]
+	return ok
+}
+
 func Validate(cluster *v1alpha1.MantlCluster) error {
 	if cluster == nil {
 		return fmt.Errorf("cluster must not be nil")
@@ -62,7 +74,10 @@ func Validate(cluster *v1alpha1.MantlCluster) error {
 	if err := validateGitOps(cluster); err != nil {
 		return err
 	}
-	return validateTenants(cluster.Spec.Tenants)
+	if ns := cluster.Spec.ControlNamespace; ns != "" && (!dnsName.MatchString(ns) || len(ns) > 63) {
+		return fmt.Errorf("controlNamespace must be a DNS label")
+	}
+	return validateTenants(cluster.Spec.Tenants, cluster.Spec.ControlNamespace)
 }
 
 func validateGitOps(cluster *v1alpha1.MantlCluster) error {
@@ -84,7 +99,7 @@ func validateGitOps(cluster *v1alpha1.MantlCluster) error {
 	return nil
 }
 
-func validateTenants(tenants []v1alpha1.TenantSpec) error {
+func validateTenants(tenants []v1alpha1.TenantSpec, controlNamespace string) error {
 	seen := map[string]bool{}
 	seenNames := map[string]bool{}
 	for _, t := range tenants {
@@ -94,6 +109,9 @@ func validateTenants(tenants []v1alpha1.TenantSpec) error {
 		}
 		if !dnsName.MatchString(t.Name) || !dnsName.MatchString(ns) || len(ns) > 63 || len(t.Name) > 63 || seen[ns] || seenNames[t.Name] || t.Name == "kustomization" {
 			return fmt.Errorf("tenant names and namespaces must be unique DNS labels")
+		}
+		if reservedNamespace(ns) || ns == controlNamespace {
+			return fmt.Errorf("tenant namespace %q is reserved", ns)
 		}
 		seen[ns] = true
 		seenNames[t.Name] = true
