@@ -6,6 +6,7 @@ updates:
   - package-ecosystem: github-actions
     directories:
       - /
+      - /.github/actions/*
     schedule:
       interval: weekly
       day: monday
@@ -71,6 +72,9 @@ updates:
     directories:
       - /infra/terraform/blueprints/*
       - /infra/terraform/modules/*
+      - /infra/terraform/examples/*
+      - /infra/terraform/gce
+      - /infra/terraform/vsphere
     schedule:
       interval: weekly
       day: monday
@@ -106,6 +110,90 @@ updates:
       include: scope
     groups:
       docker-minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: composer
+    directories:
+      - /apps/pausatf-wp
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:30'
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      composer-minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: devcontainers
+    directories:
+      - /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:30'
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      devcontainers-minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: helm
+    directories:
+      - /charts/mantl-platform
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:30'
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      helm-minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: pre-commit
+    directories:
+      - /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:30'
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      pre-commit-minor-and-patch:
         patterns:
           - '*'
         update-types:
