@@ -36,6 +36,18 @@ jobs:
             --json number,isDraft,headRefOid --jq '.[] | select(.isDraft == false) | [.number, .headRefOid] | @tsv' > /tmp/dependabot-prs.tsv
           while read -r pr head; do
             for attempt in 1 2 3; do
+              # Dependabot records each update-type in the commit message; a
+              # grouped PR lists every dependency, so any major skips the PR.
+              # Read on every attempt because the head can move between them.
+              if ! messages=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$pr/commits" --jq '.[].commit.message'); then
+                echo "::error::Could not read commit metadata for PR #$pr"
+                failed=1
+                break
+              fi
+              if grep -q 'update-type: version-update:semver-major' <<< "$messages"; then
+                echo "::notice::Skipping PR #$pr: major update needs manual review"
+                break
+              fi
               if gh pr merge "$pr" --repo "$GITHUB_REPOSITORY" --auto --squash --match-head-commit "$head"; then
                 break
               fi
