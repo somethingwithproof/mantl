@@ -72,7 +72,7 @@ def test_release_identity_matches_provenance_source(tmp_path, ref, sha_matches, 
     assert output.exists() == accepted
 
 
-@pytest.mark.parametrize("scenario", ["race", "denied", "closed", "churn"])
+@pytest.mark.parametrize("scenario", ["race", "denied", "closed", "churn", "major"])
 def test_dependabot_sweep_continues_after_first_pr_failure(tmp_path, scenario):
     gh = tmp_path / "gh"
     gh.write_text(
@@ -80,6 +80,10 @@ def test_dependabot_sweep_continues_after_first_pr_failure(tmp_path, scenario):
 set -eu
 case "$2" in
   list) printf '1 old\n2 stable\n' ;;
+  --paginate)
+    if test "$SCENARIO" = major && [[ "$*" == *pulls/1/* ]]; then
+      echo "update-type: version-update:semver-major"
+    fi ;;
   merge)
     echo "$*" >> "$CALLS"
     if test "$3" = 2; then exit 0; fi
@@ -91,6 +95,7 @@ case "$2" in
       denied) echo '{"state":"OPEN","isDraft":false,"headRefOid":"old"}' ;;
       closed) echo '{"state":"MERGED","isDraft":false,"headRefOid":"old"}' ;;
       churn) printf '{"state":"OPEN","isDraft":false,"headRefOid":"%s"}\n' "$(wc -l < "$CALLS")" ;;
+      major) echo '{"state":"OPEN","isDraft":false,"headRefOid":"old"}' ;;
     esac ;;
 esac
 """
@@ -117,5 +122,5 @@ esac
     commands = calls.read_text().splitlines()
     assert commands[-1].startswith("pr merge 2 ")
     assert all("--auto --squash --match-head-commit" in command for command in commands)
-    assert len(commands) == {"race": 3, "denied": 2, "closed": 2, "churn": 4}[scenario]
-    assert (result.returncode == 0) == (scenario in {"race", "closed"})
+    assert len(commands) == {"race": 3, "denied": 2, "closed": 2, "churn": 4, "major": 1}[scenario]
+    assert (result.returncode == 0) == (scenario in {"race", "closed", "major"})
