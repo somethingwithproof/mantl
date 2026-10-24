@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Build the manager binary with the immutable Go 1.27.1 image.
-FROM --platform=$BUILDPLATFORM golang@sha256:e0174e51e81218523251d85d248a90d24c3d5e81543b4f07a5d66229397db190 AS builder
+FROM --platform=$BUILDPLATFORM golang@sha256:820153096fda4de6ac1b7194d12e416b7dd8f4e9a33d17e0345b111b945162d8 AS builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -32,7 +32,7 @@ RUN go run ./cmd/mantl bundle build --version "$(cat compliance/bundle-version.t
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static@sha256:58133991db06659feaabe0f4e97a35cebf15ef4ea08f8a4c6d2ee5f75e4aa6a0
+FROM gcr.io/distroless/static@sha256:9e0130bec991f471279b70f1630ada11e46dad439ef2949544f96001225329fb
 WORKDIR /
 COPY --from=builder /workspace/manager .
 COPY --from=builder /workspace/collector .
