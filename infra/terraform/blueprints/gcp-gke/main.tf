@@ -59,7 +59,7 @@ resource "google_compute_subnetwork" "gke_subnet" {
 
 module "gke" {
   source  = "terraform-google-modules/kubernetes-engine/google//modules/beta-private-cluster"
-  version = "~> 45.0"
+  version = "~> 46.0"
 
   project_id = var.project
   name       = local.name
@@ -219,7 +219,7 @@ data "google_project" "project" {
 # External DNS
 module "external_dns_workload_identity" {
   source  = "terraform-google-modules/kubernetes-engine/google//modules/workload-identity"
-  version = "~> 45.0"
+  version = "~> 46.0"
 
   project_id          = var.project
   name                = "${local.name}-external-dns"
@@ -232,7 +232,7 @@ module "external_dns_workload_identity" {
 # cert-manager
 module "cert_manager_workload_identity" {
   source  = "terraform-google-modules/kubernetes-engine/google//modules/workload-identity"
-  version = "~> 45.0"
+  version = "~> 46.0"
 
   project_id          = var.project
   name                = "${local.name}-cert-manager"
@@ -245,7 +245,7 @@ module "cert_manager_workload_identity" {
 # External Secrets
 module "external_secrets_workload_identity" {
   source  = "terraform-google-modules/kubernetes-engine/google//modules/workload-identity"
-  version = "~> 45.0"
+  version = "~> 46.0"
 
   project_id          = var.project
   name                = "${local.name}-external-secrets"
