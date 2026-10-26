@@ -7,7 +7,7 @@
 
 # Documentation
 alabaster==1.0.0
-Sphinx==9.1.0
+Sphinx==9.2.0
 
 # Configuration Management
 # Change concurrently with the required ansible version in sample.yml
@@ -21,6 +21,6 @@ PyYAML==6.0.3
 # Development Tools
 pre-commit==4.7.0
 black==26.10.1
-ruff==0.17.1
+ruff==0.17.2
 yamllint==1.38.0
 mypy==2.4.0
