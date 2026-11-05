@@ -7,7 +7,7 @@
 
 # Documentation
 alabaster==1.0.0
-Sphinx==9.2.0
+Sphinx==9.1.0
 
 # Configuration Management
 # Change concurrently with the required ansible version in sample.yml
