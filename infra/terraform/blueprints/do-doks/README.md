@@ -428,13 +428,13 @@ For issues and questions:
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
 | <a name="requirement_digitalocean"></a> [digitalocean](#requirement\_digitalocean) | >= 2.70, < 3.0 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | 3.3.0 |
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | 3.3.0 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | 3.4.0 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_digitalocean"></a> [digitalocean](#provider\_digitalocean) | 2.106.0 |
+| <a name="provider_digitalocean"></a> [digitalocean](#provider\_digitalocean) | 2.107.0 |
 
 ## Modules
 
