@@ -67,6 +67,12 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    ignore:
+      # Sphinx 9.2 requires Python 3.13; mantl pins Python 3.12 in mise.toml.
+      # Drop this when the Python pin moves to 3.13.
+      - dependency-name: sphinx
+        versions:
+          - '>=9.2.0'
     groups:
       pip-minor-and-patch:
         patterns:
