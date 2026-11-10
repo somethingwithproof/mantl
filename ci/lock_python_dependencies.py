@@ -19,6 +19,11 @@ TARGETS = (
     "examples/ecommerce-microservices/src/products-api/requirements",
 )
 
+# CI installs each example lock together with requirements-test.txt, which is
+# itself resolved within the root lock, so every later lock is constrained by
+# the one installed beside it and shared packages cannot disagree.
+CONSTRAINED_BY = {"requirements": None, "requirements-test": "requirements"}
+
 
 def compile_lock(root, target, output, constraint=None):
     """Retain existing transitive pins until a dependency is explicitly updated."""
@@ -56,11 +61,10 @@ def compile_lock(root, target, output, constraint=None):
     if constraint is not None:
         command.extend(["--constraint", str(constraint)])
     subprocess.run(command, cwd=root, check=True, stdout=subprocess.DEVNULL)
-    origin = (
-        "requirements-test.in with root requirements as constraints"
-        if target == "requirements-test"
-        else "requirements.in with mise and uv"
-    )
+    origin = {
+        "requirements": "requirements.in with mise and uv",
+        "requirements-test": "requirements-test.in with root requirements as constraints",
+    }.get(target, "requirements.in with the test lock as constraints")
     output.write_text(
         "# SPDX-License-Identifier: Apache-2.0\n"
         + f"# Generated from {origin}; edit the input and regenerate.\n"
@@ -79,8 +83,8 @@ def regenerate(root, check):
         compiled = {}
         for number, target in enumerate(TARGETS):
             output = directory / f"{number}.txt"
-            constraint = compiled.get("requirements") if target == "requirements-test" else None
-            compile_lock(root, target, output, constraint)
+            constraint = CONSTRAINED_BY.get(target, "requirements-test")
+            compile_lock(root, target, output, compiled.get(constraint) if constraint else None)
             compiled[target] = output
         changed = [
             target

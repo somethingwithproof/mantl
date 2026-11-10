@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Generated from requirements.in with mise and uv; edit the input and regenerate.
+# Generated from requirements.in with the test lock as constraints; edit the input and regenerate.
 asyncpg==0.32.0 \
     --hash=sha256:0549af18b697221d1992b7def18aa61652a85ecbe6e19ba2a75277560efe6016 \
     --hash=sha256:057ed2455e4e14ad9949f1ac1829112c7d0454c9810b124f36de1486febe6824 \
