@@ -6,14 +6,14 @@
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
 | <a name="requirement_helm"></a> [helm](#requirement\_helm) | 3.3.0 |
-| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | 3.3.0 |
+| <a name="requirement_kubernetes"></a> [kubernetes](#requirement\_kubernetes) | 3.4.0 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
 | <a name="provider_helm"></a> [helm](#provider\_helm) | 3.3.0 |
-| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | 3.3.0 |
+| <a name="provider_kubernetes"></a> [kubernetes](#provider\_kubernetes) | 3.4.0 |
 
 ## Modules
 
@@ -29,14 +29,14 @@ No modules.
 | [helm_release.falco](https://registry.terraform.io/providers/hashicorp/helm/3.3.0/docs/resources/release) | resource |
 | [helm_release.sealed_secrets](https://registry.terraform.io/providers/hashicorp/helm/3.3.0/docs/resources/release) | resource |
 | [helm_release.tailscale_operator](https://registry.terraform.io/providers/hashicorp/helm/3.3.0/docs/resources/release) | resource |
-| [kubernetes_config_map.security_dashboard](https://registry.terraform.io/providers/hashicorp/kubernetes/3.3.0/docs/resources/config_map) | resource |
-| [kubernetes_namespace.cert_manager](https://registry.terraform.io/providers/hashicorp/kubernetes/3.3.0/docs/resources/namespace) | resource |
-| [kubernetes_namespace.cilium](https://registry.terraform.io/providers/hashicorp/kubernetes/3.3.0/docs/resources/namespace) | resource |
-| [kubernetes_namespace.external_secrets](https://registry.terraform.io/providers/hashicorp/kubernetes/3.3.0/docs/resources/namespace) | resource |
-| [kubernetes_namespace.falco](https://registry.terraform.io/providers/hashicorp/kubernetes/3.3.0/docs/resources/namespace) | resource |
-| [kubernetes_namespace.sealed_secrets](https://registry.terraform.io/providers/hashicorp/kubernetes/3.3.0/docs/resources/namespace) | resource |
-| [kubernetes_namespace.tailscale](https://registry.terraform.io/providers/hashicorp/kubernetes/3.3.0/docs/resources/namespace) | resource |
-| [kubernetes_secret.tailscale_auth](https://registry.terraform.io/providers/hashicorp/kubernetes/3.3.0/docs/resources/secret) | resource |
+| [kubernetes_config_map.security_dashboard](https://registry.terraform.io/providers/hashicorp/kubernetes/3.4.0/docs/resources/config_map) | resource |
+| [kubernetes_namespace.cert_manager](https://registry.terraform.io/providers/hashicorp/kubernetes/3.4.0/docs/resources/namespace) | resource |
+| [kubernetes_namespace.cilium](https://registry.terraform.io/providers/hashicorp/kubernetes/3.4.0/docs/resources/namespace) | resource |
+| [kubernetes_namespace.external_secrets](https://registry.terraform.io/providers/hashicorp/kubernetes/3.4.0/docs/resources/namespace) | resource |
+| [kubernetes_namespace.falco](https://registry.terraform.io/providers/hashicorp/kubernetes/3.4.0/docs/resources/namespace) | resource |
+| [kubernetes_namespace.sealed_secrets](https://registry.terraform.io/providers/hashicorp/kubernetes/3.4.0/docs/resources/namespace) | resource |
+| [kubernetes_namespace.tailscale](https://registry.terraform.io/providers/hashicorp/kubernetes/3.4.0/docs/resources/namespace) | resource |
+| [kubernetes_secret.tailscale_auth](https://registry.terraform.io/providers/hashicorp/kubernetes/3.4.0/docs/resources/secret) | resource |
 
 ## Inputs
 
