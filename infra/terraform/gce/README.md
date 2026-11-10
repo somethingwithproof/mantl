@@ -70,13 +70,13 @@ delivery. This module remains experimental and is not approved for production.
 | Name | Version |
 | ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.9 |
-| <a name="requirement_google"></a> [google](#requirement\_google) | 8.8.0 |
+| <a name="requirement_google"></a> [google](#requirement\_google) | 8.9.0 |
 
 ## Providers
 
 | Name | Version |
 | ---- | ------- |
-| <a name="provider_google"></a> [google](#provider\_google) | 8.8.0 |
+| <a name="provider_google"></a> [google](#provider\_google) | 8.9.0 |
 
 ## Modules
 
@@ -86,17 +86,17 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
-| [google_compute_disk.mi-control-lvm](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/resources/compute_disk) | resource |
-| [google_compute_disk.mi-kubeworker-lvm](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/resources/compute_disk) | resource |
-| [google_compute_disk.mi-worker-lvm](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/resources/compute_disk) | resource |
-| [google_compute_firewall.iap_ssh](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/resources/compute_firewall) | resource |
-| [google_compute_firewall.internal_modern](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/resources/compute_firewall) | resource |
-| [google_compute_instance.control_modern](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/resources/compute_instance) | resource |
-| [google_compute_instance.kubeworker_modern](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/resources/compute_instance) | resource |
-| [google_compute_instance.worker_modern](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/resources/compute_instance) | resource |
-| [google_compute_network.mi_network_modern](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/resources/compute_network) | resource |
-| [google_compute_subnetwork.mi_subnet_modern](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/resources/compute_subnetwork) | resource |
-| [google_compute_image.boot](https://registry.terraform.io/providers/hashicorp/google/8.8.0/docs/data-sources/compute_image) | data source |
+| [google_compute_disk.mi-control-lvm](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/resources/compute_disk) | resource |
+| [google_compute_disk.mi-kubeworker-lvm](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/resources/compute_disk) | resource |
+| [google_compute_disk.mi-worker-lvm](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/resources/compute_disk) | resource |
+| [google_compute_firewall.iap_ssh](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/resources/compute_firewall) | resource |
+| [google_compute_firewall.internal_modern](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/resources/compute_firewall) | resource |
+| [google_compute_instance.control_modern](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/resources/compute_instance) | resource |
+| [google_compute_instance.kubeworker_modern](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/resources/compute_instance) | resource |
+| [google_compute_instance.worker_modern](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/resources/compute_instance) | resource |
+| [google_compute_network.mi_network_modern](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/resources/compute_network) | resource |
+| [google_compute_subnetwork.mi_subnet_modern](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/resources/compute_subnetwork) | resource |
+| [google_compute_image.boot](https://registry.terraform.io/providers/hashicorp/google/8.9.0/docs/data-sources/compute_image) | data source |
 
 ## Inputs
 
