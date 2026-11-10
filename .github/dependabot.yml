@@ -4,6 +4,8 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
+    cooldown:
+      default-days: 7
     directories:
       - /
       - /.github/actions/*
@@ -26,6 +28,8 @@ updates:
           - minor
           - patch
   - package-ecosystem: gomod
+    cooldown:
+      default-days: 7
     directories:
       - /
     schedule:
@@ -47,6 +51,8 @@ updates:
           - minor
           - patch
   - package-ecosystem: pip
+    cooldown:
+      default-days: 7
     directories:
       - /
       - /examples/**
@@ -69,6 +75,8 @@ updates:
           - minor
           - patch
   - package-ecosystem: terraform
+    cooldown:
+      default-days: 7
     directories:
       - /infra/terraform/blueprints/*
       - /infra/terraform/modules/*
@@ -94,6 +102,8 @@ updates:
           - minor
           - patch
   - package-ecosystem: docker
+    cooldown:
+      default-days: 7
     directories:
       - /
       - /examples/**
@@ -116,6 +126,8 @@ updates:
           - minor
           - patch
   - package-ecosystem: composer
+    cooldown:
+      default-days: 7
     directories:
       - /apps/pausatf-wp
     schedule:
@@ -137,6 +149,8 @@ updates:
           - minor
           - patch
   - package-ecosystem: devcontainers
+    cooldown:
+      default-days: 7
     directories:
       - /
     schedule:
@@ -158,6 +172,8 @@ updates:
           - minor
           - patch
   - package-ecosystem: helm
+    cooldown:
+      default-days: 7
     directories:
       - /charts/mantl-platform
     schedule:
@@ -179,6 +195,8 @@ updates:
           - minor
           - patch
   - package-ecosystem: pre-commit
+    cooldown:
+      default-days: 7
     directories:
       - /
     schedule:
@@ -200,6 +218,8 @@ updates:
           - minor
           - patch
   - package-ecosystem: npm
+    cooldown:
+      default-days: 7
     directories:
       - /examples/ecommerce-microservices/src/frontend
     schedule:
