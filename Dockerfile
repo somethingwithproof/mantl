@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Keep mise's binary update separate from the Debian development environment.
-FROM ghcr.io/jdx/mise@sha256:3beda11ba592da44277cac15061103b844c69420a55cb5c41694dc4f2734d0cb AS mise
+FROM ghcr.io/jdx/mise@sha256:d4de1845114f6d73e90e15f7642885f74f3ca93074491038a2b9c43e4b897f21 AS mise
 FROM debian@sha256:4c25275446ca371766b8b093c696782eabce06263fccacb8d5d813b3dc44b308
 COPY --from=mise /usr/local/bin/mise /usr/local/bin/mise
 
