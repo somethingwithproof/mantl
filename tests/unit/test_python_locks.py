@@ -93,3 +93,26 @@ def test_regeneration_rejects_symlinked_dist_before_creating_files(locks, tmp_pa
     with pytest.raises(ValueError, match="symlinks"):
         locks.regenerate(tmp_path, check=True)
     assert list(outside.iterdir()) == []
+
+
+def test_examples_are_constrained_by_the_test_lock_installed_beside_them(
+    locks, tmp_path, monkeypatch
+):
+    example = "examples/demo/requirements"
+    monkeypatch.setattr(locks, "TARGETS", ("requirements", "requirements-test", example))
+    (tmp_path / "examples/demo").mkdir(parents=True)
+    for target in locks.TARGETS:
+        (tmp_path / f"{target}.txt").write_text("old\n")
+    seen = {}
+
+    def compile_fixture(_root, target, output, constraint):
+        seen[target] = None if constraint is None else constraint.read_text()
+        output.write_text(f"resolved {target}\n")
+
+    monkeypatch.setattr(locks, "compile_lock", compile_fixture)
+    assert locks.regenerate(tmp_path, check=False)
+    assert seen == {
+        "requirements": None,
+        "requirements-test": "resolved requirements\n",
+        example: "resolved requirements-test\n",
+    }
