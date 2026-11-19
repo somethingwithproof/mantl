@@ -55,7 +55,7 @@ jobs:
           test "$GITHUB_REF" = refs/heads/main || test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b
         with:
           version: 2026.10.2
           install_args: go goreleaser
@@ -90,7 +90,7 @@ jobs:
           ref: ${{ needs.build.outputs.commit }}
           persist-credentials: false
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -100,7 +100,7 @@ jobs:
         env:
           REPOSITORY: ${{ github.repository }}
         run: echo "name=ghcr.io/${REPOSITORY,,}-operator" >> "$GITHUB_OUTPUT"
-      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b
         with:
           version: 2026.10.2
           install_args: oras
@@ -151,7 +151,7 @@ jobs:
         with:
           ref: ${{ needs.build.outputs.commit }}
           persist-credentials: false
-      - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c
+      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b
         with:
           version: 2026.10.2
           install_args: go python oras cosign syft kubectl
@@ -160,7 +160,7 @@ jobs:
           name: cli-release
           retention-days: 7
           path: dist/release
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
