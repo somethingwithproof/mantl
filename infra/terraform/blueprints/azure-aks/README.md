@@ -98,7 +98,6 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_resource_group_name"></a> [resource\_group\_name](#input\_resource\_group\_name) | Name of the Azure Resource Group | `string` | n/a | yes |
 | <a name="input_admin_group_object_ids"></a> [admin\_group\_object\_ids](#input\_admin\_group\_object\_ids) | Azure AD group object IDs for cluster admin access | `list(string)` | `[]` | no |
 | <a name="input_aks_subnet_cidr"></a> [aks\_subnet\_cidr](#input\_aks\_subnet\_cidr) | CIDR block for AKS subnet | `string` | `"10.0.0.0/20"` | no |
 | <a name="input_authorized_ip_ranges"></a> [authorized\_ip\_ranges](#input\_authorized\_ip\_ranges) | List of authorized IP ranges that can access the Kubernetes API server (when not using private endpoint) | `list(string)` | `[]` | no |
@@ -111,6 +110,7 @@ No modules.
 | <a name="input_kubernetes_version"></a> [kubernetes\_version](#input\_kubernetes\_version) | Kubernetes version for AKS cluster | `string` | `"1.31"` | no |
 | <a name="input_location"></a> [location](#input\_location) | Azure region | `string` | `"East US"` | no |
 | <a name="input_log_retention_days"></a> [log\_retention\_days](#input\_log\_retention\_days) | Log retention in days for Log Analytics workspace | `number` | `30` | no |
+| <a name="input_resource_group_name"></a> [resource\_group\_name](#input\_resource\_group\_name) | Name of the Azure Resource Group | `string` | n/a | yes |
 | <a name="input_service_cidr"></a> [service\_cidr](#input\_service\_cidr) | CIDR block for Kubernetes services | `string` | `"10.1.0.0/16"` | no |
 | <a name="input_system_node_count"></a> [system\_node\_count](#input\_system\_node\_count) | Initial number of system nodes | `number` | `2` | no |
 | <a name="input_system_node_max_count"></a> [system\_node\_max\_count](#input\_system\_node\_max\_count) | Maximum number of system nodes (auto-scaling) | `number` | `4` | no |

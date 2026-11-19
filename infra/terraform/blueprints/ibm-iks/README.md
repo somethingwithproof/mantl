@@ -218,7 +218,6 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_ibmcloud_api_key"></a> [ibmcloud\_api\_key](#input\_ibmcloud\_api\_key) | IBM Cloud API key | `string` | n/a | yes |
 | <a name="input_allowed_ssh_cidrs"></a> [allowed\_ssh\_cidrs](#input\_allowed\_ssh\_cidrs) | CIDR blocks allowed to SSH to nodes | `list(string)` | `[]` | no |
 | <a name="input_backup_retention_days"></a> [backup\_retention\_days](#input\_backup\_retention\_days) | Number of days to retain backups | `number` | `30` | no |
 | <a name="input_cluster_name"></a> [cluster\_name](#input\_cluster\_name) | Name of the IKS cluster | `string` | `"mantl-iks"` | no |
@@ -233,6 +232,7 @@ No modules.
 | <a name="input_entitlement"></a> [entitlement](#input\_entitlement) | Entitlement for OCP on IBM Cloud (cloud\_pak for OCP) | `string` | `null` | no |
 | <a name="input_environment"></a> [environment](#input\_environment) | Environment name (e.g., production, staging, development) | `string` | `"production"` | no |
 | <a name="input_flow_logs_retention_days"></a> [flow\_logs\_retention\_days](#input\_flow\_logs\_retention\_days) | Number of days to retain flow logs | `number` | `90` | no |
+| <a name="input_ibmcloud_api_key"></a> [ibmcloud\_api\_key](#input\_ibmcloud\_api\_key) | IBM Cloud API key | `string` | n/a | yes |
 | <a name="input_key_protect_force_delete"></a> [key\_protect\_force\_delete](#input\_key\_protect\_force\_delete) | Force delete Key Protect keys on destroy | `bool` | `false` | no |
 | <a name="input_key_protect_private_endpoint"></a> [key\_protect\_private\_endpoint](#input\_key\_protect\_private\_endpoint) | Use private endpoint for Key Protect | `bool` | `true` | no |
 | <a name="input_kubernetes_version"></a> [kubernetes\_version](#input\_kubernetes\_version) | Kubernetes version for IKS cluster | `string` | `"1.31"` | no |

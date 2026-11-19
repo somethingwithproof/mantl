@@ -102,11 +102,6 @@ No modules.
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_long_name"></a> [long\_name](#input\_long\_name) | SPDX-License-Identifier: Apache-2.0 Inputs for the experimental standalone VM module. No cluster bootstrap is performed. | `string` | n/a | yes |
-| <a name="input_region"></a> [region](#input\_region) | n/a | `string` | n/a | yes |
-| <a name="input_short_name"></a> [short\_name](#input\_short\_name) | n/a | `string` | n/a | yes |
-| <a name="input_ssh_key"></a> [ssh\_key](#input\_ssh\_key) | n/a | `string` | n/a | yes |
-| <a name="input_zone"></a> [zone](#input\_zone) | n/a | `string` | n/a | yes |
 | <a name="input_allowed_cidrs"></a> [allowed\_cidrs](#input\_allowed\_cidrs) | Deprecated compatibility input. External source allowlists are unsupported; must remain empty. | `list(string)` | `[]` | no |
 | <a name="input_control_count"></a> [control\_count](#input\_control\_count) | n/a | `number` | `0` | no |
 | <a name="input_control_type"></a> [control\_type](#input\_control\_type) | n/a | `string` | `"e2-standard-2"` | no |
@@ -118,14 +113,19 @@ No modules.
 | <a name="input_gce_boot_kms_key"></a> [gce\_boot\_kms\_key](#input\_gce\_boot\_kms\_key) | Optional self\_link of the KMS crypto key for boot disk encryption. | `string` | `""` | no |
 | <a name="input_gce_public_ip"></a> [gce\_public\_ip](#input\_gce\_public\_ip) | Deprecated compatibility input. Public IPs are unsupported; only false is accepted. | `bool` | `false` | no |
 | <a name="input_kubeworker_count"></a> [kubeworker\_count](#input\_kubeworker\_count) | n/a | `number` | `0` | no |
+| <a name="input_long_name"></a> [long\_name](#input\_long\_name) | SPDX-License-Identifier: Apache-2.0 Inputs for the experimental standalone VM module. No cluster bootstrap is performed. | `string` | n/a | yes |
 | <a name="input_modern_subnetwork_self_link"></a> [modern\_subnetwork\_self\_link](#input\_modern\_subnetwork\_self\_link) | Optional self\_link of a modern subnetwork to attach (use with use\_modern\_gce\_network). | `string` | `""` | no |
 | <a name="input_network_ipv4"></a> [network\_ipv4](#input\_network\_ipv4) | n/a | `string` | `"10.20.0.0/24"` | no |
+| <a name="input_region"></a> [region](#input\_region) | n/a | `string` | n/a | yes |
+| <a name="input_short_name"></a> [short\_name](#input\_short\_name) | n/a | `string` | n/a | yes |
+| <a name="input_ssh_key"></a> [ssh\_key](#input\_ssh\_key) | n/a | `string` | n/a | yes |
 | <a name="input_ssh_user"></a> [ssh\_user](#input\_ssh\_user) | n/a | `string` | `"mantl"` | no |
 | <a name="input_use_modern_gce_network"></a> [use\_modern\_gce\_network](#input\_use\_modern\_gce\_network) | If true, expect a modern subnetwork; set modern\_subnetwork\_self\_link accordingly. | `bool` | `false` | no |
 | <a name="input_use_modern_gce_schema"></a> [use\_modern\_gce\_schema](#input\_use\_modern\_gce\_schema) | If true, create control nodes with modern google\_compute\_instance schema. | `bool` | `false` | no |
 | <a name="input_worker_count"></a> [worker\_count](#input\_worker\_count) | n/a | `number` | `0` | no |
 | <a name="input_worker_type"></a> [worker\_type](#input\_worker\_type) | n/a | `string` | `"e2-standard-2"` | no |
 | <a name="input_worker_volume_size"></a> [worker\_volume\_size](#input\_worker\_volume\_size) | n/a | `number` | `50` | no |
+| <a name="input_zone"></a> [zone](#input\_zone) | n/a | `string` | n/a | yes |
 
 ## Outputs
 
