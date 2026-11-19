@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Multi-stage build for static website
 # Official nginx:1.31-alpine image, pinned to its multi-platform digest.
-FROM nginx@sha256:4c41e2d0a3a55b325ed572cd0200bdb72af1433c3daa2bca6ef8eea68ce504a2
+FROM nginx@sha256:165ddde8751e75a1c907d24ef10d9f6deb08b57e0fe56caf67512486aff76d82
 
 # Remove default nginx config
 RUN rm /etc/nginx/conf.d/default.conf && \
