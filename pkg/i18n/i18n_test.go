@@ -19,8 +19,8 @@ func extractPlaceholders(s string) []string {
 
 func TestAllLocalesLoadWithParity(t *testing.T) {
 	locales := SupportedLocales()
-	if len(locales) != 45 {
-		t.Fatalf("expected 45 supported locales, got %d", len(locales))
+	if len(locales) != 48 {
+		t.Fatalf("expected 48 supported locales, got %d", len(locales))
 	}
 
 	enRaw, err := localeFS.ReadFile("locales/en.json")
@@ -105,6 +105,19 @@ func TestResolveLocaleAndRTL(t *testing.T) {
 		{"ur_PK.UTF-8", "ur"},
 		{"tl", "fil"},
 		{"hi_IN.UTF-8", "hi"},
+		{"bs", "bs"},
+		{"bs-BA", "bs"},
+		{"bs_BA.UTF-8", "bs"},
+		{"hr", "hr"},
+		{"hr-HR", "hr"},
+		{"hr_HR.UTF-8", "hr"},
+		{"sr", "sr"},
+		{"sr-RS", "sr"},
+		{"sr_RS.UTF-8", "sr"},
+		{"sr-Cyrl", "sr"},
+		{"sr-Latn", "sr"},
+		{"sr-Cyrl-RS", "sr"},
+		{"sr-Latn-RS", "sr"},
 		{"unknown", "en"},
 	}
 	for _, tc := range cases {
