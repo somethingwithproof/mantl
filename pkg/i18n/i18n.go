@@ -21,6 +21,7 @@ var supported = []string{
 	"af-ZA", "am-ET", "ar-EG", "ar-MA", "fr-MA", "fr-SN", "ha-NG", "ig-NG",
 	"mg-MG", "rw-RW", "so-SO", "sw-KE", "xh-ZA", "yo-NG", "zu-ZA",
 	"bn", "fa", "he", "mr", "ta", "te", "th", "ur", "ms", "fil",
+	"bs", "hr", "sr",
 }
 
 var baseAliases = map[string]string{
@@ -56,7 +57,7 @@ var (
 	defaultCatalog *Catalog
 )
 
-// SupportedLocales returns a copy of the 45 supported canonical locale identifiers.
+// SupportedLocales returns a copy of the 48 supported canonical locale identifiers.
 func SupportedLocales() []string {
 	out := make([]string, len(supported))
 	copy(out, supported)
