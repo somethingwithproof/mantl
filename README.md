@@ -234,6 +234,19 @@ for setup, scoped tests, dependency locks, devcontainers, and pull requests, and
 [docs/adr](docs/adr); roadmaps under [docs/superpowers/specs](docs/superpowers/specs)
 are intentions, not release guarantees.
 
+## Localization
+
+The `mantl` CLI embeds translations for 20 Tier 1 locales (`en`, `de`, `es`, `fr`, `it`, `pt-BR`, `nl`, `ru`, `uk`, `ja`, `ko`, `zh-CN`, `zh-TW`, `ar`, `hi`, `pl`, `tr`, `sv`, `vi`, `id`) in `pkg/i18n`.
+
+Locale selection honors POSIX environment variables (`LC_ALL`, `LC_MESSAGES`, `LANG`) and the persistent `--lang` flag:
+
+```bash
+mantl --lang de --help
+LANG=ja_JP.UTF-8 mantl --help
+```
+
+Unset, `C`, `POSIX`, and unrecognized locales default to English.
+
 ## Security and license
 
 Report vulnerabilities privately through [GitHub Security Advisories](https://github.com/somethingwithproof/mantl/security/advisories/new).

@@ -413,3 +413,9 @@ path = "deploy/argocd/install.yaml"
 precedence = "closest"
 SPDX-License-Identifier = "Apache-2.0"
 SPDX-FileComment = "Unmodified Argo CD v3.5.3 install manifest from https://github.com/argoproj/argo-cd. Apache-2.0."
+
+[[annotations]]
+path = "pkg/i18n/locales/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileComment = "Embedded Tier 1 localization JSON catalogs for Mantl."
