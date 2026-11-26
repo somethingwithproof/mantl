@@ -45,15 +45,21 @@ func init() {
 }
 
 func extractLangArg(args []string) string {
+	var lang string
 	for i := 0; i < len(args); i++ {
+		if args[i] == "--" {
+			break
+		}
 		if args[i] == "--lang" && i+1 < len(args) {
-			return args[i+1]
+			lang = args[i+1]
+			i++
+			continue
 		}
 		if strings.HasPrefix(args[i], "--lang=") {
-			return strings.TrimPrefix(args[i], "--lang=")
+			lang = strings.TrimPrefix(args[i], "--lang=")
 		}
 	}
-	return ""
+	return lang
 }
 
 func applyLocalization(override string) *i18n.Catalog {
