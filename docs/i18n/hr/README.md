@@ -41,6 +41,8 @@ spec:
     version: "1.31"
   profile:
     size: small
+  networking:
+    domain: platform.example.com
 ```
 
 ## Lokalizacija
