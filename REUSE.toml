@@ -418,4 +418,10 @@ SPDX-FileComment = "Unmodified Argo CD v3.5.3 install manifest from https://gith
 path = "pkg/i18n/locales/**"
 precedence = "closest"
 SPDX-License-Identifier = "Apache-2.0"
-SPDX-FileComment = "Embedded Tier 1 localization JSON catalogs for Mantl."
+SPDX-FileComment = "Embedded localization JSON catalogs for Mantl."
+
+[[annotations]]
+path = "docs/i18n/**"
+precedence = "closest"
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileComment = "Localized documentation for Mantl."
