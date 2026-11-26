@@ -20,6 +20,24 @@ Terraform modernization and hardening across cloud modules:
   - Add modern worker and edge VM resources under the same flag; reminder to set legacy counts to 0 when enabling.
 
 See PRs: #31, #32, #33, #34, #35, #36, #37.
+## [0.6.0](https://github.com/somethingwithproof/mantl/compare/v0.5.0...v0.6.0) (2026-11-26)
+
+
+### Features
+
+* **cli:** verify artifacts and compare saved plans offline ([#364](https://github.com/somethingwithproof/mantl/issues/364)) ([baa6869](https://github.com/somethingwithproof/mantl/commit/baa6869fb74eb22648b2fec53cd0e534a073e287))
+* **cli:** wait for generated application health ([#365](https://github.com/somethingwithproof/mantl/issues/365)) ([c10c084](https://github.com/somethingwithproof/mantl/commit/c10c084a0823b28c954c66a4696518d28668c331))
+* **i18n:** add 20 Tier 1 locale support for mantl CLI ([#460](https://github.com/somethingwithproof/mantl/issues/460)) ([6b9fc43](https://github.com/somethingwithproof/mantl/commit/6b9fc4342a53480d45f23498b7cf5aa13d05d3ed))
+* **i18n:** add 25 African and Asian locales and 44 localized READMEs ([#461](https://github.com/somethingwithproof/mantl/issues/461)) ([d161479](https://github.com/somethingwithproof/mantl/commit/d1614790a475321079905bf1d3f700ea862943d2))
+* **i18n:** add Bosnian, Croatian, and Serbian locales ([#462](https://github.com/somethingwithproof/mantl/issues/462)) ([b734a3c](https://github.com/somethingwithproof/mantl/commit/b734a3c7456d43a16099943765ee5f366f496d90))
+
+
+### Bug Fixes
+
+* **ci:** bind release provenance and recover Dependabot races ([#363](https://github.com/somethingwithproof/mantl/issues/363)) ([64fcf18](https://github.com/somethingwithproof/mantl/commit/64fcf18907a63012d6eeb7568b65465facc8509e))
+* **deps:** update OpenTelemetry to 1.45.2 in two examples ([#434](https://github.com/somethingwithproof/mantl/issues/434)) ([e1c029e](https://github.com/somethingwithproof/mantl/commit/e1c029e559daca0f13559fc790312569c23be7aa))
+* require a reviewed plan before apply ([#366](https://github.com/somethingwithproof/mantl/issues/366)) ([359c9f5](https://github.com/somethingwithproof/mantl/commit/359c9f5e9feef63924d7833eaaccdf3d0b337b04))
+
 ## [0.5.0](https://github.com/somethingwithproof/mantl/compare/v0.4.0...v0.5.0) (2026-10-07)
 
 
